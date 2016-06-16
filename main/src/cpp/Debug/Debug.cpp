@@ -28,71 +28,31 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/**
- * @addtogroup Utilities Basic Supporting Utilities
- * @file
- * @brief Reference Template
- * @author Zhenyu Wu
- * @date Jul 29, 2015: Refactored from ManagedRef
- **/
+// [Utilities] Basic debug support
 
-#ifndef ZWUtils_Reference_H
-#define ZWUtils_Reference_H
+#include "Debug.h"
 
-#include "Misc/Global.h"
-#include "Debug/Exception.h"
+#ifndef SOLUTION_PATH
+#if _MSC_VER
+#pragma message ("Warning: Please define the project path before compiling this file!")
+#pragma message ("Warning: Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','/'))\\\"\"") 
+#endif
+#define SOLUTION_PATH ""
+#endif //SOLUTION_PATH
 
-#include "ObjAllocator.h"
+// Aquire the skip length of source code (so we can properly print relative source file paths)
+#ifdef WINDOWS
 
-template<class T>
-class Reference {
-	typedef Reference _this;
+PCTCHAR __RelPath(PCTCHAR Path) {
+	static size_t __RelPathLen = wcslen(_T(SOLUTION_PATH));
+	return Path + __RelPathLen;
+}
 
-protected:
-	Reference() {}
-
-	virtual ~Reference(void) {}
-
-	virtual T* _ObjPointer(void) const
-	{ FAIL(_T("Abstract Function")); }
-
-	virtual T* _ObjExchange(T *xObj)
-	{ FAIL(_T("Abstract Function")); }
-
-public:
-	// Disable copy and move constructions for generial references
-	Reference(_this const &) = delete;
-	Reference(_this &&) = delete;
-
-	// Assignment operations are also disabled
-	_this& operator=(_this const &) = delete;
-	_this& operator=(_this &&) = delete;
-
-	_this* operator~(void)
-	{ return this; }
-	_this const* operator~(void) const
-	{ return this; }
-
-	T* operator&(void) const
-	{ return _ObjPointer(); }
-	T& operator*(void) const
-	{ return *_ObjPointer(); }
-	T* operator->(void) const
-	{ return _ObjPointer(); }
-	bool operator==(_this const &xRef) const
-	{ return **this == *xRef; }
-
-	virtual T* Assign(T *xObj)
-	{ return _ObjExchange(xObj); }
-
-	T* operator=(T *xObj)
-	{ return Assign(xObj), xObj; }
-
-	virtual bool Empty(void) const
-	{ return _ObjPointer() == nullptr; }
-
-	virtual void Clear(void)
-	{ Assign(nullptr); }
-};
+PCTCHAR __PTID(void) {
+	__declspec(thread) static TCHAR PTID[12]{NullWChar};
+	if (PTID[0] == NullWChar)
+		BUFFMT(&PTID[0], 12, _T("%5d:%-5d"), GetCurrentProcessId(), GetCurrentThreadId());
+	return PTID;
+}
 
 #endif

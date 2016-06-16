@@ -31,68 +31,54 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**
  * @addtogroup Utilities Basic Supporting Utilities
  * @file
- * @brief Reference Template
+ * @brief Logging support
  * @author Zhenyu Wu
- * @date Jul 29, 2015: Refactored from ManagedRef
+ * @date Jan 06, 2015: Refactored from legacy ZWUtils
  **/
 
-#ifndef ZWUtils_Reference_H
-#define ZWUtils_Reference_H
+#ifndef ZWUtils_Logging_H
+#define ZWUtils_Logging_H
 
 #include "Misc/Global.h"
-#include "Debug/Exception.h"
+#include "Misc/TString.h"
 
-#include "ObjAllocator.h"
+#include "Debug.h"
 
-template<class T>
-class Reference {
-	typedef Reference _this;
+TString const& LOGTARGET_CONSOLE(void);
 
-protected:
-	Reference() {}
+//! Add or remove a debug log target
+void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message = nullptr);
 
-	virtual ~Reference(void) {}
+//! Print a formatted debug string message
+void __LOG(PCTCHAR Fmt, ...);
 
-	virtual T* _ObjPointer(void) const
-	{ FAIL(_T("Abstract Function")); }
+//-------------- LOGGING
 
-	virtual T* _ObjExchange(T *xObj)
-	{ FAIL(_T("Abstract Function")); }
+#ifndef NLOG
+#define LOG_DO(x)	x
+#else
+#define LOG_DO(x)	;
+#endif
 
-public:
-	// Disable copy and move constructions for generial references
-	Reference(_this const &) = delete;
-	Reference(_this &&) = delete;
+#define _LOG(fmt, ...)																	\
+LOG_DO({																				\
+	TString __TS = __TimeStamp();														\
+	__LOG(_T("[%s] %s | ") fmt TNewLine, __PTID(), __TS.c_str() VAWRAP(__VA_ARGS__));	\
+})
 
-	// Assignment operations are also disabled
-	_this& operator=(_this const &) = delete;
-	_this& operator=(_this &&) = delete;
+#define _LOGS(fmt, ...)												\
+LOG_DO({															\
+	SOURCEMARK														\
+	_LOG(_T("@<%s> ") fmt, __SrcMark.c_str() VAWRAP(__VA_ARGS__));	\
+})
 
-	_this* operator~(void)
-	{ return this; }
-	_this const* operator~(void) const
-	{ return this; }
+//-------------- DEBUG LOGGING
 
-	T* operator&(void) const
-	{ return _ObjPointer(); }
-	T& operator*(void) const
-	{ return *_ObjPointer(); }
-	T* operator->(void) const
-	{ return _ObjPointer(); }
-	bool operator==(_this const &xRef) const
-	{ return **this == *xRef; }
-
-	virtual T* Assign(T *xObj)
-	{ return _ObjExchange(xObj); }
-
-	T* operator=(T *xObj)
-	{ return Assign(xObj), xObj; }
-
-	virtual bool Empty(void) const
-	{ return _ObjPointer() == nullptr; }
-
-	virtual void Clear(void)
-	{ Assign(nullptr); }
-};
+#define LOG(s, ...)		DEBUG_DO(_LOG(s, __VA_ARGS__))
+#define LOGS(s, ...)	DEBUG_DO(_LOGS(s, __VA_ARGS__))
+#define LOGV(s, ...)	DEBUGV_DO(_LOG(s, __VA_ARGS__))
+#define LOGSV(s, ...)	DEBUGV_DO(_LOGS(s, __VA_ARGS__))
+#define LOGVV(s, ...)	DEBUGVV_DO(_LOG(s, __VA_ARGS__))
+#define LOGSVV(s, ...)	DEBUGVV_DO(_LOGS(s, __VA_ARGS__))
 
 #endif
