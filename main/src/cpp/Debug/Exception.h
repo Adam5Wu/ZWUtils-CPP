@@ -54,7 +54,7 @@ template<typename T> class IObjAllocator;
  **/
 class Exception {
 	typedef Exception _this;
-	friend class IObjAllocator < _this > ;
+	friend class IObjAllocator < _this >;
 
 protected:
 	TString const rWhy = EmptyWText;
@@ -107,6 +107,22 @@ public:
 	SOURCEMARK										\
 	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);	\
 }
+
+#define LOGEXCEPTIONV(e,fmt,...)					\
+DEBUGV_DO_OR({										\
+	LOGV(fmt, __VA_ARGS__);							\
+	e->Show();										\
+}, {												\
+	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why());	\
+})
+
+#define LOGEXCEPTIONVV(e,fmt,...)					\
+DEBUGVV_DO_OR({										\
+	LOGV(fmt, __VA_ARGS__);							\
+	e->Show();										\
+}, {												\
+	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why());	\
+})
 
 #include <deque>
 

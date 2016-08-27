@@ -44,8 +44,10 @@ void TestErrCode();
 void TestStringConv();
 void TestSyncPrems();
 void TestManagedObj();
-void TestWorkerThread();
 void TestSyncObj();
+void TestSize();
+void TestTiming();
+void TestWorkerThread();
 void TestSyncQueue();
 
 #ifdef WINDOWS
@@ -59,7 +61,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (argc != 2)
 			FAIL(_T("Require 1 parameter: <TestType> = 'ALL' | ")
 			_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'ManagedObj' / ")
-			_T("'SyncObj' / 'WorkerThread' / 'SyncQueue'"));
+			_T("'Size' / 'Timing' / 'SyncObj' / 'WorkerThread' / 'SyncQueue'"));
 
 		bool TestAll = _tcsicmp(argv[1], _T("ALL")) == 0;
 		if (TestAll || (_tcsicmp(argv[1], _T("Exception")) == 0)) {
@@ -79,6 +81,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		if (TestAll || (_tcsicmp(argv[1], _T("SyncObj")) == 0)) {
 			TestSyncObj();
+		}
+		if (TestAll || (_tcsicmp(argv[1], _T("Size")) == 0)) {
+			TestSize();
+		}
+		if (TestAll || (_tcsicmp(argv[1], _T("Timing")) == 0)) {
+			TestTiming();
 		}
 		if (TestAll || (_tcsicmp(argv[1], _T("WorkerThread")) == 0)) {
 			TestWorkerThread();
@@ -431,6 +439,70 @@ void TestSyncObj(void) {
 	_LOG(_T("A <=50=> D : %d"), A.Pickup()->CompareAndSwap(50, D));
 	_LOG(_T("A : %d"), A.Pickup()->value);
 	_LOG(_T("D : %d"), D.value);
+}
+
+void TestSize(void) {
+	_LOG(_T("*** Test Size"));
+	_LOG(_T("1 MB: %s"), ToString(1, SizeUnit::MB).c_str());
+	_LOG(_T(" - byte unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::BYTE).c_str());
+	_LOG(_T(" - KB unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::KB).c_str());
+
+	long long S1G1K = Convert(1, SizeUnit::GB, SizeUnit::BYTE)+Convert(1, SizeUnit::KB, SizeUnit::BYTE);
+	_LOG(_T("1 GB + 1KB: %s"), ToString(S1G1K, SizeUnit::BYTE).c_str());
+	_LOG(_T(" - MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
+	
+	long long S1G1KN1B = S1G1K-1;
+	_LOG(_T("1 GB + 1KB - 1B: %s"), ToString(S1G1KN1B, SizeUnit::BYTE).c_str());
+	_LOG(_T(" - MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit, abbreviate: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB, true).c_str());
+}
+
+void TestTiming(void) {
+	_LOG(_T("*** Test Timing"));
+	TimeStamp Now(TimeStamp::Now());
+
+	_LOG(_T("--- Timestamp"));
+	_LOG(_T("Current time: %s"), Now.toString().c_str());
+	_LOG(_T(" = second resolution: %s"), Now.toString(TimeUnit::SEC).c_str());
+	_LOG(_T(" = minute resolution: %s"), Now.toString(TimeUnit::MIN).c_str());
+	_LOG(_T(" = hour resolution: %s"), Now.toString(TimeUnit::HR).c_str());
+	_LOG(_T(" = day resolution: %s"), Now.toString(TimeUnit::DAY).c_str());
+
+	_LOG(_T("--- Timespan"));
+	TimeSpan TS3S = TimeSpan(3, TimeUnit::SEC);
+	_LOG(_T("3 second timespan: %s"), TS3S.toString().c_str());
+	_LOG(_T(" = millisecond resolution: %s"), TS3S.toString(TimeUnit::MSEC, false).c_str());
+	_LOG(_T(" = millisecond resolution, abbreviate: %s"), TS3S.toString(TimeUnit::MSEC, true).c_str());
+	_LOG(_T(" = minute resolution: %s"), TS3S.toString(TimeUnit::MIN).c_str());
+	_LOG(_T(" = minute-millisecond resolution: %s"), TS3S.toString(TimeUnit::MIN, TimeUnit::MSEC).c_str());
+
+	TimeSpan TS3M = TimeSpan(3, TimeUnit::MIN);
+	_LOG(_T("3 minute timespan: %s"), TS3M.toString().c_str());
+	_LOG(_T(" = millisecond resolution: %s"), TS3M.toString(TimeUnit::MSEC, false).c_str());
+	_LOG(_T(" = second-millisecond resolution: %s"), TS3M.toString(TimeUnit::MIN, TimeUnit::MSEC).c_str());
+
+	_LOG(_T("--- Time arithmetics"));
+	TimeSpan TS3D = TimeSpan(3, TimeUnit::DAY);
+	auto TS3D3M = TS3D + TS3M;
+	_LOG(_T("3 days + 3 minute timespan: %s"), TS3D3M.toString().c_str());
+	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3M.toString(TimeUnit::HR, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-hour resolution: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::HR).c_str());
+	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::HR, true).c_str());
+
+	auto TS3D3MN3S = TS3D3M - TS3S;
+	_LOG(_T("3 days + 3 minute - 3 seconds second timespan: %s"), TS3D3MN3S.toString().c_str());
+	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3MN3S.toString(TimeUnit::HR, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-hour resolution: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::HR).c_str());
+	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::HR, true).c_str());
+
+	_LOG(_T("Current time + 3 seconds: %s"), Now.Offset(TS3S).toString().c_str());
+	_LOG(_T("Current time - 3 minute: %s"), Now.Offset(-TS3M).toString().c_str());
+	_LOG(_T("Current time + 3 days: %s"), Now.Offset(TS3D).toString().c_str());
+	_LOG(_T("Current time + 3 days + 3 minute - 3 seconds: %s"), Now.Offset(TS3D3MN3S).toString().c_str());
 }
 
 #include "Threading/WorkerThread.h"

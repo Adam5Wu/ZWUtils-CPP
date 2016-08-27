@@ -188,7 +188,7 @@ protected:
 			Ret.append(_T(";SRV*"));
 			PathLen = GetEnvironmentVariable(_T("SYSTEMDRIVE"), (LPTSTR)Path.data(), STACKWALK_MAX_NAMELEN);
 			Ret.append((PathLen > 0) ? Path.data() : _T("C:"));
-			Ret.append(_T("\\websymbols*http://msdl.microsoft.com/download/symbols"));
+			Ret.append(_T("\\symbols*https://msdl.microsoft.com/download/symbols"));
 		}
 
 		LOG(_T("* Symbol Search Path: %s"), Ret.c_str());

@@ -66,8 +66,9 @@ public:
 	_this& operator=(_this const &xTimeSpan);
 
 	long long GetValue(TimeUnit const &Resolution) const;
-	TString toString(bool Abbrv = false) const;
-	TString toString(TimeUnit const &Resolution, bool Abbrv = false) const;
+	TString toString(TimeUnit const &Unit, bool Abbrv) const;
+	TString toString(TimeUnit const &MaxUnit = TimeUnit::__END, TimeUnit const &MinUnit = TimeUnit::__BEGIN,
+					 bool Abbrv = false) const;
 
 	_this operator-(void) const
 	{ return TimeSpan(-Value.S64, Unit); }
@@ -121,7 +122,7 @@ public:
 	TimeSpan operator-(_this const &xTimeStamp) const
 	{ return From(xTimeStamp); }
 
-	TString toString(TimeUnit const &Resolution = TimeUnit::MSEC) const;
+	TString toString(TimeUnit const &Unit = TimeUnit::MSEC) const;
 
 	static _this Now(TimeSpan const &Offset = TimeSpan::Null);
 };

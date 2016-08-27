@@ -115,7 +115,7 @@ BUFFMT((PTCHAR)(pstr)->data(), len, fmt, __VA_ARGS__);	\
 (pstr)->resize(__Len >= 0 ? __Len : 0);					\
 }
 
-#define STR_ERRMSGFMT(pstr,fmt,...)	STR_MSGFMT(pstr, ERRMSG_BUFLEN, fmt,__VA_ARGS__)
+#define STR_ERRMSGFMT(pstr,fmt,...)	STR_MSGFMT(pstr, ERRMSG_BUFLEN, fmt, __VA_ARGS__)
 
 #define HEAPSTR_ERRMSGFMT(fmt,...)				\
 TString __ErrorMsg;								\
@@ -137,6 +137,7 @@ TString __SrcMark;														\
 }
 
 inline TString __TimeStamp(void) { return TimeStamp::Now().toString(); }
+
 PCTCHAR __PTID(void);
 
 #endif

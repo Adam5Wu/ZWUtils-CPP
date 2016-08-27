@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Units.h"
 
-long long _Convert(long long &Value, unsigned long long FromBase, unsigned long long ToBase) {
+long long _Convert(long long &Value, unsigned long long const &FromBase, unsigned long long const &ToBase) {
 	unsigned long long Factor;
 	unsigned long long Rem;
 	if (FromBase >= ToBase) {
@@ -41,23 +41,22 @@ long long _Convert(long long &Value, unsigned long long FromBase, unsigned long 
 		Value *= Factor;
 	} else {
 		Factor = ToBase / FromBase;
-		Rem = Value & Factor;
+		Rem = Value % Factor;
 		Value /= Factor;
 	}
 	return Rem;
 }
 
-long long Convert(long long &Value, TimeUnit From, TimeUnit To) {
+long long Convert(long long &Value, TimeUnit const &From, TimeUnit const &To) {
 	return _Convert(Value, (unsigned long long) From, (unsigned long long) To);
 }
 
-long long Convert(long long const &Value, TimeUnit From, TimeUnit To) {
+long long Convert(long long const &Value, TimeUnit const &From, TimeUnit const &To) {
 	long long iValue = Value;
-	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To);
+	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To), iValue;
 }
 
-
-PCTCHAR UnitName(TimeUnit Unit, bool Abbrv) {
+PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv) {
 	switch (Unit) {
 		case TimeUnit::NSEC: return Abbrv ? _T("ns") : _T("nanosecond");
 		case TimeUnit::HNSEC: return Abbrv ? _T("hns") : _T("hundred-nanosecond");
@@ -71,16 +70,44 @@ PCTCHAR UnitName(TimeUnit Unit, bool Abbrv) {
 	}
 }
 
-long long Convert(long long &Value, SizeUnit From, SizeUnit To) {
+template <class T>
+TString _ToString(long long const &Value, T const &DataUnit, T const &HiUnit, T const &LoUnit, bool const &Abbrv) {
+	long long Rem = Value;
+	long long RValue = 0;
+	auto CurRes = (HiUnit > LoUnit) ? HiUnit : LoUnit;
+	TString Ret;
+	while (CurRes >= LoUnit) {
+		if ((RValue = Rem) == 0) {
+			if (!Ret.empty()) break;
+		}
+		Rem = Convert(RValue, DataUnit, CurRes);
+		if ((RValue != 0) || (CurRes <= LoUnit)) {
+			Ret.append(Ret.empty() ? 0 : 1, _T(' '))
+				.append(TStringCast(RValue))
+				.append(Abbrv ? 0 : 1, _T(' '))
+				.append(UnitName(CurRes, Abbrv))
+				.append(!Abbrv && (RValue > 1) ? 1 : 0, _T('s'));
+		}
+		--CurRes;
+	}
+	return Ret.append(Rem != 0 ? 1 : 0, _T('+'));
+}
+
+TString ToString(long long const &Value, TimeUnit const &DataUnit, TimeUnit const &HiUnit, TimeUnit const &LoUnit, bool const &Abbrv) {
+	return _ToString(Value, DataUnit, HiUnit, LoUnit, Abbrv);
+}
+
+
+long long Convert(long long &Value, SizeUnit const &From, SizeUnit const &To) {
 	return _Convert(Value, (unsigned long long) From, (unsigned long long) To);
 }
 
-long long Convert(long long const &Value, SizeUnit From, SizeUnit To) {
+long long Convert(long long const &Value, SizeUnit const &From, SizeUnit const &To) {
 	long long iValue = Value;
-	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To);
+	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To), iValue;
 }
 
-PCTCHAR UnitName(SizeUnit Unit, bool Abbrv) {
+PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv) {
 	switch (Unit) {
 		case SizeUnit::BYTE: return Abbrv ? _T("B") : _T("byte");
 		case SizeUnit::KB: return Abbrv ? _T("KB") : _T("kilobyte");
@@ -90,4 +117,8 @@ PCTCHAR UnitName(SizeUnit Unit, bool Abbrv) {
 		case SizeUnit::PB: return Abbrv ? _T("PB") : _T("petabyte");
 		default: return Abbrv ? _T("?") : _T("(unknown size-unit)");
 	}
+}
+
+TString ToString(long long const &Value, SizeUnit const &DataUnit, SizeUnit const &HiUnit, SizeUnit const &LoUnit, bool const &Abbrv) {
+	return _ToString(Value, DataUnit, HiUnit, LoUnit, Abbrv);
 }

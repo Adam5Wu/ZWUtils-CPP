@@ -72,13 +72,15 @@ LOG_DO({															\
 	_LOG(_T("@<%s> ") fmt, __SrcMark.c_str() VAWRAP(__VA_ARGS__));	\
 })
 
+#define __LOGPFX__
+
 //-------------- DEBUG LOGGING
 
-#define LOG(s, ...)		DEBUG_DO(_LOG(s, __VA_ARGS__))
-#define LOGS(s, ...)	DEBUG_DO(_LOGS(s, __VA_ARGS__))
-#define LOGV(s, ...)	DEBUGV_DO(_LOG(s, __VA_ARGS__))
-#define LOGSV(s, ...)	DEBUGV_DO(_LOGS(s, __VA_ARGS__))
-#define LOGVV(s, ...)	DEBUGVV_DO(_LOG(s, __VA_ARGS__))
-#define LOGSVV(s, ...)	DEBUGVV_DO(_LOGS(s, __VA_ARGS__))
+#define LOG(s, ...)		DEBUG_DO(_LOG(__LOGPFX__ s, __VA_ARGS__))
+#define LOGS(s, ...)	DEBUG_DO(_LOGS(__LOGPFX__ s, __VA_ARGS__))
+#define LOGV(s, ...)	DEBUGV_DO(_LOG(__LOGPFX__ s, __VA_ARGS__))
+#define LOGSV(s, ...)	DEBUGV_DO(_LOGS(__LOGPFX__ s, __VA_ARGS__))
+#define LOGVV(s, ...)	DEBUGVV_DO(_LOG(__LOGPFX__ s, __VA_ARGS__))
+#define LOGSVV(s, ...)	DEBUGVV_DO(_LOGS(__LOGPFX__ s, __VA_ARGS__))
 
 #endif

@@ -60,17 +60,12 @@ long long TimeSpan::GetValue(TimeUnit const &Resolution) const {
 	return RValue;
 }
 
-TString TimeSpan::toString(bool Abbrv) const {
-	return TStringCast(Value.S64 << _T(' ') << UnitName(Unit, Abbrv)
-					   << (!Abbrv && (Value.S64 > 1) ? _T("s") : _T("")));
+TString TimeSpan::toString(TimeUnit const &Unit, bool Abbrv) const {
+	return toString(Unit, Unit, Abbrv);
 }
 
-TString TimeSpan::toString(TimeUnit const &Resolution, bool Abbrv) const {
-	long long RValue = Value.S64;
-	long long Rem = Convert(RValue, Unit, Resolution);
-	return TStringCast(RValue << _T(' ') << UnitName(Resolution, Abbrv)
-					   << (!Abbrv && (RValue > 1) ? _T("s") : _T(""))
-					   << (Rem ? _T("+") : _T("")));
+TString TimeSpan::toString(TimeUnit const &HiUnit, TimeUnit const &LoUnit, bool Abbrv) const {
+	return ToString(Value.S64, Unit, HiUnit, LoUnit, Abbrv);
 }
 
 // Choose the smallest possible granularity

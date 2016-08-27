@@ -39,8 +39,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Units_H
 #define ZWUtils_Units_H
 
-#define __UNIT_ENUM 0
-
 #include "Global.h"
 #include "TString.h"
 
@@ -53,23 +51,44 @@ enum class TimeUnit : unsigned long long {
 	MIN = SEC * 60,
 	HR = MIN * 60,
 	DAY = HR * 24,
-#if __UNIT_ENUM
-	__END = 0xFFFFFFFFFFFFFFFF,
+
 	__BEGIN = NSEC,
-#endif
+	__END = DAY
 };
 
-long long Convert(long long const &Value, TimeUnit From, TimeUnit To);
-long long Convert(long long &Value, TimeUnit From, TimeUnit To);
-PCTCHAR UnitName(TimeUnit Unit, bool Abbrv = false);
-TString Print(long long &Value, TimeUnit From, TimeUnit Resolution = TimeUnit::MSEC, TimeUnit Reserve = TimeUnit::MIN);
+long long Convert(long long const &Value, TimeUnit const &From, TimeUnit const &To);
+long long Convert(long long &Value, TimeUnit const &From, TimeUnit const &To);
+PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv = false);
+TString ToString(long long const &Value, TimeUnit const &DataUnit, TimeUnit const &HiUnit = TimeUnit::__END,
+				 TimeUnit const &LoUnit = TimeUnit::__BEGIN, bool const &Abbrv = false);
 
-#if __UNIT_ENUM
-inline TimeUnit operator++(TimeUnit& x) { return x = (TimeUnit)(std::underlying_type<TimeUnit>::type(x) + 1); }
-inline TimeUnit operator*(TimeUnit c) { return c; }
-inline TimeUnit begin(TimeUnit r) { return TimeUnit::__BEGIN; }
-inline TimeUnit end(TimeUnit r)   { return TimeUnit::__END; }
-#endif
+inline TimeUnit operator++(TimeUnit& x) {
+	switch (x) {
+		case TimeUnit::NSEC: return x = TimeUnit::USEC;
+		case TimeUnit::USEC: return x = TimeUnit::MSEC;
+		case TimeUnit::MSEC: return x = TimeUnit::SEC;
+		case TimeUnit::SEC: return x = TimeUnit::MIN;
+		case TimeUnit::MIN: return x = TimeUnit::HR;
+		case TimeUnit::HR: return x = TimeUnit::DAY;
+		case TimeUnit::DAY: return x = TimeUnit::__END;
+	}
+	return x = TimeUnit::__END;
+}
+inline TimeUnit operator--(TimeUnit& x) {
+	switch (x) {
+		case TimeUnit::NSEC: return x = TimeUnit::__BEGIN;
+		case TimeUnit::USEC: return x = TimeUnit::NSEC;
+		case TimeUnit::MSEC: return x = TimeUnit::USEC;
+		case TimeUnit::SEC: return x = TimeUnit::MSEC;
+		case TimeUnit::MIN: return x = TimeUnit::SEC;
+		case TimeUnit::HR: return x = TimeUnit::MIN;
+		case TimeUnit::DAY: return x = TimeUnit::HR;
+	}
+	return x = TimeUnit::__BEGIN;
+}
+inline TimeUnit operator*(TimeUnit r)	{ return r; }
+inline TimeUnit begin(TimeUnit r)		{ return TimeUnit::__BEGIN; }
+inline TimeUnit end(TimeUnit r)			{ return TimeUnit::__END; }
 
 enum class SizeUnit : unsigned long long {
 	BYTE = 1,
@@ -78,22 +97,41 @@ enum class SizeUnit : unsigned long long {
 	GB = MB * 1024,
 	TB = GB * 1024,
 	PB = TB * 1024,
-#if __UNIT_ENUM
-	__END = 0xFFFFFFFFFFFFFFFF,
+
 	__BEGIN = BYTE,
-#endif
+	__END = PB
 };
 
-long long Convert(long long const &Value, SizeUnit From, SizeUnit To);
-long long Convert(long long &Value, SizeUnit From, SizeUnit To);
-PCTCHAR UnitName(SizeUnit Unit, bool Abbrv = false);
-TString Print(long long &Value, TimeUnit From, SizeUnit Resolution = SizeUnit::BYTE, SizeUnit Reserve = SizeUnit::BYTE);
+long long Convert(long long const &Value, SizeUnit const &From, SizeUnit const &To);
+long long Convert(long long &Value, SizeUnit const &From, SizeUnit const &To);
+PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv = false);
+TString ToString(long long const &Value, SizeUnit const &DataUnit, SizeUnit const &HiUnit = SizeUnit::__END,
+				 SizeUnit const &LoUnit = SizeUnit::__BEGIN, bool const &Abbrv = false);
 
-#if __UNIT_ENUM
-inline SizeUnit operator++(SizeUnit& x) { return x = (SizeUnit)(std::underlying_type<SizeUnit>::type(x) + 1); }
-inline SizeUnit operator*(SizeUnit c) { return c; }
-inline SizeUnit begin(SizeUnit r) { return SizeUnit::__BEGIN; }
-inline SizeUnit end(SizeUnit r)   { return SizeUnit::__END; }
-#endif
+inline SizeUnit operator++(SizeUnit& x) {
+	switch (x) {
+		case SizeUnit::BYTE: return x = SizeUnit::KB;
+		case SizeUnit::KB: return x = SizeUnit::MB;
+		case SizeUnit::MB: return x = SizeUnit::GB;
+		case SizeUnit::GB: return x = SizeUnit::TB;
+		case SizeUnit::TB: return x = SizeUnit::PB;
+		case SizeUnit::PB: return x = SizeUnit::__END;
+	}
+	return x = SizeUnit::__END;
+}
+inline SizeUnit operator--(SizeUnit& x) {
+	switch (x) {
+		case SizeUnit::BYTE: return x = SizeUnit::__BEGIN;
+		case SizeUnit::KB: return x = SizeUnit::BYTE;
+		case SizeUnit::MB: return x = SizeUnit::KB;
+		case SizeUnit::GB: return x = SizeUnit::MB;
+		case SizeUnit::TB: return x = SizeUnit::GB;
+		case SizeUnit::PB: return x = SizeUnit::TB;
+	}
+	return x = SizeUnit::__BEGIN;
+}
+inline SizeUnit operator*(SizeUnit r)	{ return r; }
+inline SizeUnit begin(SizeUnit r)		{ return SizeUnit::__BEGIN; }
+inline SizeUnit end(SizeUnit r)			{ return SizeUnit::__END; }
 
 #endif

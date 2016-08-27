@@ -74,8 +74,8 @@ void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message) {
 		auto Iter = LogTargets->begin();
 		while (Iter != LogTargets->end()) {
 			if (Iter->first.compare(Name) == 0) {
-				LogTargets->erase(Iter);
 				if (Message) { LOG(_T("===== %s ====="), Message); }
+				LogTargets->erase(Iter);
 				break;
 			} else Iter++;
 		}
@@ -92,7 +92,7 @@ void __LOG(PCTCHAR Fmt, ...) {
 	for (size_t i = 0; i < LogTargets->size(); i++) {
 		auto &entry = LogTargets->at(i);
 		_vftprintf(entry.second, Fmt, params);
-		DEBUGVV_DO(fflush(entry.second));
+		DEBUG_DO(fflush(entry.second));
 	}
 }
 
