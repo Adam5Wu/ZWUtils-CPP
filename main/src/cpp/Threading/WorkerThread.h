@@ -68,7 +68,7 @@ public:
 	/**
 	 * The "main" function of the runnable object
 	 **/
-	virtual TBuffer Run(TWorkerThread &WorkerThread, TBuffer &Arg)
+	virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg)
 	{ FAIL(_T("Abstract function")); }
 
 	/**
@@ -111,8 +111,8 @@ protected:
 	ManagedRef<TRunnable> rRunnable;
 	ManagedRef<Exception> rException;
 
-	TBuffer rInputData;
-	TBuffer rReturnData;
+	TFixedBuffer rInputData;
+	TFixedBuffer rReturnData;
 
 	TInterlockedOrdinal32<State> _State = State::Constructed;
 
@@ -146,11 +146,11 @@ public:
 	/**
 	 * Start thread execution (if already started, will raise exception)
 	 **/
-	void Start(TBuffer &&xInputData = TBuffer(nullptr));
+	void Start(TFixedBuffer &&xInputData = TFixedBuffer(nullptr));
 
 	/**
 	 * Start thread execution, and self-free when finish
-	 void Handoff_Start(TBuffer &&xInputData = TBuffer(nullptr));
+	 void Handoff_Start(TFixedBuffer &&xInputData = TFixedBuffer(nullptr));
 
 	 /**
 	 * Get worker thread ID

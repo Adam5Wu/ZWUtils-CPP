@@ -182,7 +182,7 @@ DWORD TWorkerThread::__CallForwarder(void) {
 	return Ret;
 }
 
-void TWorkerThread::Start(TBuffer &&xInputData) {
+void TWorkerThread::Start(TFixedBuffer &&xInputData) {
 	auto iCurState = (State)_State.CompareAndSwap(State::Constructed, State::Initialzing);
 	switch (iCurState) {
 		case State::Constructed:

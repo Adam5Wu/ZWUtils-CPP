@@ -99,6 +99,9 @@ public:
 	_this& operator=(_this const &xMR);
 	_this& operator=(_this &&xMR);
 
+	bool isCompatible(_this const &xMR) const
+	{ return xMR._Alloc == _Alloc; }
+
 	T* Assign(T *xObj) override
 	{ return *this = _this(xObj), nullptr; }
 	T* Assign(T *xObj, CONSTRUCTION::CLONE_T const &)
@@ -139,13 +142,13 @@ T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
 
 template<class T>
 ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef const &xMR) {
-	if (xMR._Alloc != _Alloc) FAIL(_T("Incompatible allocator"));
+	if (!isCompatible(xMR)) FAIL(_T("Incompatible allocator"));
 	return Assign(&xMR), *this;
 }
 
 template<class T>
 ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef &&xMR) {
-	if (xMR._Alloc != _Alloc) FAIL(_T("Incompatible allocator"));
+	if (!isCompatible(xMR)) FAIL(_T("Incompatible allocator"));
 	return _Alloc.Destroy(_RelObj(_Obj.Exchange(xMR.Drop()))), *this;
 }
 

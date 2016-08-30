@@ -43,6 +43,7 @@ void TestException();
 void TestErrCode();
 void TestStringConv();
 void TestSyncPrems();
+void TestDynBuffer();
 void TestManagedObj();
 void TestSyncObj();
 void TestSize();
@@ -60,8 +61,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	try {
 		if (argc != 2)
 			FAIL(_T("Require 1 parameter: <TestType> = 'ALL' | ")
-			_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'ManagedObj' / ")
-			_T("'Size' / 'Timing' / 'SyncObj' / 'WorkerThread' / 'SyncQueue'"));
+			_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'DynBuffer' / ")
+			_T("'ManagedObj' / 'SyncObj' / 'Size' / 'Timing' / 'WorkerThread' / 'SyncQueue'"));
 
 		bool TestAll = _tcsicmp(argv[1], _T("ALL")) == 0;
 		if (TestAll || (_tcsicmp(argv[1], _T("Exception")) == 0)) {
@@ -75,6 +76,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		if (TestAll || (_tcsicmp(argv[1], _T("SyncPrems")) == 0)) {
 			TestSyncPrems();
+		}
+		if (TestAll || (_tcsicmp(argv[1], _T("DynBuffer")) == 0)) {
+			TestDynBuffer();
 		}
 		if (TestAll || (_tcsicmp(argv[1], _T("ManagedObj")) == 0)) {
 			TestManagedObj();
@@ -235,6 +239,41 @@ void TestSyncPrems() {
 	_LOG(_T("A = %d"), ~A);
 	_LOG(_T("B = %d"), B);
 	_LOG(_T("D = %d"), D);
+}
+
+#include "Memory/Resource.h"
+
+void TestDynBuffer() {
+	_LOG(_T("*** Test Dynamic Buffers"));
+
+	_LOG(_T("--- Allocation and deallocation"));
+	{
+		TDynBuffer TVoidDynBuffer;
+		_LOG(_T("Void null buffer: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p"), &TVoidDynBuffer);
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10);
+		_LOG(_T("Increase to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		memset(&TVoidDynBuffer, 'A', 9);
+		((char*)&TVoidDynBuffer)[9] = '\0';
+		_LOG(_T("Filled with 'A' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(2048);
+		_LOG(_T("Extend to 2KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		memset(((char*)&TVoidDynBuffer) + 9, 'B', 9);
+		((char*)&TVoidDynBuffer)[18] = '\0';
+		_LOG(_T("Append with 9x'B' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10);
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		((char*)&TVoidDynBuffer)[9] = '\0';
+		_LOG(_T("Terminate at byte 10 = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+	}
+
 }
 
 #include "Memory/ManagedObj.h"
@@ -447,12 +486,12 @@ void TestSize(void) {
 	_LOG(_T(" - byte unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::BYTE).c_str());
 	_LOG(_T(" - KB unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::KB).c_str());
 
-	long long S1G1K = Convert(1, SizeUnit::GB, SizeUnit::BYTE)+Convert(1, SizeUnit::KB, SizeUnit::BYTE);
+	long long S1G1K = Convert(1, SizeUnit::GB, SizeUnit::BYTE) + Convert(1, SizeUnit::KB, SizeUnit::BYTE);
 	_LOG(_T("1 GB + 1KB: %s"), ToString(S1G1K, SizeUnit::BYTE).c_str());
 	_LOG(_T(" - MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
 	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
-	
-	long long S1G1KN1B = S1G1K-1;
+
+	long long S1G1KN1B = S1G1K - 1;
 	_LOG(_T("1 GB + 1KB - 1B: %s"), ToString(S1G1KN1B, SizeUnit::BYTE).c_str());
 	_LOG(_T(" - MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
 	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
@@ -510,13 +549,13 @@ void TestTiming(void) {
 void TestWorkerThread() {
 	class TestRunnable : public TRunnable {
 	protected:
-		TBuffer Run(TWorkerThread &WorkerThread, TBuffer &Arg) override {
+		TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 			_LOG(_T("Yee Hah!"));
 			if (*Arg != nullptr) {
 				_LOG(_T("Throwing exception..."));
 				FAIL(_T("Test!"));
 			}
-			return TBuffer(nullptr);
+			return TFixedBuffer(nullptr);
 		}
 	};
 
@@ -534,7 +573,7 @@ void TestWorkerThread() {
 	_LOG(_T("*** Test WorkerThread (Exception during run)"));
 	{
 		ManagedRef<TWorkerThread> B(TWorkerThread::Create(_T("TestB"), *DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
-		B->Start(TBuffer(DefaultAllocator().Alloc(100)));
+		B->Start(TFixedBuffer(DefaultAllocator().Alloc(100)));
 		B->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(B->ReturnData()).c_str());
 		if (B->FatalException() != nullptr) {
@@ -562,10 +601,10 @@ void TestWorkerThread() {
 
 	class TestSelfDestroyRunnable : public TRunnable {
 	protected:
-		TBuffer Run(TWorkerThread &WorkerThread, TBuffer &Arg) override {
+		TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 			_LOG(_T("Yee Hah!"));
 			DefaultObjAllocator<TWorkerThread>().Destroy(std::addressof(WorkerThread));
-			return TBuffer(nullptr);
+			return TFixedBuffer(nullptr);
 		}
 	};
 
@@ -626,7 +665,7 @@ void TestWorkerThread() {
 		}
 		class TestDelayRunnable : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &Arg) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 				_LOG(_T("Yee Hah!"));
 				Sleep(1000);
 				return nullptr;
@@ -678,14 +717,14 @@ void TestWorkerThread() {
 
 		class TestCount : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &pSyncInt) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncInt) override {
 				int COUNT = 100000;
 				TSyncInteger* Ctr = static_cast<TSyncInteger*>(*pSyncInt);
 				for (int i = 0; i < COUNT; i++) {
 					(*Ctr->Pickup())++;
 				}
 				_LOG(_T("Count of %d done!"), COUNT);
-				return TBuffer(nullptr);
+				return TFixedBuffer(nullptr);
 			}
 		};
 
@@ -783,7 +822,7 @@ void TestSyncQueue(void) {
 		typedef TSyncBlockingDeque<int> TSyncIntQueue;
 		class TestQueuePut : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &pSyncIntQueue) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 				TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 
 				int COUNT = 5000000;
@@ -793,13 +832,13 @@ void TestSyncQueue(void) {
 
 				double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 				_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-				return TBuffer(nullptr);
+				return TFixedBuffer(nullptr);
 			}
 		};
 
 		class TestQueueGet : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &pSyncIntQueue) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 				TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 
 				int COUNT = 5000000;
@@ -871,7 +910,7 @@ void TestSyncQueue(void) {
 		typedef TQueue<int> TSyncIntQueue;
 		class TestQueuePut : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &pSyncIntQueue) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 				TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 
 				int COUNT = 5000000;
@@ -881,13 +920,13 @@ void TestSyncQueue(void) {
 
 				double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 				_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-				return TBuffer(nullptr);
+				return TFixedBuffer(nullptr);
 			}
 		};
 
 		class TestQueueGet : public TRunnable {
 		protected:
-			TBuffer Run(TWorkerThread &WorkerThread, TBuffer &pSyncIntQueue) override {
+			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 				TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 
 				int COUNT = 5000000;

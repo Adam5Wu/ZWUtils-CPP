@@ -70,7 +70,7 @@ void* SimpleAllocator::Alloc(size_t Size) {
 }
 
 void SimpleAllocator::Dealloc(void *Mem) {
-	return free(Mem);
+	free(Mem);
 }
 
 void* SimpleAllocator::Realloc(void *Mem, size_t Size) {
