@@ -61,11 +61,11 @@ long long TimeSpan::GetValue(TimeUnit const &Resolution) const {
 }
 
 TString TimeSpan::toString(TimeUnit const &Unit, bool Abbrv) const {
-	return toString(Unit, Unit, Abbrv);
+	return toString(Abbrv, Unit, Unit);
 }
 
-TString TimeSpan::toString(TimeUnit const &HiUnit, TimeUnit const &LoUnit, bool Abbrv) const {
-	return ToString(Value.S64, Unit, HiUnit, LoUnit, Abbrv);
+TString TimeSpan::toString(bool Abbrv, TimeUnit const &HiUnit, TimeUnit const &LoUnit) const {
+	return ToString(Value.S64, Unit, Abbrv, HiUnit, LoUnit);
 }
 
 // Choose the smallest possible granularity

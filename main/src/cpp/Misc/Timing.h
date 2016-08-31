@@ -67,8 +67,8 @@ public:
 
 	long long GetValue(TimeUnit const &Resolution) const;
 	TString toString(TimeUnit const &Unit, bool Abbrv) const;
-	TString toString(TimeUnit const &MaxUnit = TimeUnit::__END, TimeUnit const &MinUnit = TimeUnit::__BEGIN,
-					 bool Abbrv = false) const;
+	TString toString(bool Abbrv = false, TimeUnit const &MaxUnit = TimeUnit::__END,
+					 TimeUnit const &MinUnit = TimeUnit::__BEGIN) const;
 
 	_this operator-(void) const
 	{ return TimeSpan(-Value.S64, Unit); }
@@ -99,7 +99,8 @@ protected:
 
 public:
 #ifdef WINDOWS
-	TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::HNSEC, TimeSystem const &xSystem = TimeSystem::GREGORIAN) :
+	TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::HNSEC,
+			  TimeSystem const &xSystem = TimeSystem::GREGORIAN) :
 #endif
 		Value({Normalize(xValue, xUnit, xSystem)}) {}
 	virtual ~TimeStamp(void) {}

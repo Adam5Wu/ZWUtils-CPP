@@ -108,20 +108,20 @@ public:
 	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);	\
 }
 
-#define LOGEXCEPTIONV(e,fmt,...)					\
-DEBUGV_DO_OR({										\
-	LOGV(fmt, __VA_ARGS__);							\
-	e->Show();										\
-}, {												\
-	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why());	\
+#define LOGEXCEPTIONV(e,fmt,...)							\
+DEBUGV_DO_OR({												\
+	LOGV(fmt, __VA_ARGS__);									\
+	e->Show();												\
+}, {														\
+	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why().c_str());	\
 })
 
-#define LOGEXCEPTIONVV(e,fmt,...)					\
-DEBUGVV_DO_OR({										\
-	LOGV(fmt, __VA_ARGS__);							\
-	e->Show();										\
-}, {												\
-	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why());	\
+#define LOGEXCEPTIONVV(e,fmt,...)							\
+DEBUGVV_DO_OR({												\
+	LOGV(fmt, __VA_ARGS__);									\
+	e->Show();												\
+}, {														\
+	LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why().c_str());	\
 })
 
 #include <deque>

@@ -272,6 +272,61 @@ void TestDynBuffer() {
 		((char*)&TVoidDynBuffer)[9] = '\0';
 		_LOG(_T("Terminate at byte 10 = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(12 * 1024);
+		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(14 * 1024);
+		_LOG(_T("Extend to 14KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(8 * 1024);
+		_LOG(_T("Shrink to 8KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(4 * 1024);
+		_LOG(_T("Shrink to 4KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10);
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(12 * 1024);
+		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(12 * 1024 * 1024);
+		_LOG(_T("Extend to 12MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10);
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10 * 1024 * 1024);
+		_LOG(_T("Extend to 10MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(10);
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+
+		TVoidDynBuffer.SetSize(8 * 1024 * 1024);
+		_LOG(_T("Extend to 8MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
+		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 	}
 
 }
@@ -483,19 +538,19 @@ void TestSyncObj(void) {
 void TestSize(void) {
 	_LOG(_T("*** Test Size"));
 	_LOG(_T("1 MB: %s"), ToString(1, SizeUnit::MB).c_str());
-	_LOG(_T(" - byte unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::BYTE).c_str());
-	_LOG(_T(" - KB unit: %s"), ToString(1, SizeUnit::MB, SizeUnit::KB).c_str());
+	_LOG(_T(" - byte unit: %s"), ToString(1, SizeUnit::MB, false, SizeUnit::BYTE).c_str());
+	_LOG(_T(" - KB unit: %s"), ToString(1, SizeUnit::MB, false, SizeUnit::KB).c_str());
 
 	long long S1G1K = Convert(1, SizeUnit::GB, SizeUnit::BYTE) + Convert(1, SizeUnit::KB, SizeUnit::BYTE);
 	_LOG(_T("1 GB + 1KB: %s"), ToString(S1G1K, SizeUnit::BYTE).c_str());
-	_LOG(_T(" - MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
-	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
+	_LOG(_T(" - MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, false, SizeUnit::MB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1K, SizeUnit::BYTE, false, SizeUnit::GB, SizeUnit::MB).c_str());
 
 	long long S1G1KN1B = S1G1K - 1;
 	_LOG(_T("1 GB + 1KB - 1B: %s"), ToString(S1G1KN1B, SizeUnit::BYTE).c_str());
-	_LOG(_T(" - MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::MB, SizeUnit::MB).c_str());
-	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB).c_str());
-	_LOG(_T(" - GB-MB unit, abbreviate: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, SizeUnit::GB, SizeUnit::MB, true).c_str());
+	_LOG(_T(" - MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, false, SizeUnit::MB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, false, SizeUnit::GB, SizeUnit::MB).c_str());
+	_LOG(_T(" - GB-MB unit, abbreviate: %s"), ToString(S1G1KN1B, SizeUnit::BYTE, true, SizeUnit::GB, SizeUnit::MB).c_str());
 }
 
 void TestTiming(void) {
@@ -514,29 +569,29 @@ void TestTiming(void) {
 	_LOG(_T("3 second timespan: %s"), TS3S.toString().c_str());
 	_LOG(_T(" = millisecond resolution: %s"), TS3S.toString(TimeUnit::MSEC, false).c_str());
 	_LOG(_T(" = millisecond resolution, abbreviate: %s"), TS3S.toString(TimeUnit::MSEC, true).c_str());
-	_LOG(_T(" = minute resolution: %s"), TS3S.toString(TimeUnit::MIN).c_str());
-	_LOG(_T(" = minute-millisecond resolution: %s"), TS3S.toString(TimeUnit::MIN, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = minute resolution: %s"), TS3S.toString(false, TimeUnit::MIN).c_str());
+	_LOG(_T(" = minute-millisecond resolution: %s"), TS3S.toString(false, TimeUnit::MIN, TimeUnit::MSEC).c_str());
 
 	TimeSpan TS3M = TimeSpan(3, TimeUnit::MIN);
 	_LOG(_T("3 minute timespan: %s"), TS3M.toString().c_str());
 	_LOG(_T(" = millisecond resolution: %s"), TS3M.toString(TimeUnit::MSEC, false).c_str());
-	_LOG(_T(" = second-millisecond resolution: %s"), TS3M.toString(TimeUnit::MIN, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = second-millisecond resolution: %s"), TS3M.toString(false, TimeUnit::MIN, TimeUnit::MSEC).c_str());
 
 	_LOG(_T("--- Time arithmetics"));
 	TimeSpan TS3D = TimeSpan(3, TimeUnit::DAY);
 	auto TS3D3M = TS3D + TS3M;
 	_LOG(_T("3 days + 3 minute timespan: %s"), TS3D3M.toString().c_str());
-	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3M.toString(TimeUnit::HR, TimeUnit::MSEC).c_str());
-	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::MSEC).c_str());
-	_LOG(_T(" = day-hour resolution: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::HR).c_str());
-	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3M.toString(TimeUnit::DAY, TimeUnit::HR, true).c_str());
+	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3M.toString(false, TimeUnit::HR, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3M.toString(false, TimeUnit::DAY, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-hour resolution: %s"), TS3D3M.toString(false, TimeUnit::DAY, TimeUnit::HR).c_str());
+	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3M.toString(true, TimeUnit::DAY, TimeUnit::HR).c_str());
 
 	auto TS3D3MN3S = TS3D3M - TS3S;
 	_LOG(_T("3 days + 3 minute - 3 seconds second timespan: %s"), TS3D3MN3S.toString().c_str());
-	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3MN3S.toString(TimeUnit::HR, TimeUnit::MSEC).c_str());
-	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::MSEC).c_str());
-	_LOG(_T(" = day-hour resolution: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::HR).c_str());
-	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3MN3S.toString(TimeUnit::DAY, TimeUnit::HR, true).c_str());
+	_LOG(_T(" = hour-millisecond resolution: %s"), TS3D3MN3S.toString(false, TimeUnit::HR, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-millisecond resolution: %s"), TS3D3MN3S.toString(false, TimeUnit::DAY, TimeUnit::MSEC).c_str());
+	_LOG(_T(" = day-hour resolution: %s"), TS3D3MN3S.toString(false, TimeUnit::DAY, TimeUnit::HR).c_str());
+	_LOG(_T(" = day-hour resolution, abbreviate: %s"), TS3D3MN3S.toString(true, TimeUnit::DAY, TimeUnit::HR).c_str());
 
 	_LOG(_T("Current time + 3 seconds: %s"), Now.Offset(TS3S).toString().c_str());
 	_LOG(_T("Current time - 3 minute: %s"), Now.Offset(-TS3M).toString().c_str());

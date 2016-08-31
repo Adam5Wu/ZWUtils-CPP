@@ -246,16 +246,30 @@ typedef TTypedBuffer<void> TFixedBuffer;
 //-----------------------
 // Dynamic size buffers
 
+#define DYNBUFFER_OVERPROVISION_THRESHOLD	0x1000
+
 template<typename T>
 class _TTypedDynBuffer : public TAllocResource < T* > {
 	typedef _TTypedDynBuffer _this;
+
+private:
+	size_t _PVSize = 0;
 
 protected:
 	IAllocator &_Alloc;
 	size_t _Size;
 
-	T* Alloc(T* &xBuf)
-	{ return _Size ? (T*)(xBuf ? _Alloc.Realloc(xBuf, _Size) : _Alloc.Alloc(_Size)) : Dealloc(xBuf); }
+	T* Alloc(T* &xBuf) {
+		if (_Size < DYNBUFFER_OVERPROVISION_THRESHOLD) {
+			_PVSize = _Size;
+			return _Size ? (T*)(xBuf ? _Alloc.Realloc(xBuf, _Size) : _Alloc.Alloc(_Size)) : Dealloc(xBuf);
+		} else {
+			if (_Size < _PVSize) return xBuf;
+			_PVSize = max(_PVSize, DYNBUFFER_OVERPROVISION_THRESHOLD);
+			while ((_PVSize <<= 1) < _Size);
+			return _Alloc.Realloc(xBuf, _PVSize);
+		}
+	}
 
 	T* Dealloc(T* &xBuf)
 	{ return _Alloc.Dealloc(xBuf), xBuf = nullptr; }
@@ -287,11 +301,19 @@ public:
 	size_t GetSize(void) const
 	{ return _Size; }
 
-	void SetSize(size_t const &NewSize)
-	{ _Size = _Size != NewSize ? Invalidate(), NewSize : _Size; }
+	size_t SetSize(size_t const &NewSize) {
+		size_t OldSize = _Size;
+		if (NewSize < DYNBUFFER_OVERPROVISION_THRESHOLD) {
+			_Size = (_Size != NewSize) ? Invalidate(), NewSize : _Size;
+		} else {
+			if (NewSize > _PVSize) Invalidate();
+			_Size = NewSize;
+		}
+		return OldSize;
+	}
 
-	void Grow(size_t const &AddSize)
-	{ SetSize(_Size + AddSize); }
+	size_t Grow(size_t const &AddSize)
+	{ return SetSize(_Size + AddSize); }
 };
 
 template<typename T>

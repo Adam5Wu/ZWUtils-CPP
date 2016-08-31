@@ -71,7 +71,7 @@ PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv) {
 }
 
 template <class T>
-TString _ToString(long long const &Value, T const &DataUnit, T const &HiUnit, T const &LoUnit, bool const &Abbrv) {
+TString _ToString(long long const &Value, T const &DataUnit, bool const &Abbrv, T const &HiUnit, T const &LoUnit) {
 	long long Rem = Value;
 	long long RValue = 0;
 	auto CurRes = (HiUnit > LoUnit) ? HiUnit : LoUnit;
@@ -93,8 +93,8 @@ TString _ToString(long long const &Value, T const &DataUnit, T const &HiUnit, T 
 	return Ret.append(Rem != 0 ? 1 : 0, _T('+'));
 }
 
-TString ToString(long long const &Value, TimeUnit const &DataUnit, TimeUnit const &HiUnit, TimeUnit const &LoUnit, bool const &Abbrv) {
-	return _ToString(Value, DataUnit, HiUnit, LoUnit, Abbrv);
+TString ToString(long long const &Value, TimeUnit const &DataUnit, bool const &Abbrv, TimeUnit const &HiUnit, TimeUnit const &LoUnit) {
+	return _ToString(Value, DataUnit, Abbrv, HiUnit, LoUnit);
 }
 
 
@@ -119,6 +119,6 @@ PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv) {
 	}
 }
 
-TString ToString(long long const &Value, SizeUnit const &DataUnit, SizeUnit const &HiUnit, SizeUnit const &LoUnit, bool const &Abbrv) {
-	return _ToString(Value, DataUnit, HiUnit, LoUnit, Abbrv);
+TString ToString(long long const &Value, SizeUnit const &DataUnit, bool const &Abbrv, SizeUnit const &HiUnit, SizeUnit const &LoUnit) {
+	return _ToString(Value, DataUnit, Abbrv, HiUnit, LoUnit);
 }

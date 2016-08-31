@@ -59,8 +59,8 @@ enum class TimeUnit : unsigned long long {
 long long Convert(long long const &Value, TimeUnit const &From, TimeUnit const &To);
 long long Convert(long long &Value, TimeUnit const &From, TimeUnit const &To);
 PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv = false);
-TString ToString(long long const &Value, TimeUnit const &DataUnit, TimeUnit const &HiUnit = TimeUnit::__END,
-				 TimeUnit const &LoUnit = TimeUnit::__BEGIN, bool const &Abbrv = false);
+TString ToString(long long const &Value, TimeUnit const &DataUnit, bool const &Abbrv = false,
+				 TimeUnit const &HiUnit = TimeUnit::__END, TimeUnit const &LoUnit = TimeUnit::__BEGIN);
 
 inline TimeUnit operator++(TimeUnit& x) {
 	switch (x) {
@@ -105,8 +105,8 @@ enum class SizeUnit : unsigned long long {
 long long Convert(long long const &Value, SizeUnit const &From, SizeUnit const &To);
 long long Convert(long long &Value, SizeUnit const &From, SizeUnit const &To);
 PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv = false);
-TString ToString(long long const &Value, SizeUnit const &DataUnit, SizeUnit const &HiUnit = SizeUnit::__END,
-				 SizeUnit const &LoUnit = SizeUnit::__BEGIN, bool const &Abbrv = false);
+TString ToString(long long const &Value, SizeUnit const &DataUnit, bool const &Abbrv = false,
+				 SizeUnit const &HiUnit = SizeUnit::__END, SizeUnit const &LoUnit = SizeUnit::__BEGIN);
 
 inline SizeUnit operator++(SizeUnit& x) {
 	switch (x) {

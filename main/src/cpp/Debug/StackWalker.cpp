@@ -191,7 +191,7 @@ protected:
 			Ret.append(_T("\\symbols*https://msdl.microsoft.com/download/symbols"));
 		}
 
-		LOG(_T("* Symbol Search Path: %s"), Ret.c_str());
+		LOGVV(_T("* Symbol Search Path: %s"), Ret.c_str());
 		return Ret;
 	}
 
