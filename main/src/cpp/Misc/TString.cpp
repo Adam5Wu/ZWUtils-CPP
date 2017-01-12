@@ -193,3 +193,12 @@ CString WStringtoUTF8(WString const &Str, TString &ErrMessage) {
 WString UTF8toWString(CString const &Str) {
 	return std::move(CStringtoWString(CP_UTF8, Str));
 }
+
+#ifdef WINDOWS
+
+TCHAR const* ACP_LOCALE(void) {
+	static TString __IoFU(TStringCast('.' << GetACP()));
+	return __IoFU.c_str();
+}
+
+#endif

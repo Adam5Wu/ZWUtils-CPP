@@ -74,7 +74,10 @@ void SimpleAllocator::Dealloc(void *Mem) {
 }
 
 void* SimpleAllocator::Realloc(void *Mem, size_t Size) {
-	return realloc(Mem, Size);
+	void* Ret = realloc(Mem, Size);
+	if ((Size != 0) && (Ret == nullptr))
+		FAIL(_T("Failed to re-allocate memory"));
+	return Ret;
 }
 
 size_t SimpleAllocator::Size(void *Mem) {

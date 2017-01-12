@@ -84,11 +84,24 @@ void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message) {
 
 #ifdef WINDOWS
 
+// Interest read: http://codesnipers.com/?q=the-secret-family-split-in-windows-code-page-functions
+void __LocaleInit(void) {
+	static TCHAR const* __InitLocale = nullptr;
+	if (!__InitLocale) {
+#ifndef UNICODE
+		setlocale(LC_ALL, __InitLocale = ACP_LOCALE());
+#else
+		_wsetlocale(LC_ALL, __InitLocale = ACP_LOCALE());
+#endif
+	}
+}
+
 void __LOG(PCTCHAR Fmt, ...) {
 	va_list params;
 	va_start(params, Fmt);
 	TInitResource<va_list> Params(params, [&](va_list &X) {va_end(X); });
 	auto LogTargets(LOGTARGETS().Pickup());
+	__LocaleInit();
 	for (size_t i = 0; i < LogTargets->size(); i++) {
 		auto &entry = LogTargets->at(i);
 		_vftprintf(entry.second, Fmt, params);

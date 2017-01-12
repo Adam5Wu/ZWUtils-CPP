@@ -173,20 +173,26 @@ void TestErrCode(void) {
 
 void TestStringConv(void) {
 	_LOG(_T("*** Test String Conversions"));
-	_LOG(_T("Converting: 'This is a test...'"));
+
+#ifdef UNICODE
 	WString Test1{L"This is a test..."};
+	_LOG(_T("Converting: '%s'"), Test1.c_str());
 	CString Test1C = WStringtoUTF8(Test1);
 	WString Test1R = UTF8toWString(Test1C);
 	if (Test1.compare(Test1R) != 0)
 		FAIL(_T("String failed to round-trip!"));
 
-	setlocale(LC_ALL, "chs");
-	_LOG(_T("Converting: '这是一个测试...'"));
+	_wsetlocale(LC_ALL, L"chs");
 	WString Test2{L"这是一个测试..."};
+	_LOG(_T("Converting: '%s'"), Test2.c_str());
 	CString Test2C = WStringtoUTF8(Test2);
 	TString Test2R = UTF8toWString(Test2C);
 	if (Test2.compare(Test2R) != 0)
 		FAIL(_T("String failed to round-trip!"));
+	_wsetlocale(LC_ALL, ACP_LOCALE());
+#else
+	// TODO: need test case for non-unicode conversions
+#endif
 }
 
 #include "Threading/SyncElements.h"
@@ -898,7 +904,7 @@ void TestSyncQueue(void) {
 
 				int COUNT = 5000000;
 				TimeStamp StartTime = TimeStamp::Now();
-				int j;
+				int j = -1;
 				for (int i = 0; i < COUNT; i++) {
 					Q.Pop_Front(j);
 					if (i != j) FAIL(_T("Expect %d, got %d"), i, j);
