@@ -79,8 +79,8 @@ protected:
 
 	typename TSyncDeque::Accessor __Safe_Pickup(void);
 
-	bool __Signal_Event(TSyncCounter &Counter, TEvent &SEvent, TEvent &REvent)
-	{ return (~Counter) ? REvent.Reset(), SEvent.Set(), true : false; }
+	bool __Signal_Event(TSyncCounter &Counter, TEvent &Event)
+	{ return (~Counter) ? Event.Set(), true : false; }
 
 	bool __WaitFor_Event(TEvent &Event, WAITTIME Timeout, TimeStamp const &StartTime, THandleWaitable *AbortEvent);
 
@@ -104,8 +104,7 @@ protected:
 	typedef bool(_this::*TPopFunc)(T &entry);
 	bool __Pop(TPopFunc const &PopFunc, T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent);
 
-	TLock __LockEmpty(void)
-	{ return __Safe_Pickup()->empty() ? SyncDeque.Lock() : SyncDeque.NullLock(); }
+	TLock __LockEmpty(void);
 
 	typedef typename Container::const_iterator(Container::*TGetCIter)(void) const;
 	typename Container::const_iterator LockedGetCIter(TLock const &Lock, TGetCIter const &GetCIter);
@@ -284,14 +283,14 @@ template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::__Push_Do(TEntryCPush const &EntryPush, T const &entry) {
 	__PreEntry_Check();
 	auto Queue = __Safe_Pickup();
-	return ((&Queue)->*EntryPush)(entry), __Signal_Event(EntryWaiters, EntryEvent, EmptyEvent), Queue->size();
+	return ((&Queue)->*EntryPush)(entry), __Signal_Event(EntryWaiters, EntryEvent), Queue->size();
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::__Push_Do(TEntryMPush const &EntryPush, T &&entry) {
 	__PreEntry_Check();
 	auto Queue = __Safe_Pickup();
-	return ((&Queue)->*EntryPush)(std::move(entry)), __Signal_Event(EntryWaiters, EntryEvent, EmptyEvent), Queue->size();
+	return ((&Queue)->*EntryPush)(std::move(entry)), __Signal_Event(EntryWaiters, EntryEvent), Queue->size();
 }
 
 template<class T>
@@ -300,7 +299,10 @@ bool TSyncBlockingDeque<T>::__Pop_Do(TEntryGet const &EntryGet, TEntryDiscard co
 	size_t Size = Queue->size();
 	if (Size > 0) {
 		entry = std::move(((&Queue)->*EntryGet)()), ((&Queue)->*EntryDiscard)();
-		if (!--Size) __Signal_Event(EmptyWaiters, EmptyEvent, EntryEvent);
+		if (!--Size) {
+			EntryEvent.Reset();
+			EmptyEvent.Set();
+		}
 		return true;
 	}
 	return false;
@@ -324,6 +326,16 @@ bool TSyncBlockingDeque<T>::__Pop(TPopFunc const &PopFunc, T &entry, WAITTIME Ti
 		if ((this->*PopFunc)(entry)) return true;
 	}
 	return false;
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::TLock TSyncBlockingDeque<T>::__LockEmpty(void) {
+	auto Queue = __Safe_Pickup();
+	if (Queue->empty()) {
+		return SyncDeque.Lock();
+	}
+	EmptyEvent.Reset();
+	return SyncDeque.NullLock();
 }
 
 template<class T>
