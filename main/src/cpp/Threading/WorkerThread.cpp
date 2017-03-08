@@ -219,6 +219,12 @@ TWorkerThread::State TWorkerThread::SignalTerminate(void) {
 	}
 }
 
+bool TWorkerThread::AbortIO(void) {
+	if (!CancelSynchronousIo(Refer()))
+		return GetLastError() == ERROR_NOT_FOUND;
+	return true;
+}
+
 #endif
 
 void* TWorkerThread::ReturnData(void) {

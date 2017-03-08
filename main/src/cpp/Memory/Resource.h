@@ -289,6 +289,7 @@ protected:
 		if (!isCompatible(xResource)) FAIL(_T("Incompatible allocator"));
 		_Size = xResource._Size;
 		TAllocResource::operator=(std::move(xResource));
+		return *this;
 	}
 
 public:

@@ -164,6 +164,12 @@ public:
 	State SignalTerminate(void);
 
 	/**
+	 * Abort any asynchronous IO operation that is blocking this thread
+	 * @return TRUE if Abort succeeded or no blocking IO; FALSE on other errors
+	 **/
+	bool AbortIO(void);
+
+	/**
 	 * Get current the thread state
 	 **/
 	State CurrentState(void)

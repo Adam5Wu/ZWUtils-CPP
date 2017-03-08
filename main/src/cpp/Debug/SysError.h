@@ -136,7 +136,7 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
 }
 
 //! @ingroup Utilities
-//! Log a failure with a argumented system error and context
+//! Log a failure with an argumented system error and context
 #define ERRLOGA(errcode, ctx, ...) {									\
 	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];									\
 	TCHAR __SysErrMsg[ERRMSG_BUFLEN];									\
