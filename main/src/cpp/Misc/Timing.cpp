@@ -132,16 +132,27 @@ TString TimeStamp::toString(TimeUnit const &Resolution) const {
 #endif
 }
 
-bool TimeStamp::Before(TimeStamp const &TS) const {
-	return TS.Value.U64 > Value.U64;
+bool TimeStamp::At(_this const &TS) const {
+	return TS.Value.U64 == Value.U64;
 }
 
-bool TimeStamp::After(TimeStamp const &TS) const {
-	return TS.Value.U64 < Value.U64;
+bool TimeStamp::Before(TimeStamp const &TS, bool inclusive) const {
+	return TS.Value.U64 > Value.U64 || (inclusive && TS.Value.U64 == Value.U64);
 }
 
-TimeStamp TimeStamp::Offset(TimeSpan const &Offset) const {
-	return{Value.U64 + Offset.GetValue(__UNIT), __UNIT, __SYSTEM};
+bool TimeStamp::After(TimeStamp const &TS, bool inclusive) const {
+	return TS.Value.U64 < Value.U64 || (inclusive && TS.Value.U64 == Value.U64);
+}
+
+bool TimeStamp::OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &TLate,
+					   bool EInc, bool LInc) const {
+	_this BLine = *this - TEarly;
+	_this DLine = *this + TLate;
+	return TS.After(BLine, EInc) && TS.Before(DLine, LInc);
+}
+
+TimeStamp TimeStamp::Offset(TimeSpan const &Ofs) const {
+	return{Value.U64 + Ofs.GetValue(__UNIT), __UNIT, __SYSTEM};
 }
 
 TimeSpan TimeStamp::From(TimeStamp const &xTimeStamp) const {

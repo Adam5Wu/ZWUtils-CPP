@@ -74,7 +74,7 @@ public:
 	/**
 	 * Notify the stop request from worker thread
 	 **/
-	virtual void StopNotify(void) {}
+	virtual void StopNotify(TWorkerThread &WorkerThread) {}
 };
 
 /**
@@ -85,8 +85,8 @@ public:
  **/
 class TWorkerThread : public THandleWaitable {
 	typedef TWorkerThread _this;
-	friend class ManagedRef < _this > ;
-	friend class IObjAllocator < _this > ;
+	friend class ManagedRef < _this >;
+	friend class IObjAllocator < _this >;
 public:
 	enum class State : unsigned int {
 		Constructed,
@@ -155,7 +155,7 @@ public:
 	 /**
 	 * Get worker thread ID
 	 **/
-	__ARC_UINT ThreadID(void);
+	DWORD ThreadID(void);
 
 	/**
 	 * Signal the thread to terminate
@@ -191,7 +191,12 @@ public:
 
 	typedef std::function<void(TWorkerThread &, State const &) throw()> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;
-	static TNotificationStub StateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
+	/**
+	 * Register a notification callback when specified thread state is reached
+	 * @note Normal destruction of the notification stub will unreigster callback when it is no longer needed
+	 * @note When the notification stub life-span exceeds that of the worker thread, the stub must be manually invalidated
+	 **/
+	TNotificationStub StateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
 
 	template<class IRunnable>
 	static TWorkerThread* Create(TString const &xName, IRunnable &xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
@@ -200,7 +205,7 @@ public:
 
 protected:
 	typedef std::vector<std::pair<TString, TStateNotice>> TSubscriberList;
-	static TSyncObj<TSubscriberList> Subscribers[(unsigned int)State::__MAX_STATES];
+	TSyncObj<TSubscriberList> Subscribers[(unsigned int)State::__MAX_STATES];
 
 	void __StateNotify(State const &rState);
 };

@@ -64,8 +64,6 @@ static DWORD WINAPI _ThreadProc(LPVOID PThreadRecord) {
 #define WTLogTag _T("WThread '%s'")
 #define WTLogHeader _T("{") WTLogTag _T("} ")
 
-TSyncObj<TWorkerThread::TSubscriberList> TWorkerThread::Subscribers[(unsigned int)State::__MAX_STATES];
-
 void TWorkerThread::__StateNotify(State const &rState) {
 	auto SubscriberList(Subscribers[(unsigned int)rState].Pickup());
 	for (size_t i = 0; i < SubscriberList->size(); i++) {
@@ -128,9 +126,14 @@ PCTCHAR TWorkerThread::STR_State(State const &xState) {
 
 #ifdef WINDOWS
 
+#include <process.h>
+
+typedef unsigned(__stdcall *__ThreadProc) (void *);
+
 HANDLE TWorkerThread::__CreateThread(size_t StackSize, bool xSelfFree) {
 	MRThreadRecord Foward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__CallForwarder, xSelfFree);
-	HANDLE rThread = CreateThread(nullptr, StackSize, &_ThreadProc, &Foward, CREATE_SUSPENDED, &_ThreadID);
+	HANDLE rThread = (HANDLE)_beginthreadex(nullptr, (UINT)StackSize, (__ThreadProc)&_ThreadProc,
+											&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
 	if (rThread == nullptr) SYSFAIL(_T("Failed to create thread for worker '%s'"), Name.c_str());
 	return Foward.Drop(), rThread;
 }
@@ -165,18 +168,25 @@ void TWorkerThread::__DestroyThread(TString const &Name) {
 DWORD TWorkerThread::__CallForwarder(void) {
 	DWORD Ret = 0;
 	auto iCurState = _State.CompareAndSwap(State::Initialzing, State::Running);
-	if (iCurState == State::Initialzing) {
-		__StateNotify(State::Running);
-		WTLOGV(_T("Running"));
-		try {
-			rReturnData = rRunnable->Run(*this, rInputData);
-		} catch (Exception *e) {
-			rException.Assign(e, CONSTRUCTION::HANDOFF);
-			DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(e) == nullptr) {
-				WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
-			});
-		}
-		WTLOGV(_T("Terminated"));
+	switch (iCurState) {
+		case State::Initialzing:
+			__StateNotify(State::Running);
+			WTLOGV(_T("Running"));
+			try {
+				rReturnData = rRunnable->Run(*this, rInputData);
+			} catch (Exception *e) {
+				rException.Assign(e, CONSTRUCTION::HANDOFF);
+				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(e) == nullptr) {
+					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
+				});
+			}
+
+		case State::Terminating:
+			WTLOGV(_T("Terminated"));
+			break;
+
+		default:
+			WTLOG(_T("WARNING: Unexpected state [%s]"), STR_State(iCurState));
 	}
 	__StateNotify(_State = State::Terminated);
 	return Ret;
@@ -195,7 +205,7 @@ void TWorkerThread::Start(TFixedBuffer &&xInputData) {
 	}
 }
 
-__ARC_UINT TWorkerThread::ThreadID(void) {
+DWORD TWorkerThread::ThreadID(void) {
 	return Refer(), _ThreadID;
 }
 
@@ -212,7 +222,7 @@ TWorkerThread::State TWorkerThread::SignalTerminate(void) {
 				SwitchToThread();
 				continue;
 			case State::Running:
-				__StateNotify(State::Terminating), rRunnable->StopNotify();
+				__StateNotify(State::Terminating), rRunnable->StopNotify(*this);
 				break;
 		}
 		return iCurState;
@@ -242,33 +252,55 @@ Exception* TWorkerThread::FatalException(void) {
 }
 
 WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) {
-	while (true) {
-		if (!_ResValid) {
-			switch (CurrentState()) {
-				case State::Constructed: break;
-				case State::Initialzing: continue;
-				case State::Running: WTFAIL(_T("Internal state inconsistent (Bug-check)"));
-				case State::Terminating: continue;
-				case State::Terminated: return WaitResult::Signaled;
-			}
+	while (!_ResValid) {
+		switch (CurrentState()) {
+			case State::Constructed:
+				// Thread not started, cannot wait
+				WTFAIL(_T("Not started"));
+
+			case State::Initialzing:
+				// Starting up, yield and try again
+				SwitchToThread();
+				continue;
+
+			case State::Running:
+				// Cannot be in this state!
+				WTFAIL(_T("Internal state inconsistent (Bug-check)"));
+
+			case State::Terminating:
+				// Pre-start terminated
+			case State::Terminated:
+				// Post termination
+				return WaitResult::Signaled;
 		}
-		return THandleWaitable::WaitFor(Timeout);
 	}
+	return THandleWaitable::WaitFor(Timeout);
 }
 
 THandle TWorkerThread::WaitHandle(void) {
-	while (true) {
-		if (!_ResValid) {
-			switch (CurrentState()) {
-				case State::Constructed: break;
-				case State::Initialzing: continue;
-				case State::Running: WTFAIL(_T("Internal state inconsistent (Bug-check)"));
-				case State::Terminating: continue;
-				case State::Terminated: return TEvent(true, true).WaitHandle();
-			}
+	while (!_ResValid) {
+		switch (CurrentState()) {
+			case State::Constructed:
+				// Thread not started, cannot wait
+				WTFAIL(_T("Not started"));
+
+			case State::Initialzing:
+				// Starting up, yield and try again
+				SwitchToThread();
+				continue;
+
+			case State::Running:
+				// Cannot be in this state!
+				WTFAIL(_T("Internal state inconsistent (Bug-check)"));
+
+			case State::Terminating:
+				// Pre-start terminated
+			case State::Terminated:
+				// Post termination
+				return TEvent(true, true).WaitHandle();
 		}
-		return THandleWaitable::WaitHandle();
 	}
+	return THandleWaitable::WaitHandle();
 }
 
 TString const& TWorkerThreadException::Why(void) const {

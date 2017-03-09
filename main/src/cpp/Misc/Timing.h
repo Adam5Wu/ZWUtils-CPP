@@ -102,7 +102,11 @@ public:
 	TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::HNSEC,
 			  TimeSystem const &xSystem = TimeSystem::GREGORIAN) :
 #endif
-		Value({Normalize(xValue, xUnit, xSystem)}) {}
+#ifdef UNIX
+			  TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC,
+			  TimeSystem const &xSystem = TimeSystem::UNIX) :
+#endif
+			  Value({Normalize(xValue, xUnit, xSystem)}) {}
 	virtual ~TimeStamp(void) {}
 
 	// Copy assignment operation is supported
@@ -111,12 +115,47 @@ public:
 	long long UNIXMS(void) const;
 	long long MSWINTS(void) const;
 
-	bool Before(_this const &TS) const;
-	bool After(_this const &TS) const;
+	bool At(_this const &TS) const;
+	bool Before(_this const &TS, bool inclusive = false) const;
+	bool After(_this const &TS, bool inclusive = false) const;
 
-	_this Offset(TimeSpan const &Offset) const;
+	bool OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &TLate,
+				bool EInc = true, bool LInc = true) const;
+
+	bool operator==(_this const &TS) const
+	{ return At(TS); }
+
+	bool operator!=(_this const &TS) const
+	{ return !At(TS); }
+
+	bool operator<(_this const &TS) const
+	{ return Before(TS); }
+
+	bool operator>(_this const &TS) const
+	{ return After(TS); }
+
+	bool operator<=(_this const &TS) const
+	{ return Before(TS, true); }
+
+	bool operator>=(_this const &TS) const
+	{ return After(TS, true); }
+
+	_this Offset(TimeSpan const &Ofs) const;
+
+	_this operator+(TimeSpan const &Ofs) const
+	{ return Offset(Ofs); }
+
+	_this operator-(TimeSpan const &Ofs) const
+	{ return Offset(-Ofs); }
+
+	_this& operator+=(TimeSpan const &Ofs)
+	{ return *this = *this + Ofs; }
+
+	_this& operator-=(TimeSpan const &Ofs)
+	{ return *this += -Ofs; }
 
 	TimeSpan From(_this const &xTimeStamp) const;
+
 	TimeSpan To(_this const &xTimeStamp) const
 	{ return xTimeStamp.From(*this); }
 

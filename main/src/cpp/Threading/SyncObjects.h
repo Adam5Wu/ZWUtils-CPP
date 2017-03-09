@@ -139,9 +139,16 @@ public:
 			return false;
 		}
 
-		// Assignment operations are wacky, the meaning is hard to reason, therefore better disable it
+		// Copy assignment operation is not meaningful
 		_this& operator=(_this const &) = delete;
-		_this& operator=(_this &&) = delete;
+
+		// Move assignment should only be used to re-acquire a released lock
+		_this& operator=(_this &&xLock) {
+			if (Locked) FAIL(_T("Already locked!"));
+			if (!For(xLock.Instance)) FAIL(_T("Mismatched Lockable!"));
+			*const_cast<bool*>(&Locked) = xLock.Locked;
+			*const_cast<bool*>(&xLock.Locked) = false;
+		}
 
 		operator bool() const
 		{ return Locked; }
