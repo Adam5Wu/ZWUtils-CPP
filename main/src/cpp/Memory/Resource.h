@@ -178,19 +178,19 @@ class _TTypedBuffer : public TAllocResource < T* > {
 	typedef _TTypedBuffer _this;
 
 protected:
-	static void* Alloc(IAllocator &xAlloc, size_t xSize)
-	{ return xSize ? xAlloc.Alloc(xSize) : nullptr; }
+	static void* Alloc(IAllocator &xAllocator, size_t xSize)
+	{ return xSize ? xAllocator.Alloc(xSize) : nullptr; }
 
-	static void Dealloc(IAllocator &xAlloc, T* &xBuf)
-	{ xAlloc.Dealloc(xBuf); }
+	static void Dealloc(IAllocator &xAllocator, T* &xBuf)
+	{ xAllocator.Dealloc(xBuf); }
 
-	_TTypedBuffer(IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAlloc) {}
-	_TTypedBuffer(size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		TAllocResource([=, &xAlloc] {return (T*)Alloc(xAlloc, xSize); }, [=, &xAlloc](T* &X) {Dealloc(xAlloc, X); }) {}
-	_TTypedBuffer(T* const &xBuffer, IAllocator &xAlloc = DefaultAllocator()) :
-		TAllocResource(xBuffer, [=, &xAlloc](T* &X) {Dealloc(xAlloc, X); }) {}
-	_TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		TAllocResource(xBuffer, [=, &xAlloc](T* &X) {Dealloc(xAlloc, X); }, [=, &xAlloc] {return (T*)Alloc(xAlloc, xSize); }) {}
+	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
+	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+	_TTypedBuffer(T* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+	_TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }, [=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
 	// Move construction
 	_TTypedBuffer(_this &&xResource) : TAllocResource(std::move(xResource)) {}
@@ -205,11 +205,11 @@ class TTypedBuffer : public _TTypedBuffer < T > {
 	typedef TTypedBuffer _this;
 
 public:
-	TTypedBuffer(IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAlloc) {}
-	TTypedBuffer(size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(xSize, xAlloc) {}
-	TTypedBuffer(T* const &xBuffer, IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAlloc) {}
-	TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		_TTypedBuffer(xBuffer, xSize, xAlloc) {}
+	TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
+	TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xSize, xAllocator) {}
+	TTypedBuffer(T* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAllocator) {}
+	TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
@@ -228,10 +228,10 @@ class TTypedBuffer<void> : public _TTypedBuffer < void >{
 	typedef TTypedBuffer _this;
 
 public:
-	TTypedBuffer(size_t const &xSize = 0, IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(xSize, xAlloc) {}
-	TTypedBuffer(void* const &xBuffer, IAllocator &xAlloc = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAlloc) {}
-	TTypedBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		_TTypedBuffer(xBuffer, xSize, xAlloc) {}
+	TTypedBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xSize, xAllocator) {}
+	TTypedBuffer(void* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAllocator) {}
+	TTypedBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
@@ -256,39 +256,52 @@ private:
 	size_t _PVSize = 0;
 
 protected:
-	IAllocator &_Alloc;
+	IAllocator &_Allocator;
 	size_t _Size;
 
 	T* Alloc(T* &xBuf) {
-		if (_Size < DYNBUFFER_OVERPROVISION_THRESHOLD) {
+		if (_Size <= DYNBUFFER_OVERPROVISION_THRESHOLD) {
 			_PVSize = _Size;
-			return _Size ? (T*)(xBuf ? _Alloc.Realloc(xBuf, _Size) : _Alloc.Alloc(_Size)) : Dealloc(xBuf);
+			return _Size ? (T*)(xBuf ? _Allocator.Realloc(xBuf, _Size) : _Allocator.Alloc(_Size)) : Dealloc(xBuf);
 		} else {
-			if (_Size < _PVSize) return xBuf;
+			if (_Size <= _PVSize) return xBuf;
 			_PVSize = max(_PVSize, DYNBUFFER_OVERPROVISION_THRESHOLD);
 			while ((_PVSize <<= 1) < _Size);
-			return _Alloc.Realloc(xBuf, _PVSize);
+			return _Allocator.Realloc(xBuf, _PVSize);
 		}
 	}
 
 	T* Dealloc(T* &xBuf)
-	{ return _Alloc.Dealloc(xBuf), xBuf = nullptr; }
+	{ return _Allocator.Dealloc(xBuf), xBuf = nullptr; }
 
-	_TTypedDynBuffer(IAllocator &xAlloc = DefaultAllocator()) : _TTypedDynBuffer(sizeof(T), xAlloc) { _ResRef = nullptr; }
-	_TTypedDynBuffer(size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		TAllocResource([&] { return Alloc(_ResRef); }, [&](T* &X) { Dealloc(X); }), _Alloc(xAlloc), _Size(xSize) { _ResRef = nullptr; }
-	_TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		TAllocResource(xBuffer, [&](T* &X) { Dealloc(X); }, [&] { return Alloc(_ResRef); }), _Alloc(xAlloc), _Size(xSize) {}
+	_TTypedDynBuffer(IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(sizeof(T), xAllocator) { _ResRef = nullptr; }
+	_TTypedDynBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource([&] { return Alloc(_ResRef); }, [&](T* &X) { Dealloc(X); }),
+		_Allocator(xAllocator), _Size(xSize) {
+		_ResRef = nullptr;
+	}
+	_TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource(xBuffer, [&](T* &X) { Dealloc(X); }, [&] { return Alloc(_ResRef); }),
+		_Allocator(xAllocator), _Size(xSize) {}
 
 	// Move construction
 	_TTypedDynBuffer(_this &&xResource) :
-		TAllocResource(std::move(xResource)), _Alloc(xResource._Alloc), _Size(xResource._Size) {}
+		TAllocResource([&] { return Alloc(_ResRef); }, [&](T* &X) { Dealloc(X); }),
+		_PVSize(xResource._PVSize), _Allocator(xResource._Allocator), _Size(xResource._Size) {
+		this->_ResRef = xResource._ResRef;
+		this->_ResValid = xResource._ResValid;
+		xResource.Invalidate();
+	}
 
 	// Move assignment
 	_this& operator=(_this &&xResource) {
 		if (!isCompatible(xResource)) FAIL(_T("Incompatible allocator"));
+		_PVSize = xResource._PVSize;
 		_Size = xResource._Size;
-		TAllocResource::operator=(std::move(xResource));
+		this->_ResRef = xResource._ResRef;
+		this->_ResValid = xResource._ResValid;
+		xResource.Invalidate();
 		return *this;
 	}
 
@@ -297,7 +310,7 @@ public:
 	{ return *_ObjPointer(); }
 
 	bool isCompatible(_this const &xResource) const
-	{ return xResource._Alloc == _Alloc; }
+	{ return xResource._Allocator == _Allocator; }
 
 	size_t GetSize(void) const
 	{ return _Size; }
@@ -322,10 +335,10 @@ class TTypedDynBuffer : public _TTypedDynBuffer < T > {
 	typedef TTypedDynBuffer _this;
 
 public:
-	TTypedDynBuffer(IAllocator &xAlloc = DefaultAllocator()) : _TTypedDynBuffer(sizeof(T), xAlloc) {}
-	TTypedDynBuffer(size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAlloc) {}
-	TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		_TTypedDynBuffer(xBuffer, xSize, xAlloc) {}
+	TTypedDynBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(sizeof(T), xAllocator) {}
+	TTypedDynBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAllocator) {}
+	TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
@@ -344,9 +357,9 @@ class TTypedDynBuffer<void> : public _TTypedDynBuffer < void >{
 	typedef TTypedDynBuffer _this;
 
 public:
-	TTypedDynBuffer(size_t const &xSize = 0, IAllocator &xAlloc = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAlloc) {}
-	TTypedDynBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAlloc = DefaultAllocator()) :
-		_TTypedDynBuffer(xBuffer, xSize, xAlloc) {}
+	TTypedDynBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAllocator) {}
+	TTypedDynBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
