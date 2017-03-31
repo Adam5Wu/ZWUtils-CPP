@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Allocator.h"
 
 #include "Debug/Exception.h"
+#include "Debug/Logging.h"
 
 // IAllocator
 #ifdef _DEBUG
@@ -62,11 +63,15 @@ void* IAllocator::Transfer(void *Mem, _this &OAlloc) {
 // SimpleAllocator
 #ifdef _DEBUG
 void* SimpleAllocator::Alloc(size_t Size, char const *FILE, int LINE) {
-	return _malloc_dbg(Size, _NORMAL_BLOCK, FILE, LINE);
+	void* Ret = _malloc_dbg(Size, _NORMAL_BLOCK, FILE, LINE);
 #else
 void* SimpleAllocator::Alloc(size_t Size) {
-	return malloc(Size);
+	void* Ret = malloc(Size);
 #endif
+	DEBUG_DO(if ((Size != 0) && (Ret == nullptr)) {
+		LOG(_T("WARNING: Failed to allocate memory"));
+	});
+	return Ret;
 }
 
 void SimpleAllocator::Dealloc(void *Mem) {
@@ -75,8 +80,9 @@ void SimpleAllocator::Dealloc(void *Mem) {
 
 void* SimpleAllocator::Realloc(void *Mem, size_t Size) {
 	void* Ret = realloc(Mem, Size);
-	if ((Size != 0) && (Ret == nullptr))
-		FAIL(_T("Failed to re-allocate memory"));
+	DEBUG_DO(if ((Size != 0) && (Ret == nullptr)) {
+		LOG(_T("WARNING: Failed to re-allocate memory"));
+	});
 	return Ret;
 }
 

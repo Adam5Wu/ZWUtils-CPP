@@ -259,78 +259,64 @@ void TestDynBuffer() {
 		_LOG(_T("Buffer pointer = %p"), &TVoidDynBuffer);
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10);
-		_LOG(_T("Increase to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Increase to 10B: %s"), TVoidDynBuffer.SetSize(10) ? _T("Success") : _T("Fail"));
 		memset(&TVoidDynBuffer, 'A', 9);
 		((char*)&TVoidDynBuffer)[9] = '\0';
 		_LOG(_T("Filled with 'A' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(2048);
-		_LOG(_T("Extend to 2KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 2KB: %s, %s"), TVoidDynBuffer.SetSize(2048) ? _T("Success") : _T("Fail"));
 		memset(((char*)&TVoidDynBuffer) + 9, 'B', 9);
 		((char*)&TVoidDynBuffer)[18] = '\0';
 		_LOG(_T("Append with 9x'B' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10);
-		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.SetSize(10) ? _T("Success") : _T("Fail"));
 		((char*)&TVoidDynBuffer)[9] = '\0';
 		_LOG(_T("Terminate at byte 10 = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(12 * 1024);
-		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.SetSize(12 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(14 * 1024);
-		_LOG(_T("Extend to 14KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 14KB: %s"), TVoidDynBuffer.SetSize(14 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(8 * 1024);
-		_LOG(_T("Shrink to 8KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Shrink to 8KB: %s"), TVoidDynBuffer.SetSize(8 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(4 * 1024);
-		_LOG(_T("Shrink to 4KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Shrink to 4KB: %s"), TVoidDynBuffer.SetSize(4 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10);
-		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.SetSize(10) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(12 * 1024);
-		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 12KB: %s"), TVoidDynBuffer.SetSize(12 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(12 * 1024 * 1024);
-		_LOG(_T("Extend to 12MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 12MB: %s"), TVoidDynBuffer.SetSize(12 * 1024 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10);
-		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 10MB: %s"), TVoidDynBuffer.SetSize(10 * 1024 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10 * 1024 * 1024);
-		_LOG(_T("Extend to 10MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 14MB: %s"), TVoidDynBuffer.SetSize(14 * 1024 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(10);
-		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Shrink to 10B: %s"), TVoidDynBuffer.SetSize(10) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		TVoidDynBuffer.SetSize(8 * 1024 * 1024);
-		_LOG(_T("Extend to 8MB: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
+		_LOG(_T("Extend to 8MB: %s"), TVoidDynBuffer.SetSize(8 * 1024 * 1024) ? _T("Success") : _T("Fail"));
 		_LOG(_T("Buffer pointer = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 	}
@@ -696,24 +682,24 @@ void TestWorkerThread() {
 	_LOG(_T("*** Test WorkerThread (State notification)"));
 	{
 		{
-			auto ConstructEvent = TWorkerThread::StateNotify(_T("TestConstructed"), TWorkerThread::State::Constructed,
-															 [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+			auto ConstructEvent = TWorkerThread::GStateNotify(_T("TestConstructed"), TWorkerThread::State::Constructed,
+															  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 			});
-			auto InitializingEvent = TWorkerThread::StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
+			auto InitializingEvent = TWorkerThread::GStateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
+																 [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
+			auto RunningEvent = TWorkerThread::GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
+															[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
+			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
 																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 			});
-			auto RunningEvent = TWorkerThread::StateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-														   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
-			auto TerminatingEvent = TWorkerThread::StateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
+			auto TerminatedEvent = TWorkerThread::GStateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
 															   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
-			auto TerminatedEvent = TWorkerThread::StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-															  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 			});
 			ManagedRef<TWorkerThread> G(TWorkerThread::Create(_T("TestG"), *DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
@@ -733,19 +719,19 @@ void TestWorkerThread() {
 			}
 		};
 		{
-			auto InitializingEvent = TWorkerThread::StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
-																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
-			auto RunningEvent = TWorkerThread::StateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-														   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
-			auto TerminatingEvent = TWorkerThread::StateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-															   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
 			ManagedRef<TWorkerThread> H(TWorkerThread::Create(_T("TestH"), *DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
+			auto InitializingEvent = H->StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
+													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
+			auto RunningEvent = H->GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
+												[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
+			auto TerminatingEvent = H->GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
+													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
 			H->Start();
 			H->WaitFor(500);
 			H->SignalTerminate();
@@ -756,17 +742,17 @@ void TestWorkerThread() {
 			}
 		}
 		{
-			auto TerminatingEvent = TWorkerThread::StateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-															   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
-			auto TerminatedEvent = TWorkerThread::StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-															  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
+																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 			});
 			ManagedRef<TWorkerThread> I(TWorkerThread::Create(_T("TestI"), *DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
+			auto TerminatedEvent = I->StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
+												  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+			});
 			I->Start();
-			_LOG(_T("Going out-of-scope, expect signal terminate and wait for 1 second..."));
+			_LOG(_T("Going out-of-scope, expect signal terminate and wait for 1 second (no local event notification)..."));
 		}
 	}
 

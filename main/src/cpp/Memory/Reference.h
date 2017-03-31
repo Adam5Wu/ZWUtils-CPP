@@ -85,6 +85,9 @@ public:
 	virtual T* Assign(T *xObj)
 	{ return _ObjExchange(xObj); }
 
+	virtual T* Drop(void)
+	{ return _ObjExchange(nullptr); }
+
 	T* operator=(T *xObj)
 	{ return Assign(xObj), xObj; }
 

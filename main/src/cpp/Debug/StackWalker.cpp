@@ -371,7 +371,7 @@ void LocalStackWalker_Init(bool xOnlineSymServer, TString const &xOptSymPath) {
 		} else {
 			LOGV(_T("Reconfiguring local stack walker..."));
 		}
-		AMRSW->Assign(DefaultObjAllocator<StackWalker_Impl>().Create([&](void *E) {
+		*AMRSW = MRStackWalker(DefaultObjAllocator<StackWalker_Impl>().Create([&](void *E) {
 			return new (E)StackWalker_Impl(xOnlineSymServer, xOptSymPath); }), CONSTRUCTION::HANDOFF);
 	}
 }

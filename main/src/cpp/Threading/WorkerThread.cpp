@@ -65,24 +65,31 @@ static DWORD WINAPI _ThreadProc(LPVOID PThreadRecord) {
 #define WTLogHeader _T("{") WTLogTag _T("} ")
 
 void TWorkerThread::__StateNotify(State const &rState) {
-	auto SubscriberList(Subscribers[(unsigned int)rState].Pickup());
-	for (size_t i = 0; i < SubscriberList->size(); i++) {
-		auto & entry = SubscriberList->at(i);
-		LOGVV(WTLogHeader _T("Notifying [%s] event '%s'..."), Name.c_str(), STR_State(rState), entry.first.c_str());
+	auto LSubscriberList(LSubscribers[(unsigned int)rState].Pickup());
+	for (size_t i = 0; i < LSubscriberList->size(); i++) {
+		auto & entry = LSubscriberList->at(i);
+		LOGVV(WTLogHeader _T("Notifying [%s] local event '%s'..."), Name.c_str(), STR_State(rState), entry.first.c_str());
+		entry.second(*this, rState);
+	}
+
+	auto GSubscriberList(GSubscribers[(unsigned int)rState].Pickup());
+	for (size_t i = 0; i < GSubscriberList->size(); i++) {
+		auto & entry = GSubscriberList->at(i);
+		LOGVV(WTLogHeader _T("Notifying [%s] global event '%s'..."), Name.c_str(), STR_State(rState), entry.first.c_str());
 		entry.second(*this, rState);
 	}
 }
 
 TWorkerThread::TNotificationStub TWorkerThread::StateNotify(TString const &Name, State const &rState, TStateNotice const &Func) {
-	auto SubscriberList(Subscribers[(unsigned int)rState].Pickup());
+	auto SubscriberList(LSubscribers[(unsigned int)rState].Pickup());
 	for (auto &entry : *SubscriberList) {
 		if (entry.first.compare(Name) == 0)
-			FAIL(_T("WorkerThread [%s] event '%s' already registered"), STR_State(rState), Name.c_str());
+			FAIL(WTLogHeader _T("[%s] event '%s' already registered"), Name.c_str(), STR_State(rState), Name.c_str());
 	}
 	SubscriberList->emplace_back(Name, Func);
 
 	return TNotificationStub(Name, [&, rState](TString const &EvtName) {
-		auto UnsubscriberList(Subscribers[(unsigned int)rState].Pickup());
+		auto UnsubscriberList(LSubscribers[(unsigned int)rState].Pickup());
 		auto Iter = UnsubscriberList->begin();
 		while (Iter != UnsubscriberList->end()) {
 			if (Iter->first.compare(EvtName) == 0) {
@@ -90,7 +97,30 @@ TWorkerThread::TNotificationStub TWorkerThread::StateNotify(TString const &Name,
 				return;
 			}
 		}
-		LOG(_T("WARNING: Failed to unregister WorkerThread [%s] event '%s'"), STR_State(rState), EvtName.c_str());
+		LOG(WTLogHeader _T("WARNING: Failed to unregister [%s] event '%s'"), Name.c_str(), STR_State(rState), EvtName.c_str());
+	});
+}
+
+TSyncObj<TWorkerThread::TSubscriberList> TWorkerThread::GSubscribers[(unsigned int)State::__MAX_STATES];
+
+TWorkerThread::TNotificationStub TWorkerThread::GStateNotify(TString const &Name, State const &rState, TStateNotice const &Func) {
+	auto SubscriberList(GSubscribers[(unsigned int)rState].Pickup());
+	for (auto &entry : *SubscriberList) {
+		if (entry.first.compare(Name) == 0)
+			FAIL(_T("WorkerThread [%s] global event '%s' already registered"), STR_State(rState), Name.c_str());
+	}
+	SubscriberList->emplace_back(Name, Func);
+
+	return TNotificationStub(Name, [&, rState](TString const &EvtName) {
+		auto UnsubscriberList(GSubscribers[(unsigned int)rState].Pickup());
+		auto Iter = UnsubscriberList->begin();
+		while (Iter != UnsubscriberList->end()) {
+			if (Iter->first.compare(EvtName) == 0) {
+				UnsubscriberList->erase(Iter);
+				return;
+			}
+		}
+		LOG(_T("WARNING: Failed to unregister WorkerThread [%s] global event '%s'"), STR_State(rState), EvtName.c_str());
 	});
 }
 
@@ -175,7 +205,7 @@ DWORD TWorkerThread::__CallForwarder(void) {
 			try {
 				rReturnData = rRunnable->Run(*this, rInputData);
 			} catch (Exception *e) {
-				rException.Assign(e, CONSTRUCTION::HANDOFF);
+				rException = ManagedRef<Exception>(e, CONSTRUCTION::HANDOFF);
 				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(e) == nullptr) {
 					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
 				});

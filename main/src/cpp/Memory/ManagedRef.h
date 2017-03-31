@@ -63,7 +63,7 @@ protected:
 	{ return ~_Obj; }
 
 	T* _ObjExchange(T *xObj) override
-	{ return _Obj.Exchange(xObj); }
+	{ return _Alloc.Destroy(_RelObj(_Obj.Exchange(xObj))), nullptr; }
 
 public:
 	ManagedRef(IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
@@ -99,17 +99,7 @@ public:
 	_this& operator=(_this const &xMR);
 	_this& operator=(_this &&xMR);
 
-	bool isCompatible(_this const &xMR) const
-	{ return xMR._Alloc == _Alloc; }
-
-	T* Assign(T *xObj) override
-	{ return *this = _this(xObj), nullptr; }
-	T* Assign(T *xObj, CONSTRUCTION::CLONE_T const &)
-	{ return (*this = _this(xObj, CONSTRUCTION::CLONE)), nullptr; }
-	T* Assign(T *xObj, CONSTRUCTION::HANDOFF_T const &)
-	{ return (*this = _this(xObj, CONSTRUCTION::HANDOFF)), nullptr; }
-
-	T* Drop(void)
+	T* Drop(void) override
 	{ return _Obj.Exchange(nullptr); }
 };
 
@@ -142,14 +132,15 @@ T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
 
 template<class T>
 ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef const &xMR) {
-	if (!isCompatible(xMR)) FAIL(_T("Incompatible allocator"));
+	if (_Alloc != xMR._Alloc) FAIL(_T("Incompatible allocator"));
 	return Assign(&xMR), *this;
 }
 
 template<class T>
 ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef &&xMR) {
-	if (!isCompatible(xMR)) FAIL(_T("Incompatible allocator"));
-	return _Alloc.Destroy(_RelObj(_Obj.Exchange(xMR.Drop()))), *this;
+	T* TransObj = _Alloc.Transfer(&xMR, xMR._Alloc);
+	if (!TransObj) FAIL(_T("Incompatible allocator"));
+	return Assign(TransObj), xMR.Drop(), *this;
 }
 
 #endif

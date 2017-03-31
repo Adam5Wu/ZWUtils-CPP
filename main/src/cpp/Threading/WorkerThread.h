@@ -197,6 +197,7 @@ public:
 	 * @note When the notification stub life-span exceeds that of the worker thread, the stub must be manually invalidated
 	 **/
 	TNotificationStub StateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
+	static TNotificationStub GStateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
 
 	template<class IRunnable>
 	static TWorkerThread* Create(TString const &xName, IRunnable &xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
@@ -205,7 +206,8 @@ public:
 
 protected:
 	typedef std::vector<std::pair<TString, TStateNotice>> TSubscriberList;
-	TSyncObj<TSubscriberList> Subscribers[(unsigned int)State::__MAX_STATES];
+	TSyncObj<TSubscriberList> LSubscribers[(unsigned int)State::__MAX_STATES];
+	static TSyncObj<TSubscriberList> GSubscribers[(unsigned int)State::__MAX_STATES];
 
 	void __StateNotify(State const &rState);
 };

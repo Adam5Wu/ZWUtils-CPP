@@ -67,7 +67,7 @@ public:
 	typedef std::function<X(void)> TResAlloc;
 	typedef std::function<void(X &)> TResDealloc;
 
-	static X NoAlloc(void)
+	static X NoAlloc()
 	{ FAIL(_T("Function not available")); }
 	static void NoDealloc(X &)
 	{ FAIL(_T("Function not available")); }
@@ -150,10 +150,10 @@ public:
 
 	bool Allocated(void) const
 	{ return _ResValid; }
-	bool Invalidate(void)
-	{ return TInitResource<bool>(_ResValid, [&](bool &) { _ResValid = false; }), _ResValid; }
+	virtual bool Invalidate(void)
+	{ return _ResValid ? _ResValid = false, true : false; }
 	virtual bool Deallocate(void)
-	{ return TInitResource<bool>(_ResValid, [&](bool &X) { if (X) _Dealloc(_ResRef), _ResValid = false; }), _ResValid; }
+	{ return _ResValid ? _Dealloc(_ResRef), Invalidate() : false; }
 
 	bool Empty(void) const override
 	{ return !Allocated(); }
@@ -178,19 +178,26 @@ class _TTypedBuffer : public TAllocResource < T* > {
 	typedef _TTypedBuffer _this;
 
 protected:
-	static void* Alloc(IAllocator &xAllocator, size_t xSize)
-	{ return xSize ? xAllocator.Alloc(xSize) : nullptr; }
+	static void* Alloc(IAllocator &xAllocator, size_t xSize) {
+		if (!xSize) return nullptr;
+		void* NewBuf = xAllocator.Alloc(xSize);
+		if (!NewBuf) FAIL(_T("Memory allocation failure"));
+		return NewBuf;
+	}
 
 	static void Dealloc(IAllocator &xAllocator, T* &xBuf)
 	{ xAllocator.Dealloc(xBuf); }
 
 	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
 	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
-	_TTypedBuffer(T* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
+		[=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+
+	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
-	_TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }, [=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
+	_TTypedBuffer(T *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
+		[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
 	// Move construction
 	_TTypedBuffer(_this &&xResource) : TAllocResource(std::move(xResource)) {}
@@ -206,10 +213,12 @@ class TTypedBuffer : public _TTypedBuffer < T > {
 
 public:
 	TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
-	TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xSize, xAllocator) {}
-	TTypedBuffer(T* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAllocator) {}
-	TTypedBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
+	TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(xSize, xAllocator) {}
+	TTypedBuffer(T &xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(&xBuffer, xAllocator) {}
+	TTypedBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(&xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
@@ -228,9 +237,11 @@ class TTypedBuffer<void> : public _TTypedBuffer < void >{
 	typedef TTypedBuffer _this;
 
 public:
-	TTypedBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xSize, xAllocator) {}
-	TTypedBuffer(void* const &xBuffer, IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(xBuffer, xAllocator) {}
-	TTypedBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+	TTypedBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(xSize, xAllocator) {}
+	TTypedBuffer(void *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedBuffer(xBuffer, xAllocator) {}
+	TTypedBuffer(void *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
 
 	// Move construction
@@ -246,61 +257,81 @@ typedef TTypedBuffer<void> TFixedBuffer;
 //-----------------------
 // Dynamic size buffers
 
-#define DYNBUFFER_OVERPROVISION_THRESHOLD	0x1000
+#define DYNBUFFER_OVERPROVISION_MINIMUM     0x8       // 8B
+#define DYNBUFFER_OVERPROVISION_NOSHRINK    0x100     // 256B
+#define DYNBUFFER_OVERPROVISION_FIXBLOCK	0x1000000 // 16MB
 
 template<typename T>
 class _TTypedDynBuffer : public TAllocResource < T* > {
 	typedef _TTypedDynBuffer _this;
 
 private:
-	size_t _PVSize = 0;
+	size_t _PVSize;
 
 protected:
 	IAllocator &_Allocator;
 	size_t _Size;
 
-	T* Alloc(T* &xBuf) {
-		if (_Size <= DYNBUFFER_OVERPROVISION_THRESHOLD) {
-			_PVSize = _Size;
-			return _Size ? (T*)(xBuf ? _Allocator.Realloc(xBuf, _Size) : _Allocator.Alloc(_Size)) : Dealloc(xBuf);
-		} else {
-			if (_Size <= _PVSize) return xBuf;
-			_PVSize = max(_PVSize, DYNBUFFER_OVERPROVISION_THRESHOLD);
-			while ((_PVSize <<= 1) < _Size);
-			return _Allocator.Realloc(xBuf, _PVSize);
-		}
+	size_t ProvisionSize(size_t xSize) {
+		if (xSize >= DYNBUFFER_OVERPROVISION_FIXBLOCK)
+			return (xSize + DYNBUFFER_OVERPROVISION_FIXBLOCK - 1) & ~(DYNBUFFER_OVERPROVISION_FIXBLOCK - 1);
+
+		size_t Ret = (xSize >= DYNBUFFER_OVERPROVISION_NOSHRINK) ?
+		DYNBUFFER_OVERPROVISION_NOSHRINK : DYNBUFFER_OVERPROVISION_MINIMUM;
+		while (Ret < xSize) Ret <<= 1;
+		return Ret;
 	}
 
-	T* Dealloc(T* &xBuf)
-	{ return _Allocator.Dealloc(xBuf), xBuf = nullptr; }
+	T* Realloc(T* xBuf, size_t xSize) {
+		if ((xSize < _PVSize) && (_PVSize > DYNBUFFER_OVERPROVISION_NOSHRINK) || xSize > _PVSize) {
+			size_t PVSize = ProvisionSize(xSize);
+			if (PVSize != _PVSize) {
+				T* NewBuf = (T*)(xBuf ? _Allocator.Realloc(xBuf, PVSize) : _Allocator.Alloc(PVSize));
+				if (NewBuf != nullptr) {
+					_PVSize = PVSize;
+					xBuf = NewBuf;
+				}
+			}
+		}
+		_Size = (xSize > _Size) ? min(xSize, _PVSize) : xSize;
+		return xBuf;
+	}
+
+	void Dealloc(T* &xBuf) {
+		_Allocator.Dealloc(xBuf);
+		_PVSize = 0;
+	}
 
 	_TTypedDynBuffer(IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedDynBuffer(sizeof(T), xAllocator) { _ResRef = nullptr; }
+		_TTypedDynBuffer(sizeof(T), xAllocator) {}
 	_TTypedDynBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource([&] { return Alloc(_ResRef); }, [&](T* &X) { Dealloc(X); }),
-		_Allocator(xAllocator), _Size(xSize) {
-		_ResRef = nullptr;
-	}
+		TAllocResource([&] { return Realloc(nullptr, _Size); }, [&](T* &X) { Dealloc(X); }),
+		_PVSize(0), _Allocator(xAllocator), _Size(xSize) {}
 	_TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource(xBuffer, [&](T* &X) { Dealloc(X); }, [&] { return Alloc(_ResRef); }),
-		_Allocator(xAllocator), _Size(xSize) {}
+		TAllocResource(xBuffer, [&](T* &X) { Dealloc(X); }, [&] { return Realloc(nullptr, _Size); }),
+		_PVSize(xSize), _Allocator(xAllocator), _Size(xSize) {}
 
 	// Move construction
 	_TTypedDynBuffer(_this &&xResource) :
-		TAllocResource([&] { return Alloc(_ResRef); }, [&](T* &X) { Dealloc(X); }),
+		TAllocResource(xResource._ResRef, [&](T* &X) { Dealloc(X); }, [&] { return Realloc(nullptr, _Size); }),
 		_PVSize(xResource._PVSize), _Allocator(xResource._Allocator), _Size(xResource._Size) {
-		this->_ResRef = xResource._ResRef;
-		this->_ResValid = xResource._ResValid;
+		_ResValid = xResource._ResValid;
 		xResource.Invalidate();
 	}
 
 	// Move assignment
 	_this& operator=(_this &&xResource) {
-		if (!isCompatible(xResource)) FAIL(_T("Incompatible allocator"));
+		if (xResource._ResValid) {
+			T* TransBuf = _Allocator.Transfer(xResource._ResRef, xResource._Allocator);
+			if (!TransBuf) FAIL(_T("Incompatible allocator"));
+			// Remember to discard existing buffer
+			if (_ResValid) _Allocator.Dealloc(_ResRef);
+			_ResRef = TransBuf;
+		}
 		_PVSize = xResource._PVSize;
 		_Size = xResource._Size;
-		this->_ResRef = xResource._ResRef;
-		this->_ResValid = xResource._ResValid;
+		_ResValid = xResource._ResValid;
+		// Do not move alloc/dealloc function since they are bound to instance
 		xResource.Invalidate();
 		return *this;
 	}
@@ -309,25 +340,21 @@ public:
 	T* operator&(void) const
 	{ return *_ObjPointer(); }
 
-	bool isCompatible(_this const &xResource) const
-	{ return xResource._Allocator == _Allocator; }
-
 	size_t GetSize(void) const
 	{ return _Size; }
 
-	size_t SetSize(size_t const &NewSize) {
-		size_t OldSize = _Size;
-		if (NewSize < DYNBUFFER_OVERPROVISION_THRESHOLD) {
-			_Size = (_Size != NewSize) ? Invalidate(), NewSize : _Size;
-		} else {
-			if (NewSize > _PVSize) Invalidate();
-			_Size = NewSize;
-		}
-		return OldSize;
+	bool SetSize(size_t const &NewSize) {
+		_ResRef = Realloc(_ResValid ? _ResRef : nullptr, NewSize);
+		_ResValid = _ResRef != nullptr;
+		return NewSize == _Size;
 	}
 
-	size_t Grow(size_t const &AddSize)
+	bool Grow(size_t const &AddSize)
 	{ return SetSize(_Size + AddSize); }
+
+	virtual bool Invalidate(void)
+	{ return TAllocResource::Invalidate() ? _PVSize = 0, true : false; }
+
 };
 
 template<typename T>
@@ -336,9 +363,10 @@ class TTypedDynBuffer : public _TTypedDynBuffer < T > {
 
 public:
 	TTypedDynBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(sizeof(T), xAllocator) {}
-	TTypedDynBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAllocator) {}
-	TTypedDynBuffer(T* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
+	TTypedDynBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(xSize, xAllocator) {}
+	TTypedDynBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(&xBuffer, xSize, xAllocator) {}
 
 	// Move construction
 	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
@@ -357,7 +385,8 @@ class TTypedDynBuffer<void> : public _TTypedDynBuffer < void >{
 	typedef TTypedDynBuffer _this;
 
 public:
-	TTypedDynBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) : _TTypedDynBuffer(xSize, xAllocator) {}
+	TTypedDynBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) :
+		_TTypedDynBuffer(xSize, xAllocator) {}
 	TTypedDynBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
 
