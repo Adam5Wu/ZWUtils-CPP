@@ -321,13 +321,15 @@ protected:
 
 	// Move assignment
 	_this& operator=(_this &&xResource) {
+		T* TransBuf = xResource._ResRef;
 		if (xResource._ResValid) {
-			T* TransBuf = _Allocator.Transfer(xResource._ResRef, xResource._Allocator);
+			TransBuf = _Allocator.Transfer(TransBuf, xResource._Allocator);
 			if (!TransBuf) FAIL(_T("Incompatible allocator"));
 			// Remember to discard existing buffer
-			if (_ResValid) _Allocator.Dealloc(_ResRef);
-			_ResRef = TransBuf;
 		}
+		if (_ResValid) _Allocator.Dealloc(_ResRef);
+		_ResRef = TransBuf;
+
 		_PVSize = xResource._PVSize;
 		_Size = xResource._Size;
 		_ResValid = xResource._ResValid;
