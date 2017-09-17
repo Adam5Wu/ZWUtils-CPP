@@ -289,7 +289,7 @@ protected:
 	}
 
 	T* Realloc(T* xBuf, size_t xSize) {
-		if ((xSize < _PVSize) && (_PVSize > DYNBUFFER_OVERPROVISION_NOSHRINK) || xSize > _PVSize) {
+		if ((xSize < _Size && _PVSize > DYNBUFFER_OVERPROVISION_NOSHRINK) || xSize > _PVSize) {
 			size_t PVSize = ProvisionSize(xSize);
 			if (PVSize != _PVSize) {
 				T* NewBuf = (T*)(xBuf ? _Allocator.Realloc(xBuf, PVSize) : _Allocator.Alloc(PVSize));
