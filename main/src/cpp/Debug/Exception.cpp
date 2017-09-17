@@ -54,7 +54,7 @@ void Exception::Show(void) const {
 }
 
 // --- STException
-TString STException::ExtractTopFrame(std::deque<TString const> &xStackTrace) {
+TString STException::ExtractTopFrame(std::deque<TString> &xStackTrace) {
 	TString Ret;
 	if (!xStackTrace.empty()) {
 		Ret = std::move(xStackTrace.front());
@@ -79,8 +79,8 @@ void STException::Show(void) const {
 
 #include "StackWalker.h"
 
-std::deque<TString const> STException::TraceStack(int PopFrame) {
-	std::deque<TString const> StrTrace;
+std::deque<TString> STException::TraceStack(int PopFrame) {
+	std::deque<TString> StrTrace;
 	CONTEXT CurContext;	RtlCaptureContext(&CurContext);
 	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), CurContext,
 		[&](TStackWalker::CallstackEntry const& Entry) {
@@ -164,23 +164,23 @@ TString SEHException::STR_ExceptCode(PEXCEPTION_RECORD ExcRecord) {
 	}
 }
 
-SEHException::SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace) :
+SEHException::SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
 STException(xSource, std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
-SEHException::SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace) :
+SEHException::SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
 STException(std::move(xSource), std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
-SEHException::SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace) :
+SEHException::SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
 STException(std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
 void SEHException::Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr) {
-	std::deque<TString const> StrTrace;
+	std::deque<TString> StrTrace;
 	CONTEXT ExcContext = *ExcPtr->ContextRecord;
 	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), ExcContext,
 		[&](TStackWalker::CallstackEntry const &Entry) {

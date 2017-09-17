@@ -224,7 +224,10 @@ public:
 	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
 
 	// Move assignment
-	using TAllocResource::operator=;
+	_this& operator=(_this &&xResource) {
+		TAllocResource::operator=(std::move(xResource));
+		return *this;
+	}
 
 	T& operator*(void) const
 	{ return **_ObjPointer(); }
@@ -248,7 +251,10 @@ public:
 	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
 
 	// Move assignment
-	using TAllocResource::operator=;
+	_this& operator=(_this &&xResource) {
+		TAllocResource::operator=(std::move(xResource));
+		return *this;
+	}
 };
 
 typedef TTypedBuffer<void> TFixedBuffer;

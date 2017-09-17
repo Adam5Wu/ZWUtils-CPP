@@ -175,10 +175,10 @@ template<class T>
 class TLockableSyncPerms : public TLockable {
 	typedef TLockableSyncPerms _this;
 protected:
-	//! This premise is used to implement required operations
-	ManagedRef<T> _SyncPerms;
-	TLockableSyncPerms(T *xSync) :
-		_SyncPerms(xSync != nullptr ? xSync : DefaultObjAllocator<T>().Create(), CONSTRUCTION::HANDOFF) {}
+	T _SyncPerms;
+public:
+	TLockableSyncPerms(void) {}
+	TLockableSyncPerms(T && xSync) : T(std::move(xSync)) {}
 };
 
 // !Lockable using critical section
@@ -187,14 +187,11 @@ class TLockableCS : public TLockableSyncPerms < TCriticalSection > {
 
 protected:
 	bool __Lock(TWaitable *AbortEvent) override
-	{ return (AbortEvent && AbortEvent->WaitFor(0) == WaitResult::Signaled) ? false : (_SyncPerms->Enter(), true); }
+	{ return (AbortEvent && AbortEvent->WaitFor(0) == WaitResult::Signaled) ? false : (_SyncPerms.Enter(), true); }
 	bool __TryLock(void) override
-	{ return _SyncPerms->TryEnter(); }
+	{ return _SyncPerms.TryEnter(); }
 	void __Unlock(void) override
-	{ _SyncPerms->Leave(); }
-
-public:
-	TLockableCS(TCriticalSection *xSync = nullptr) : TLockableSyncPerms(xSync) {}
+	{ _SyncPerms.Leave(); }
 };
 
 template<class W>
@@ -206,7 +203,7 @@ class TLockableHandleWaitable : public TLockableSyncPerms < W > {
 protected:
 	bool __Lock(TWaitable *AbortEvent) override {
 		if (AbortEvent) {
-			WaitResult Ret = WaitMultiple({{*_SyncPerms, *dynamic_cast<THandleWaitable*>(AbortEvent)}}, false);
+			WaitResult Ret = WaitMultiple({{_SyncPerms, *dynamic_cast<THandleWaitable*>(AbortEvent)}}, false);
 			switch (Ret) {
 				case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
 				case WaitResult::Signaled_0: return true;
@@ -214,7 +211,7 @@ protected:
 				default: SYSFAIL(_T("Unable to lock synchronization premises"));
 			}
 		} else {
-			WaitResult Ret = _SyncPerms->WaitFor();
+			WaitResult Ret = _SyncPerms.WaitFor();
 			switch (Ret) {
 				case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
 				case WaitResult::Signaled: return true;
@@ -223,7 +220,7 @@ protected:
 		}
 	}
 	bool __TryLock(void) override {
-		WaitResult Ret = _SyncPerms->WaitFor(0);
+		WaitResult Ret = _SyncPerms.WaitFor(0);
 		switch (Ret) {
 			case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
 			case WaitResult::Signaled: return true;
@@ -231,7 +228,6 @@ protected:
 			default: SYSFAIL(_T("Unable to lock synchronization premises"));
 		}
 	}
-	TLockableHandleWaitable(W *xSync = nullptr) : TLockableSyncPerms(xSync) {}
 };
 
 // !Lockable using semaphore
@@ -240,10 +236,7 @@ class TLockableSemaphore : public TLockableHandleWaitable < TSemaphore > {
 
 protected:
 	void __Unlock(void) override
-	{ _SyncPerms->Signal(); }
-
-public:
-	TLockableSemaphore(TSemaphore *xSync = nullptr) : TLockableHandleWaitable(xSync) {}
+	{ _SyncPerms.Signal(); }
 };
 
 // !Lockable using mutex
@@ -252,10 +245,7 @@ class TLockableMutex : public TLockableHandleWaitable < TMutex > {
 
 protected:
 	void __Unlock(void) override
-	{ _SyncPerms->Release(); }
-
-public:
-	TLockableMutex(TMutex *xSync = nullptr) : TLockableHandleWaitable(xSync) {}
+	{ _SyncPerms.Release(); }
 };
 
 /**
@@ -292,7 +282,8 @@ public:
 	TSyncObj(DefaultObjAllocator<L>(), xParam, xParams...) {}
 
 	// Special use copy constructor: Create a copy of the object w/ shared lock with original
-	// Caution: Normally you don't want to use this constructor!
+	// Caution 1: Normally you don't want to use this constructor!
+	// Caution 2: In order to enable this special use, your lock needs to implement ManagedObj
 	TSyncObj(_this const &xSyncObj) : TObject(xSyncObj), _Lockable(xSyncObj._Lockable) {}
 	// Move constructor
 	TSyncObj(_this &&xSyncObj) : TObject(std::move(xSyncObj)), _Lockable(std::move(xSyncObj._Lockable)) {}
@@ -355,12 +346,12 @@ public:
 	 * Lock and return an reference of managed T instance
 	 **/
 	virtual Accessor Pickup(TWaitable *AbortEvent = nullptr)
-	{ return{this, Lock(AbortEvent)}; }
+	{ return Accessor(this, Lock(AbortEvent)); }
 	/**
 	 * Try to lock and return a pointer to managed T instance, NULL if could not obtain lock
 	 **/
 	virtual Accessor TryPickup(void)
-	{ return{this, TryLock()}; }
+	{ return Accessor(this, TryLock()); }
 
 };
 

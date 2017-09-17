@@ -50,7 +50,7 @@ bool Cardinal32::equalto(Cardinal32 const &T) const {
 }
 
 Cardinal32 const& Cardinal32::ZERO(void) {
-	static Cardinal32 __IoFU = {0};
+	static Cardinal32 __IoFU(0UL);
 	return __IoFU;
 }
 
@@ -69,7 +69,7 @@ bool Cardinal64::equalto(Cardinal64 const &T) const {
 }
 
 Cardinal64 const& Cardinal64::ZERO(void) {
-	static Cardinal64 __IoFU = {0};
+	static Cardinal64 __IoFU(0ULL);
 	return __IoFU;
 }
 
@@ -94,7 +94,7 @@ bool Cardinal128::equalto(Cardinal128 const &T) const {
 }
 
 Cardinal128 const& Cardinal128::ZERO(void) {
-	static Cardinal128 __IoFU = {0, 0};
+	static Cardinal128 __IoFU(0ULL, 0ULL);
 	return __IoFU;
 }
 
@@ -124,7 +124,12 @@ bool Cardinal256::equalto(Cardinal256 const &T) const {
 }
 
 Cardinal256 const& Cardinal256::ZERO(void) {
+#if _MSC_VER >= 1900
+	static Cardinal256 __IoFU(0ULL, 0ULL, 0ULL, 0ULL);
+#else
 	static Cardinal256 __IoFU = {0, 0, 0, 0};
+#endif
+
 	return __IoFU;
 }
 
@@ -155,7 +160,7 @@ UUID UUIDFromString(TString const &Str) {
 		FAIL(_T("Converting from string to GUID failed strating from %d"), result + 1);
 	// Work around VC++ missing support for "hhX"
 	for (int i = 0; i < 8; i++)
-		Value.U8[8+i] = tail8[i];
+		Value.U8[8 + i] = tail8[i];
 	return (UUID &)Value;
 }
 

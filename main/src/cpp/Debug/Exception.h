@@ -130,26 +130,26 @@ class STException : public Exception {
 	typedef STException _this;
 
 protected:
-	static TString ExtractTopFrame(std::deque<TString const> &xStackTrace);
+	static TString ExtractTopFrame(std::deque<TString> &xStackTrace);
 
 	template<typename... Params>
-	STException(TString &&xSource, std::deque<TString const> &&xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
+	STException(TString &&xSource, std::deque<TString> &&xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(std::move(xSource), ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
 
 	template<typename... Params>
-	STException(TString const &xSource, std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
+	STException(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(xSource, ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
 
 	template<typename... Params>
-	STException(std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
+	STException(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(ExtractTopFrame(xStackTrace), ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
 
 public:
-	std::deque<TString const> const rStackTrace;
+	std::deque<TString> const rStackTrace;
 
 	void Show(void) const override;
 
-	static std::deque<TString const> TraceStack(int PopFrame = 1);
+	static std::deque<TString> TraceStack(int PopFrame = 1);
 
 	/**
 	 * Create an exception object with given source, reason, and an optional helper integer
@@ -157,13 +157,13 @@ public:
 	 * @note Use the @link FAIL() \p FAIL* @endlink macros to retrive source info automatically
 	 **/
 	template<typename... Params>
-	static _this* Create(TString const &xSource, std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
+	static _this* Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
 
 	template<typename... Params>
-	static _this* Create(TString &&xSource, std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
+	static _this* Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
 
 	template<typename... Params>
-	static _this* Create(std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
+	static _this* Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
 };
 
 #define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt VAWRAP(__VA_ARGS__));
@@ -174,9 +174,9 @@ class SEHException : public STException {
 protected:
 	static TString STR_ExceptCode(PEXCEPTION_RECORD ExcRecord);
 
-	SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace);
-	SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace);
-	SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString const> &&xStackTrace);
+	SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
+	SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
+	SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
 
 public:
 	static void Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr);
@@ -199,17 +199,17 @@ static Exception* Exception::Create(TString &&xSource, PCTCHAR ReasonFmt, Params
 }
 
 template<typename... Params>
-static STException* STException::Create(TString const &xSource, std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
+static STException* STException::Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
 	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, xSource, std::move(xStackTrace), ReasonFmt, xParams...));
 }
 
 template<typename... Params>
-static STException* STException::Create(TString &&xSource, std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
+static STException* STException::Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
 	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, xParams...));
 }
 
 template<typename... Params>
-static STException* STException::Create(std::deque<TString const> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
+static STException* STException::Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
 	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xStackTrace), ReasonFmt, xParams...));
 }
 

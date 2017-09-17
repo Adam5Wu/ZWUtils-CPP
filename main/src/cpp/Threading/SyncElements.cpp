@@ -215,4 +215,38 @@ void TEvent::Pulse(void) {
 		SYSFAIL(_T("Failed to pulse event"));
 }
 
+#if (_WIN32_WINNT >= 0x0600)
+
+// TConditionVariable
+
+WaitResult TConditionVariable::WaitFor(TCriticalSection &CS, WAITTIME Timeout) {
+	if (!SleepConditionVariableCS(&rConditionVariable, &CS.rCriticalSection, Timeout)) {
+		DWORD ErrCode = GetLastError();
+		if (ErrCode == ERROR_TIMEOUT) return WaitResult::TimedOut;
+
+		SetLastError(ErrCode);
+		return WaitResult::Error;
+	}
+	return WaitResult::Signaled;
+}
+
+WaitResult TConditionVariable::WaitFor(TSRWLock &SRW, bool isWriting, WAITTIME Timeout) {
+	if (!SleepConditionVariableSRW(&rConditionVariable, &SRW.rSRWlock, Timeout,
+		(isWriting ? 0 : CONDITION_VARIABLE_LOCKMODE_SHARED))) {
+		DWORD ErrCode = GetLastError();
+		if (ErrCode == ERROR_TIMEOUT) return WaitResult::TimedOut;
+
+		SetLastError(ErrCode);
+		return WaitResult::Error;
+	}
+	return WaitResult::Signaled;
+}
+
+void TConditionVariable::Signal(bool All) {
+	if (!All) WakeConditionVariable(&rConditionVariable);
+	else WakeAllConditionVariable(&rConditionVariable);
+}
+
+#endif
+
 #endif

@@ -59,7 +59,7 @@ protected:
 
 public:
 	TimeSpan(long long const &xValue, TimeUnit const &xUnit) :
-		Unit(xUnit), Value({xValue}) {}
+		Unit(xUnit), Value(xValue) {}
 	virtual ~TimeSpan(void) {}
 
 	// Copy assignment operation is supported
@@ -106,7 +106,7 @@ public:
 			  TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC,
 			  TimeSystem const &xSystem = TimeSystem::UNIX) :
 #endif
-			  Value({Normalize(xValue, xUnit, xSystem)}) {}
+			  Value(Normalize(xValue, xUnit, xSystem)) {}
 	virtual ~TimeStamp(void) {}
 
 	// Copy assignment operation is supported

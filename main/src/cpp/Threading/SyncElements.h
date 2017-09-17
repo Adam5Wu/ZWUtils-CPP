@@ -242,14 +242,21 @@ public:
 
 #ifdef WINDOWS
 
+#if (_WIN32_WINNT >= 0x0600)
+class TConditionVariable;
+#endif
+
 /**
  * @ingroup Threading
  * @brief Critical Section
  *
- * Lightweight synchronization for single thread
- * @note Not a waitable object (no handle)
+ * Light-weight mutex-like lock synchronization object
+ * @note No handle, not a waitable object (no proper timeout support)
  **/
 class TCriticalSection {
+#if (_WIN32_WINNT >= 0x0600)
+	friend class TConditionVariable;
+#endif
 private:
 	RTL_CRITICAL_SECTION rCriticalSection;
 
@@ -260,7 +267,7 @@ public:
 	}
 
 	~TCriticalSection(void) {
-		DEBUGV_DO_OR({if (!TryEnter()) LOG(_T("WARNING: Freeing an acquired critical section!"));}, {Enter();});
+		DEBUGV_DO_OR({if (!TryEnter()) LOG(_T("WARNING: Freeing an acquired critical section!")); }, {Enter(); });
 		DeleteCriticalSection(&rCriticalSection);
 	}
 
@@ -282,6 +289,106 @@ public:
 	void Leave(void)
 	{ LeaveCriticalSection(&rCriticalSection); }
 };
+
+#if (_WIN32_WINNT >= 0x0600)
+
+/**
+* @ingroup Threading
+* @brief Slim Reader/Writer Locks
+*
+* Light-weight reader/writer lock synchronization object
+* @note No handle, not a waitable object (no proper timeout support)
+**/
+class TSRWLock {
+	friend class TConditionVariable;
+private:
+	RTL_SRWLOCK rSRWlock;
+
+public:
+	TSRWLock(void) {
+		InitializeSRWLock(&rSRWlock);
+	}
+
+	~TSRWLock(void) {
+		DEBUGV_DO_OR({if (!TryWrite()) LOG(_T("WARNING: Freeing an acquired slim R/W lock!"));}, {BeginWrite();});
+	}
+
+	/**
+	 * Acquire read lock
+	 **/
+	void BeginRead(void)
+	{ AcquireSRWLockShared(&rSRWlock); }
+
+	/**
+	 * Try acquiring read lock
+	 **/
+	bool TryRead(void)
+	{ return TryAcquireSRWLockShared(&rSRWlock) != 0; }
+
+	/**
+	 * Release read lock
+	 **/
+	void EndRead(void)
+	{ ReleaseSRWLockShared(&rSRWlock); }
+
+	/**
+	 * Acquire write lock
+	 **/
+	void BeginWrite(void)
+	{ AcquireSRWLockExclusive(&rSRWlock); }
+
+	/**
+	 * Try acquiring write lock
+	 **/
+	bool TryWrite(void)
+	{ return TryAcquireSRWLockExclusive(&rSRWlock) != 0; }
+
+	/**
+	 * Release write lock
+	 **/
+	void EndWrite(void)
+	{ ReleaseSRWLockExclusive(&rSRWlock); }
+
+};
+
+/**
+* @ingroup Threading
+* @brief Condition Variable
+*
+* Light-weight synchronization control for light-weight synchronization objects
+* @note No handle, have timeout support but not a waitable (different API interface)
+**/
+class TConditionVariable {
+private:
+	RTL_CONDITION_VARIABLE rConditionVariable;
+
+public:
+	TConditionVariable(void) {
+		InitializeConditionVariable(&rConditionVariable);
+	}
+
+	~TConditionVariable(void) {
+		// Do nothing
+	}
+
+	/**
+	 * Wait on a critical section
+	 **/
+	WaitResult WaitFor(TCriticalSection &CS, WAITTIME Timeout = INFINITE);
+
+	/**
+	 * Wait on a slim read/write lock
+	 **/
+	WaitResult WaitFor(TSRWLock &SRW, bool isWriting, WAITTIME Timeout = INFINITE);
+
+	/**
+	 * Wake up one/all waiters (if any)
+	 **/
+	void Signal(bool All = false);
+
+};
+
+#endif
 
 #endif
 

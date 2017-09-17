@@ -99,6 +99,10 @@ union Cardinal32 {
 	struct { short S16A, S16B; };
 	struct { char S8[4]; };
 
+	Cardinal32(void) {}
+	Cardinal32(unsigned long const & _Value) : U32(_Value) {}
+	Cardinal32(long const & _Value) : S32(_Value) {}
+
 	size_t hashcode(void) const;
 	TString toString(void) const;
 	bool equalto(Cardinal32 const &T) const;
@@ -120,6 +124,10 @@ union Cardinal64 {
 	struct { long S32A, S32B; };
 	struct { short S16[4]; };
 	struct { char S8[8]; };
+
+	Cardinal64(void) {}
+	Cardinal64(unsigned long long const & _Value) : U64(_Value) {}
+	Cardinal64(long long const & _Value) : S64(_Value) {}
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
@@ -143,6 +151,10 @@ union Cardinal128 {
 	struct { short S16[8]; };
 	struct { char S8[16]; };
 
+	Cardinal128(void) {}
+	Cardinal128(unsigned long long const & _VA, unsigned long long const & _VB) : U64A(_VA), U64B(_VB) {}
+	Cardinal128(long long const & _VA, long long const & _VB) : S64A(_VA), S64B(_VB) {}
+
 	size_t hashcode(void) const;
 	TString toString(void) const;
 	bool equalto(Cardinal128 const &T) const;
@@ -164,6 +176,14 @@ union Cardinal256 {
 	struct { long S32[8]; };
 	struct { short S16[16]; };
 	struct { char S8[32]; };
+
+#if _MSC_VER >= 1900
+	Cardinal256(void) {}
+	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
+				unsigned long long const _V2, unsigned long long const _V3) : U64{_V0, _V1, _V2, _V3} {}
+	Cardinal256(long long const _V0, long long const _V1,
+				long long const _V2, long long const _V3) : S64{_V0, _V1, _V2, _V3} {}
+#endif
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
