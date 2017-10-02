@@ -162,7 +162,7 @@ WString CStringtoWString(UINT CodePage, CString const &Str) {
 	//
 	// Do the conversion from UTF-8 to UTF-16
 	//
-	int result = ::MultiByteToWideChar(
+	int result = MultiByteToWideChar(
 		CodePage,				// convert from UTF-8
 		MB_ERR_INVALID_CHARS,	// error on invalid chars
 		Str.data(),				// source UTF-8 string
