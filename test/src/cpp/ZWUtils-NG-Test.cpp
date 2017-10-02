@@ -61,8 +61,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	try {
 		if (argc != 2)
 			FAIL(_T("Require 1 parameter: <TestType> = 'ALL' | ")
-			_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'DynBuffer' / ")
-			_T("'ManagedObj' / 'SyncObj' / 'Size' / 'Timing' / 'WorkerThread' / 'SyncQueue'"));
+				_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'DynBuffer' / ")
+				_T("'ManagedObj' / 'SyncObj' / 'Size' / 'Timing' / 'WorkerThread' / 'SyncQueue'"));
 
 		bool TestAll = _tcsicmp(argv[1], _T("ALL")) == 0;
 		if (TestAll || (_tcsicmp(argv[1], _T("Exception")) == 0)) {
@@ -175,7 +175,7 @@ void TestStringConv(void) {
 	_LOG(_T("*** Test String Conversions"));
 
 #ifdef UNICODE
-	WString Test1{L"This is a test..."};
+	WString Test1{ L"This is a test..." };
 	_LOG(_T("Converting: '%s'"), Test1.c_str());
 	CString Test1C = WStringtoUTF8(Test1);
 	WString Test1R = UTF8toWString(Test1C);
@@ -183,7 +183,7 @@ void TestStringConv(void) {
 		FAIL(_T("String failed to round-trip!"));
 
 	_wsetlocale(LC_ALL, L"chs");
-	WString Test2{L"这是一个测试..."};
+	WString Test2{ L"这是一个测试..." };
 	_LOG(_T("Converting: '%s'"), Test2.c_str());
 	CString Test2C = WStringtoUTF8(Test2);
 	TString Test2R = UTF8toWString(Test2C);
@@ -199,7 +199,7 @@ void TestStringConv(void) {
 
 void TestSyncPrems() {
 	_LOG(_T("*** Test Synchronization Premises"));
-	TInterlockedArchInt A{0};
+	TInterlockedArchInt A{ 0 };
 	__ARC_INT B = 55;
 
 	_LOG(_T("--- Assignment"));
@@ -265,7 +265,8 @@ void TestDynBuffer() {
 		_LOG(_T("Filled with 'A' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
-		_LOG(_T("Extend to 2KB: %s, %s"), TVoidDynBuffer.SetSize(2048) ? _T("Success") : _T("Fail"));
+		_LOG(_T("Extend to 2KB: %s, %s"), TVoidDynBuffer.SetSize(2048) ? _T("Success") : _T("Fail"),
+			TStringCast((char*)&TVoidDynBuffer).c_str());
 		memset(((char*)&TVoidDynBuffer) + 9, 'B', 9);
 		((char*)&TVoidDynBuffer)[18] = '\0';
 		_LOG(_T("Append with 9x'B' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
@@ -363,7 +364,7 @@ void TestManagedObj() {
 	public:
 		TestPObj(TString const &xName) : Name(xName) { _LOG(_T("PObj '%s' Created"), Name.c_str()); }
 		virtual ~TestPObj(void) { _LOG(_T("PObj '%s' Destroyed"), Name.c_str()); }
-		virtual TString toString(void) const { return{_T("TestPObj")}; }
+		virtual TString toString(void) const { return{ _T("TestPObj") }; }
 	};
 	auto B = ManagedObjAdapter<TestPObj>::Create(_T("B"));
 	_LOG(_T("B: %s"), B->toString().c_str());
@@ -393,7 +394,7 @@ void TestManagedObj() {
 	public:
 		TestCObj(TString const &xName) : Name(xName) { _LOG(_T("CObj '%s' Created"), Name.c_str()); }
 		virtual ~TestCObj(void) { _LOG(_T("CObj '%s' Destroyed"), Name.c_str()); }
-		virtual TString toString(void) const { return{_T("TestCObj")}; }
+		virtual TString toString(void) const { return{ _T("TestCObj") }; }
 	};
 	auto C1 = DefaultObjAllocator<TestCObj>().Create(RLAMBDANEW(TestCObj, _T("C")));
 	_LOG(_T("C1: %s"), C1->toString().c_str());
@@ -470,8 +471,9 @@ struct Integer {
 		return value ^= xvalue, target.value ^= xvalue, Ret;
 	}
 };
-bool operator==(Integer const &A, Integer const &B)
-{ return A.value == B.value; }
+bool operator==(Integer const &A, Integer const &B) {
+	return A.value == B.value;
+}
 
 typedef TSyncObj<Integer> TSyncInteger;
 
@@ -513,7 +515,7 @@ void TestSyncObj(void) {
 	_LOG(_T("A = 50"));
 	*A.Pickup() = 50;
 	_LOG(_T("D = 55"));
-	Integer D{55};
+	Integer D{ 55 };
 	_LOG(_T("A <=50=> D : %d"), A.Pickup()->CompareAndSwap(50, D));
 	_LOG(_T("A : %d"), A.Pickup()->value);
 	_LOG(_T("D : %d"), D.value);
@@ -683,25 +685,25 @@ void TestWorkerThread() {
 	{
 		{
 			auto ConstructEvent = TWorkerThread::GStateNotify(_T("TestConstructed"), TWorkerThread::State::Constructed,
-															  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto InitializingEvent = TWorkerThread::GStateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
-																 [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto RunningEvent = TWorkerThread::GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-															[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto TerminatedEvent = TWorkerThread::GStateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-															   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			ManagedRef<TWorkerThread> G(TWorkerThread::Create(_T("TestG"), *DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
 			G->SignalTerminate();
 			G->WaitFor();
@@ -721,17 +723,17 @@ void TestWorkerThread() {
 		{
 			ManagedRef<TWorkerThread> H(TWorkerThread::Create(_T("TestH"), *DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
 			auto InitializingEvent = H->StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
-													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto RunningEvent = H->GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-												[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			auto TerminatingEvent = H->GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			H->Start();
 			H->WaitFor(500);
 			H->SignalTerminate();
@@ -743,14 +745,14 @@ void TestWorkerThread() {
 		}
 		{
 			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			ManagedRef<TWorkerThread> I(TWorkerThread::Create(_T("TestI"), *DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
 			auto TerminatedEvent = I->StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-												  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-				_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-			});
+				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+				});
 			I->Start();
 			_LOG(_T("Going out-of-scope, expect signal terminate and wait for 1 second (no local event notification)..."));
 		}
@@ -793,15 +795,15 @@ void TestWorkerThread() {
 		ManagedRef<TWorkerThread> TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), *DefaultObjAllocator<TestCount>().Create());
 
 		_LOG(_T("--- Start Counting..."));
-		TestCount0->Start({&X, NullAlloc}); TestCount1->Start({&X, NullAlloc}); TestCount2->Start({&X, NullAlloc}); TestCount3->Start({&X, NullAlloc});
-		TestCount4->Start({&X, NullAlloc}); TestCount5->Start({&X, NullAlloc}); TestCount6->Start({&X, NullAlloc}); TestCount7->Start({&X, NullAlloc});
-		TestCount8->Start({&X, NullAlloc}); TestCount9->Start({&X, NullAlloc});	TestCountA->Start({&X, NullAlloc});	TestCountB->Start({&X, NullAlloc});
-		TestCountC->Start({&X, NullAlloc}); TestCountD->Start({&X, NullAlloc}); TestCountE->Start({&X, NullAlloc}); TestCountF->Start({&X, NullAlloc});
+		TestCount0->Start({ &X, NullAlloc }); TestCount1->Start({ &X, NullAlloc }); TestCount2->Start({ &X, NullAlloc }); TestCount3->Start({ &X, NullAlloc });
+		TestCount4->Start({ &X, NullAlloc }); TestCount5->Start({ &X, NullAlloc }); TestCount6->Start({ &X, NullAlloc }); TestCount7->Start({ &X, NullAlloc });
+		TestCount8->Start({ &X, NullAlloc }); TestCount9->Start({ &X, NullAlloc });	TestCountA->Start({ &X, NullAlloc });	TestCountB->Start({ &X, NullAlloc });
+		TestCountC->Start({ &X, NullAlloc }); TestCountD->Start({ &X, NullAlloc }); TestCountE->Start({ &X, NullAlloc }); TestCountF->Start({ &X, NullAlloc });
 
-		WaitMultiple({*TestCount0, *TestCount1, *TestCount2, *TestCount3,
+		WaitMultiple({ *TestCount0, *TestCount1, *TestCount2, *TestCount3,
 					 *TestCount4, *TestCount5, *TestCount6, *TestCount7,
 					 *TestCount8, *TestCount9, *TestCountA, *TestCountB,
-					 *TestCountC, *TestCountD, *TestCountE, *TestCountF}, true);
+					 *TestCountC, *TestCountD, *TestCountE, *TestCountF }, true);
 
 		_LOG(_T("--- Finished All Counting..."));
 		_LOG(_T("X = %d"), X.Pickup()->value);
@@ -908,8 +910,8 @@ void TestSyncQueue(void) {
 		ManagedRef<TWorkerThread> PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), *DefaultObjAllocator<TestQueuePut>().Create());
 		ManagedRef<TWorkerThread> GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), *DefaultObjAllocator<TestQueueGet>().Create());
 		_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-		PutThread->Start({&Queue, NullAlloc});
-		GetThread->Start({&Queue, NullAlloc});
+		PutThread->Start({ &Queue, NullAlloc });
+		GetThread->Start({ &Queue, NullAlloc });
 		GetThread->WaitFor();
 		_LOG(_T("--- Finished All Queue Operation..."));
 		Queue.AdjustSize();
@@ -917,8 +919,8 @@ void TestSyncQueue(void) {
 		ManagedRef<TWorkerThread> PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), *DefaultObjAllocator<TestQueuePut>().Create());
 		ManagedRef<TWorkerThread> GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), *DefaultObjAllocator<TestQueueGet>().Create());
 		_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-		PutThread2->Start({&Queue, NullAlloc});
-		GetThread2->Start({&Queue, NullAlloc});
+		PutThread2->Start({ &Queue, NullAlloc });
+		GetThread2->Start({ &Queue, NullAlloc });
 		{
 			_LOG(_T("Sleeping for 0.1 sec..."));
 			TDelayWaitable WaitASec(100);
@@ -996,8 +998,8 @@ void TestSyncQueue(void) {
 		ManagedRef<TWorkerThread> PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), *DefaultObjAllocator<TestQueuePut>().Create());
 		ManagedRef<TWorkerThread> GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), *DefaultObjAllocator<TestQueueGet>().Create());
 		_LOG(_T("--- Benchmarking Comparison Queue..."));
-		PutThread->Start({&Queue, NullAlloc});
-		GetThread->Start({&Queue, NullAlloc});
+		PutThread->Start({ &Queue, NullAlloc });
+		GetThread->Start({ &Queue, NullAlloc });
 		GetThread->WaitFor();
 		_LOG(_T("--- Finished All Queue Operation..."));
 
