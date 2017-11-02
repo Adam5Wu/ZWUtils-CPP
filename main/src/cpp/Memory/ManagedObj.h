@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,13 +39,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_ManagedObj_H
 #define ZWUtils_ManagedObj_H
 
+#define __MANAGEDOBJ_LITE
+
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 #include "Misc/Types.h"
 
 #include "ObjAllocator.h"
 
-class Cloneable : public TCastable < Cloneable > {
+class Cloneable : public TCastable<Cloneable> {
 	typedef Cloneable _this;
 
 protected:
@@ -56,7 +60,7 @@ public:
 	static T* Clone(T const *xObj, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>());
 };
 
-class ManagedObj : public TCastable < ManagedObj > {
+class ManagedObj : public TCastable<ManagedObj> {
 	typedef ManagedObj _this;
 
 private:
@@ -65,42 +69,51 @@ private:
 
 protected:
 	ManagedObj(long xRefCount = 0) : _RefCount(xRefCount) {}
-	~ManagedObj(void) override;
+
+#ifdef __MANAGEDOBJ_LITE
+	// Disable virtual destructor for performance reasons
+#else
+	virtual ~ManagedObj(void);
+#endif
 
 public:
-	void _AddRef(void)
-	{ ++_RefCount; }
-	bool _RemoveRef(void)
-	{ return --_RefCount == 0; }
-	long RefCount(void) const
-	{ return ~_RefCount; }
+	void _AddRef(void) {
+		++_RefCount;
+	}
+	bool _RemoveRef(void) {
+		return --_RefCount == 0;
+	}
+	long RefCount(void) const {
+		return ~_RefCount;
+	}
 
-	virtual TString toString(void) const
-	{ return TStringCast(_T("MObj@") << (void*)this << _T('(') << RefCount() << _T(')')); }
+	virtual TString toString(void) const {
+		return TStringCast(_T("MObj@") << (void*)this << _T('(') << RefCount() << _T(')'));
+	}
 };
 
 template<class TObject>
-// HINT: In order for this wrapper to work, TObject MUST be polymorphic (i.e. must have virtual functions).
-//       IMHO, this is not a problem since all non-trivial class should have a virtual destructor anyway.
 class ManagedObjAdapter final : public TObject, public ManagedObj {
 	ENFORCE_POLYMORPHIC(TObject);
 	typedef ManagedObjAdapter _this;
-	friend IObjAllocator < _this > ;
+	friend IObjAllocator<_this>;
 
 private:
 	MEMBERFUNC_PROBE(toString);
 
 	template<typename X = TObject>
-	auto _toString(bool Debug = false) const -> decltype(std::enable_if<Has_toString<X>::value, TString>::type())
-	{ return Debug ? TStringCast(X::toString() << _T("#MObj(") << RefCount() << _T(')')) : X::toString(); }
+	auto _toString(bool Debug = false) const -> decltype(std::enable_if<Has_toString<X>::value, TString>::type()) {
+		return Debug ? TStringCast(X::toString() << _T("#MObj(") << RefCount() << _T(')')) : X::toString();
+	}
 
 	template<typename X = TObject, typename = void>
-	auto _toString(void) const -> decltype(std::enable_if<!Has_toString<X>::value, TString>::type())
-	{ return TStringCast(_T('#') << ManagedObj::toString()); }
+	auto _toString(void) const -> decltype(std::enable_if<!Has_toString<X>::value, TString>::type()) {
+		return TStringCast(_T('#') << ManagedObj::toString());
+	}
 
 public:
 	template<typename... Params>
-	ManagedObjAdapter(Params&&... xParams) : TObject(xParams...) {}
+	ManagedObjAdapter(Params&&... xParams) : TObject(std::forward<Params>(xParams)...) {}
 
 	// Disable copy or move construction
 	ManagedObjAdapter(_this const &) = delete;
@@ -110,25 +123,29 @@ public:
 	_this& operator=(_this const &) = delete;
 	_this& operator=(_this &&) = delete;
 
-	TString toString(void) const override
-	{ return _toString(); }
+	TString toString(void) const override {
+		return _toString();
+	}
 
 	template<typename X = TObject>
-	TString toString(bool Debug) const
-	{ return _toString(Debug); }
+	TString toString(bool Debug) const {
+		return _toString(Debug);
+	}
 
 	typedef IObjAllocator<_this> TAlloc;
 
 	template<typename... Params>
-	static TObject* Create(TAlloc &xAlloc = DefaultObjAllocator<_this>(), Params&&... xParams)
-	{ return xAlloc.Create(RLAMBDANEW(_this, xParams...)); }
+	static TObject* Create(TAlloc &xAlloc = DefaultObjAllocator<_this>(), Params&&... xParams) {
+		return xAlloc.Create(RLAMBDANEW(_this, std::forward<Params>(xParams)...));
+	}
 
 	template<
 		typename X, typename... Params,
 		typename = std::enable_if<!std::is_assignable<X, TAlloc&>::value>::type
 	>
-	static TObject* Create(X &&xParam, Params&&... xParams)
-	{ return Create(DefaultObjAllocator<_this>(), xParam, xParams...); }
+		static TObject* Create(X &&xParam, Params&&... xParams) {
+		return Create(DefaultObjAllocator<_this>(), xParam, std::forward<Params>(xParams)...);
+	}
 
 };
 

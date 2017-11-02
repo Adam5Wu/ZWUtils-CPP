@@ -28,31 +28,28 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// [Utilities] Basic debug support
+// [Utilities] Logging support
 
-#include "Debug.h"
+#include "Resource.h"
 
-#ifndef SOLUTION_PATH
-#if _MSC_VER
-#WARNING("Please define the project path before compiling this file!")
-#WARNING("Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','/'))\\\"\"")
-#endif
-#define SOLUTION_PATH ""
-#endif //SOLUTION_PATH
+#include "Debug\SysError.h"
 
-// Aquire the skip length of source code (so we can properly print relative source file paths)
 #ifdef WINDOWS
 
-PCTCHAR __RelPath(PCTCHAR Path) {
-	static size_t __RelPathLen = wcslen(_T(SOLUTION_PATH));
-	return Path + __RelPathLen;
+HANDLE THandle::ValidateHandle(HANDLE const &Ref) {
+	if (Ref == INVALID_HANDLE_VALUE)
+		FAIL(_T("Cannot assign invalid handle"));
+	return Ref;
 }
 
-PCTCHAR __PTID(void) {
-	__declspec(thread) static TCHAR PTID[12]{ NullWChar };
-	if (PTID[0] == NullWChar)
-		BUFFMT(&PTID[0], 12, _T("%5d:%-5d"), GetCurrentProcessId(), GetCurrentThreadId());
-	return PTID;
+void THandle::HandleDealloc_Standard(HANDLE &Res) {
+	if (!CloseHandle(Res))
+		SYSFAIL(_T("Failed to release handle"));
+}
+
+void THandle::HandleDealloc_BestEffort(HANDLE &Res) {
+	if (!CloseHandle(Res))
+		SYSERRLOG(_T("Failed to release handle"));
 }
 
 #endif

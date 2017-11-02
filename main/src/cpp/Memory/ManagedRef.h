@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_ManagedRef_H
 #define ZWUtils_ManagedRef_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 #include "Misc/Types.h"
 
@@ -47,7 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Reference.h"
 
 template<class T>
-class ManagedRef : public Reference < T > {
+class ManagedRef final : public Reference<T> {
 	typedef ManagedRef _this;
 
 private:
@@ -59,11 +61,13 @@ protected:
 	static T* _RelObj(T *xObj);
 	static T* _DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc);
 
-	T* _ObjPointer(void) const override
-	{ return ~_Obj; }
+	T* _ObjPointer(void) const override {
+		return ~_Obj;
+	}
 
-	T* _ObjExchange(T *xObj) override
-	{ return _Alloc.Destroy(_RelObj(_Obj.Exchange(xObj))), nullptr; }
+	T* _ObjExchange(T *xObj) override {
+		return _Alloc.Destroy(_RelObj(_Obj.Exchange(xObj))), nullptr;
+	}
 
 public:
 	ManagedRef(IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
@@ -71,14 +75,16 @@ public:
 
 	template<typename... Params>
 	ManagedRef(IObjAllocator<T> &xAlloc, Params&&... xParams) :
-		_Alloc(xAlloc) { _Obj = _RefObj(xAlloc.Create(RLAMBDANEW(T, xParams...))); }
+		_Alloc(xAlloc) {
+		_Obj = _RefObj(xAlloc.Create(RLAMBDANEW(T, std::forward<Params>(xParams)...)));
+	}
 
 	ManagedRef(CONSTRUCTION::EMPLACE_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
 		_Obj(_RefObj(xAlloc.Create())), _Alloc(xAlloc) {}
 
 	template<typename... Params>
 	ManagedRef(CONSTRUCTION::EMPLACE_T const&, Params&&... xParams) :
-		ManagedRef(DefaultObjAllocator<T>(), xParams...) {}
+		ManagedRef(DefaultObjAllocator<T>(), std::forward<Params>(xParams)...) {}
 
 	ManagedRef(T *xObj, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
 		_Obj(_DupObj(xObj, false, xAlloc)), _Alloc(xAlloc) {}
@@ -92,15 +98,18 @@ public:
 	// Copy constructor
 	ManagedRef(_this const &xMR) : _Obj(_DupObj(&xMR, false, xMR._Alloc)), _Alloc(xMR._Alloc) {}
 	// Move constructor
-	ManagedRef(_this &&xMR) : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) { xMR.Drop(); }
+	ManagedRef(_this &&xMR) : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) {}
 
-	~ManagedRef(void) override { _Alloc.Destroy(_RelObj(_Obj.Exchange(nullptr))); }
+	// Note: For performance reasons, we do not have a virtual destructor
+	// Hence we seal this class and do not allow further derivation
+	~ManagedRef(void) { _Alloc.Destroy(_RelObj(_Obj.Exchange(nullptr))); }
 
 	_this& operator=(_this const &xMR);
 	_this& operator=(_this &&xMR);
 
-	T* Drop(void) override
-	{ return _Obj.Exchange(nullptr); }
+	T* Drop(void) override {
+		return _Obj.Exchange(nullptr);
+	}
 };
 
 #include "ManagedObj.h"

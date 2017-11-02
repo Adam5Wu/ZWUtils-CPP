@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_SyncObj_H
 #define ZWUtils_SyncObj_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 
 #include "Memory/Allocator.h"
@@ -50,15 +52,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "SyncElements.h"
 
-//#define __LOCK_DEBUG(s)	s
+//#define __LOCK_DEBUG
 
-#ifndef DBGVV
 #ifdef __LOCK_DEBUG
 #undef __LOCK_DEBUG
-#endif
-#endif
-
-#ifndef __LOCK_DEBUG
+#define __LOCK_DEBUG(s)	s
+#else
 #define __LOCK_DEBUG(s)	;
 #endif
 
@@ -77,94 +76,149 @@ protected:
 	/**
 	 * Acquire the lock, wait forever
 	 **/
-	virtual bool __Lock(TWaitable *AbortEvent)
-	{ FAIL(_T("Abstract function")); }
+	virtual bool __Lock(WAITTIME Timeout, THandleWaitable *AbortEvent) {
+		FAIL(_T("Abstract function"));
+	}
+
 	/**
 	 * Try to acquire the lock in this instant, return false if failed
 	 **/
-	virtual bool __TryLock(void)
-	{ FAIL(_T("Abstract function")); }
+	virtual bool __TryLock(__ARC_UINT Spin) {
+		FAIL(_T("Abstract function"));
+	}
+
+	class TLockInfo {};
+
 	/**
 	 * Release acquired lock
 	 **/
-	virtual void __Unlock(void)
-	{ FAIL(_T("Abstract function")); }
+	virtual void __Unlock(TLockInfo *LockInfo) {
+		FAIL(_T("Abstract function"));
+	}
 
-	__LOCK_DEBUG(TInterlockedOrdinal32<int> __Cnt{0});
+	__LOCK_DEBUG(TInterlockedOrdinal32<int> __Cnt{ 0 });
 
 public:
-	virtual ~TLockable(void)
-	{ __LOCK_DEBUG(if (~__Cnt) LOG(_T("There are %d unreleased locks!"), ~__Cnt)); }
-
-	// WARNING: While Lockable is thread-safe (better be), the objects are NOT!
+	// WARNING: While Lockable is thread-safe (better be), the lock objects are NOT!
 	// !!! DO NOT operate one Lock object with more than one threads !!!
-	class TLock {
+	// Note: For performance reasons, we do not have a virtual destructor
+	// Hence we seal this class and do not allow further derivation
+	class TLock final : public ManagedObj {
 		typedef TLock _this;
 		friend class TLockable;
 
-	private:
-		TLockable &Instance;
-
 	protected:
-		TLock(TLockable &xInstance, bool const &xLocked) : Instance(xInstance), Locked(xLocked) {
-			__LOCK_DEBUG(
-				if (!__IN_LOG && xLocked) {
-					LOGVV(_T("%s"), TStringCast(_T("+ Locked @") << (void*)&xInstance
-						<< _T(" (") << ++xInstance.__Cnt << _T(')')).c_str());
+		TLockable * InstRef;
+		TLockInfo *__Info = nullptr;
+
+		TLock(TLockable *xInstRef, TLockInfo *Info) : InstRef(xInstRef), __Info(Info) {
+			__LOCK_DEBUG({
+				int NewCnt = ++Instance->__Cnt;
+				if (!__IN_LOG && __Info) {
+					LOGVV(_T("%s"), TStringCast(_T("+ Locked @") << Instance
+						<< _T(" (") << NewCnt << _T(')')).c_str());
+				}
 				});
 		}
 
-	public:
-		bool const Locked;
+		void __Release(void) {
+			if (__Info) {
+				InstRef->__Unlock(__Info);
+				__LOCK_DEBUG({
+					int NewCnt = --Instance->__Cnt;
+					if (!__IN_LOG) {
+						LOGVV(_T("%s"), TStringCast(_T("- ") << (NewCnt ? _T("Locked") : _T("Unlocked"))
+							<< _T(" @") << Instance << _T(" (") << NewCnt << _T(')')).c_str())
+					}
+					});
+			}
+		}
 
+		TLockInfo* __Drop(void) {
+			TLockInfo *Ret = __Info;
+			return __Info = nullptr, Ret;
+		}
+		
+	public:
 		// Copy construction does not make sense, because the lock maybe non-reentrant
 		TLock(_this const &) = delete;
-		// Move construction is OK, because we may want to return local lock
-		TLock(_this &&xLock) : Instance(xLock.Instance), Locked(xLock.Locked)
-		{ *const_cast<bool*>(&xLock.Locked) = false; }
 
-		virtual ~TLock(void)
-		{ Release(); }
-
-		bool Release(void) {
-			if (Locked) {
-				Instance.__Unlock();
-				__LOCK_DEBUG(
-					if (!__IN_LOG) {
-						LOGVV(_T("%s"), TStringCast(_T("- ") << (--Instance.__Cnt ? _T("Locked") : _T("Unlocked"))
-							<< _T(" @") << &Instance << _T(" (") << ~Instance.__Cnt << _T(')')).c_str())
-					});
-				return true;
-			}
-			return false;
+		TLock(_this &&xLock) : InstRef(xLock.InstRef), __Info(xLock.__Info) {
+			xLock.__Info = nullptr;
 		}
 
-		// Copy assignment operation is not meaningful
+		~TLock(void) {
+			__Release();
+		}
+
+		// Copy assignment operations are not meaningful
 		_this& operator=(_this const &) = delete;
 
-		// Move assignment should only be used to re-acquire a released lock
 		_this& operator=(_this &&xLock) {
-			if (Locked) FAIL(_T("Already locked!"));
-			if (!For(xLock.Instance)) FAIL(_T("Mismatched Lockable!"));
-			*const_cast<bool*>(&Locked) = xLock.Locked;
-			*const_cast<bool*>(&xLock.Locked) = false;
+			__Release();
+			InstRef = xLock.InstRef;
+			__Info = xLock.__Drop();
+			return *this;
 		}
 
-		operator bool() const
-		{ return Locked; }
+		operator bool() const {
+			return __Info;
+		}
 
-		bool For(TLockable const &rInstance) const
-		{ return std::addressof(Instance) == std::addressof(rInstance); }
+		bool For(TLockable const &rInstance) const {
+			return rInstance.Of(*this);
+		}
 	};
 
-	virtual TLock Lock(TWaitable *AbortEvent = nullptr)
-	{ return{*this, __Lock(AbortEvent)}; }
+protected:
+	TLock __New_Lock(TLockInfo *LockInfo) {
+		return TLock(this, LockInfo);
+	}
 
-	virtual TLock TryLock(void)
-	{ return{*this, __TryLock()}; }
+	TLock& __Adopt(TLock &Lock) {
+		return Lock.InstRef = this, Lock;
+	}
 
-	TLock NullLock(void)
-	{ return{*this, false}; }
+	static TLockable* __SyncInst(TLock const &Lock) {
+		return Lock.InstRef;
+	}
+
+	static TLockInfo* __LockInfo(TLock const &Lock) {
+		return Lock.__Info;
+	}
+
+	static TLockInfo* __LockDrop(TLock &Lock) {
+		return Lock.__Drop();
+	}
+	
+	static void __Cascade_Unlock(TLockable *Inst, TLockInfo *LockInfo) {
+		Inst->__Unlock(LockInfo);
+	}
+
+public:
+	virtual ~TLockable(void) {
+		__LOCK_DEBUG(if (~__Cnt) LOG(_T("There are %d unreleased locks!"), ~__Cnt));
+	}
+
+	virtual TLock Lock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		return __New_Lock(__Lock(Timeout, AbortEvent) ? (TLockInfo*)-1 : nullptr);
+	}
+
+	virtual TLock TryLock(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		return __New_Lock(__TryLock(SpinCount) ? (TLockInfo*)-1 : nullptr);
+	}
+
+	bool Of(TLock const &Lock) const {
+		return __SyncInst(Lock) == this;
+	}
+
+	bool By(TLock const &Lock) const {
+		return Lock && Of(Lock);
+	}
+
+	TLock NullLock(void) const {
+		return const_cast<_this*>(this)->__New_Lock(nullptr);
+	}
 };
 
 template<class T>
@@ -172,81 +226,231 @@ template<class T>
  * @ingroup Threading
  * @brief Lockable adapter for synchronization premises
  **/
-class TLockableSyncPerms : public TLockable {
+class TLockableSyncPerms : public TLockable, protected T {
 	typedef TLockableSyncPerms _this;
-protected:
-	T _SyncPerms;
 public:
 	TLockableSyncPerms(void) {}
 	TLockableSyncPerms(T && xSync) : T(std::move(xSync)) {}
+
+	T& operator*(void) {
+		return *this;
+	}
 };
 
 // !Lockable using critical section
-class TLockableCS : public TLockableSyncPerms < TCriticalSection > {
+class TLockableCS : public TLockableSyncPerms<TCriticalSection> {
 	typedef TLockableCS _this;
+private:
+	TInterlockedArchInt WaitCnt = 0;
+	TEvent WaitEvent = TEvent(CONSTRUCTION::DEFER);
+
+	void __Signal_Event(TEvent &Event) {
+		// We are in a transient state of deferred event creation
+		// Just hold the breath for a while
+		while (!Event.Allocated()) SwitchToThread();
+		Event.Set();
+	}
+
+	bool __Lock_Abortable(WAITTIME Timeout, THandleWaitable *AbortEvent);
 
 protected:
-	bool __Lock(TWaitable *AbortEvent) override
-	{ return (AbortEvent && AbortEvent->WaitFor(0) == WaitResult::Signaled) ? false : (_SyncPerms.Enter(), true); }
-	bool __TryLock(void) override
-	{ return _SyncPerms.TryEnter(); }
-	void __Unlock(void) override
-	{ _SyncPerms.Leave(); }
+	bool __Lock(WAITTIME Timeout, THandleWaitable *AbortEvent) override {
+		if (Timeout != FOREVER || AbortEvent)
+			return __Lock_Abortable(Timeout, AbortEvent);
+		// Fallback to legacy CS behavior
+		return Enter(), true;
+	}
+
+	bool __TryLock(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) override {
+#ifdef _DEBUG
+		if (!SpinCount) FAIL(_T("Spin count must be a natrual number"));
+#endif
+		while (--SpinCount && !TryEnter());
+		return SpinCount || TryEnter();
+	}
+
+	void __Unlock(TLockInfo *LockInfo) override {
+		Leave();
+		if (~WaitCnt) __Signal_Event(WaitEvent);
+	}
 };
+
+#ifdef __ZWUTILS_SYNC_SLIMRWLOCK
+
+class TLockableSRW : public TLockableSyncPerms<TSRWLock> {
+	typedef TLockableSRW _this;
+private:
+	TInterlockedArchInt RWaitCnt = 0;
+	TInterlockedArchInt WWaitCnt = 0;
+	TEvent RWaitEvent = TEvent(CONSTRUCTION::DEFER);
+	TEvent WWaitEvent = TEvent(CONSTRUCTION::DEFER);
+
+	void __Signal_Event(TEvent &Event) {
+		// We are in a transient state of deferred event creation
+		// Just hold the breath for a while
+		while (!Event.Allocated()) SwitchToThread();
+		Event.Set();
+	}
+public:
+	bool ReadYieldToWrite = false;
+
+protected:
+	bool __Lock_Read_Do(TInterlockedArchInt &WaitCnt, TEvent &WaitEvent, WAITTIME Timeout, THandleWaitable *AbortEvent);
+	bool __Lock_Write_Do(TInterlockedArchInt &WaitCnt, TEvent &WaitEvent, WAITTIME Timeout, THandleWaitable *AbortEvent);
+
+	bool __Lock_Read_Probe(__ARC_UINT SpinCount) {
+		if (ReadYieldToWrite && ~WWaitCnt) return false;
+		if (TryRead(SpinCount)) {
+			if (~RWaitCnt && (!ReadYieldToWrite || !~WWaitCnt)) {
+				__Signal_Event(RWaitEvent);
+			}
+			return true;
+		}
+		return false;
+	}
+	bool __Lock_Read(WAITTIME Timeout, THandleWaitable *AbortEvent) {
+		return __Lock_Read_Do(RWaitCnt, RWaitEvent, Timeout, AbortEvent);
+	}
+
+	bool __Lock_Write_Probe(__ARC_UINT SpinCount) {
+		return TryWrite(SpinCount);
+	}
+	bool __Lock_Write(WAITTIME Timeout, THandleWaitable *AbortEvent) {
+		return __Lock_Write_Do(WWaitCnt, WWaitEvent, Timeout, AbortEvent);
+	}
+
+	bool __TryLock_Read(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		return __Lock_Read_Probe(SpinCount);
+	}
+	bool __TryLock_Write(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		return __Lock_Write_Probe(SpinCount);
+	}
+
+#define __Impl_Unlock(relfunc)							\
+	relfunc ## ();										\
+	if (~WWaitCnt) __Signal_Event(WWaitEvent);			\
+	else if (~RWaitCnt) __Signal_Event(RWaitEvent)
+
+	void __Unlock_Read(void) {
+		__Impl_Unlock(EndRead);
+	}
+	void __Unlock_Write(void) {
+		__Impl_Unlock(EndWrite);
+	}
+
+	class TSRWLockInfo : public TLockInfo {
+	public:
+		bool const Exclusive;
+		TSRWLockInfo(bool xExclusive) : Exclusive(xExclusive) {}
+	};
+
+	static TSRWLockInfo __ReadLockInfo;
+	static TSRWLockInfo __WriteLockInfo;
+
+	void __Unlock(TLockInfo *LockInfo) override {
+		TSRWLockInfo *__Info = static_cast<TSRWLockInfo*>(LockInfo);
+		__Info->Exclusive ? __Unlock_Write() : __Unlock_Read();
+	}
+
+public:
+	TLock Lock_Read(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		return __New_Lock(__Lock_Read(Timeout, AbortEvent) ? &__ReadLockInfo : nullptr);
+	}
+
+	TLock Lock_Write(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		return __New_Lock(__Lock_Write(Timeout, AbortEvent) ? &__WriteLockInfo : nullptr);
+	}
+
+	TLock Lock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) override {
+		return Lock_Write(Timeout, AbortEvent);
+	}
+
+	TLock TryLock_Read(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		return __New_Lock(__TryLock_Read(SpinCount) ? &__ReadLockInfo : nullptr);
+	}
+
+	TLock TryLock_Write(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		return __New_Lock(__TryLock_Write(SpinCount) ? &__WriteLockInfo : nullptr);
+	}
+
+	TLock TryLock(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) override {
+		return TryLock_Write(SpinCount);
+	}
+
+	bool ForWrite(TLock const &Lock) const {
+		TSRWLockInfo *__Info = static_cast<TSRWLockInfo*>(TLockable::__LockInfo(Lock));
+		return __Info && __Info->Exclusive;
+	}
+
+	bool WriteLocked(TLock const &Lock) const {
+		TSRWLockInfo *__Info = static_cast<TSRWLockInfo*>(TLockable::__LockInfo(Lock));
+		return __Info && __Info->Exclusive;
+	}
+};
+
+#endif
 
 template<class W>
 // !Lockable using waitable synchronization premises
-class TLockableHandleWaitable : public TLockableSyncPerms < W > {
+class TLockableHandleWaitable : public TLockableSyncPerms<W> {
 	ENFORCE_DERIVE(THandleWaitable, W);
 	typedef TLockableHandleWaitable _this;
 
 protected:
-	bool __Lock(TWaitable *AbortEvent) override {
-		if (AbortEvent) {
-			WaitResult Ret = WaitMultiple({{_SyncPerms, *dynamic_cast<THandleWaitable*>(AbortEvent)}}, false);
-			switch (Ret) {
-				case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
-				case WaitResult::Signaled_0: return true;
-				case WaitResult::Signaled_1: return false;
-				default: SYSFAIL(_T("Unable to lock synchronization premises"));
-			}
-		} else {
-			WaitResult Ret = _SyncPerms.WaitFor();
-			switch (Ret) {
-				case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
-				case WaitResult::Signaled: return true;
-				default: SYSFAIL(_T("Unable to lock synchronization premises"));
-			}
+	bool __Lock(WAITTIME Timeout, THandleWaitable *AbortEvent) override {
+		WaitResult WRet = AbortEvent ?
+			WaitMultiple({ *this, *AbortEvent }, false, Timeout) :
+			WaitFor(Timeout);
+		switch (WRet) {
+			case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
+			case WaitResult::Signaled:
+			case WaitResult::Signaled_0: return true;
+			case WaitResult::TimedOut:
+			case WaitResult::Signaled_1: return false;
+			default: SYSFAIL(_T("Unable to lock synchronization premises"));
 		}
 	}
-	bool __TryLock(void) override {
-		WaitResult Ret = _SyncPerms.WaitFor(0);
-		switch (Ret) {
+
+	bool __TryLock_Once(void) {
+		WaitResult WRet = WaitFor(0);
+		switch (WRet) {
 			case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
 			case WaitResult::Signaled: return true;
 			case WaitResult::TimedOut: return false;
 			default: SYSFAIL(_T("Unable to lock synchronization premises"));
 		}
 	}
+
+	bool __TryLock(__ARC_UINT SpinCount) override {
+#ifdef _DEBUG
+		if (!SpinCount) FAIL(_T("Spin count must be a natrual number"));
+#endif
+		while (--SpinCount && !__TryLock_Once());
+		return SpinCount || __TryLock_Once();
+	}
 };
 
 // !Lockable using semaphore
-class TLockableSemaphore : public TLockableHandleWaitable < TSemaphore > {
+class TLockableSemaphore : public TLockableHandleWaitable<TSemaphore> {
 	typedef TLockableSemaphore _this;
 
 protected:
-	void __Unlock(void) override
-	{ _SyncPerms.Signal(); }
+	void __Unlock(TLockInfo *LockInfo) override {
+		Signal();
+	}
 };
 
 // !Lockable using mutex
-class TLockableMutex : public TLockableHandleWaitable < TMutex > {
+class TLockableMutex : public TLockableHandleWaitable<TMutex> {
 	typedef TLockableMutex _this;
 
 protected:
-	void __Unlock(void) override
-	{ _SyncPerms.Release(); }
+	void __Unlock(TLockInfo *LockInfo) override {
+		Release();
+	}
 };
+
+//#define __SyncObj_Lite
 
 /**
  * @ingroup Threading
@@ -254,105 +458,279 @@ protected:
  *
  * Wraps around an object with a lockable class to protect asynchronous accesses
  **/
+#ifdef __SyncObj_Lite
+
+#pragma WARNING("Lite version of SyncObj does not support accordinated synchronization (shared lock)")
+
 template<class TObject, class L = TLockableCS>
-class TSyncObj : protected TObject, public TLockable {
+class TSyncObj : public L {
 	ENFORCE_DERIVE(TLockable, L);
 	typedef TSyncObj _this;
 
 protected:
-	ManagedRef<L> _Lockable;
+	TObject _Instance;
 
 public:
-	typedef IObjAllocator<L> TLAlloc;
+	TSyncObj(void) {}
 
 	template<typename... Params>
-	TSyncObj(TLAlloc &xLAlloc = DefaultObjAllocator<L>(), Params&&... xParams) :
-		TObject(xParams...), _Lockable(CONSTRUCTION::EMPLACE, xLAlloc) {}
-
-	template<typename... Params>
-	TSyncObj(L *xLock, TLAlloc &xLAlloc = DefaultObjAllocator<L>(), Params&&... xParams) :
-		TObject(xParams...), _Lockable(xLock, xLAlloc) {}
+	TSyncObj(L &&xLock, Params&&... xParams) :
+		_Instance(std::forward<Params>(xParams)...), L(std::move(xLock)) {}
 
 	template<
 		typename X, typename... Params,
-		typename = std::enable_if<!std::is_assignable<X, TLAlloc&>::value>::type,
-		typename = std::enable_if<!std::is_assignable<X, L*>::value>::type
+		typename = std::enable_if<!std::is_assignable<X, L&&>::value>::type
 	>
-	TSyncObj(X &&xParam, Params&&... xParams) :
-	TSyncObj(DefaultObjAllocator<L>(), xParam, xParams...) {}
+		TSyncObj(X &&xParam, Params&&... xParams) :
+		_Instance(std::forward<X>(xParam), std::forward<Params>(xParams)...) {}
 
-	// Special use copy constructor: Create a copy of the object w/ shared lock with original
-	// Caution 1: Normally you don't want to use this constructor!
-	// Caution 2: In order to enable this special use, your lock needs to implement ManagedObj
-	TSyncObj(_this const &xSyncObj) : TObject(xSyncObj), _Lockable(xSyncObj._Lockable) {}
-	// Move constructor
-	TSyncObj(_this &&xSyncObj) : TObject(std::move(xSyncObj)), _Lockable(std::move(xSyncObj._Lockable)) {}
+	// Copy and move constructions are hard to reason, therefore better disable it
+	TSyncObj(_this const &xSyncObj) = delete;
+	TSyncObj(_this &&xSyncObj) = delete;
 
 	// Assignment operations are wacky, the meaning is hard to reason, therefore better disable it
 	_this& operator=(_this const &) = delete;
 	_this& operator=(_this &&) = delete;
 
-	class Accessor : public Reference < TObject > {
+	// Note: For performance reasons, we do not have a virtual destructor
+	// Hence we seal this class and do not allow further derivation
+	class Accessor final {
 		typedef Accessor _this;
-		friend TSyncObj;
+		friend class TSyncObj<TObject, L>;
 
 	protected:
-		TSyncObj *_Obj;
+		using TLock = typename L::TLock;
 		TLock _Lock;
 
-	protected:
-		Accessor(TSyncObj *xObj, TLock &&xLock) : _Obj(xObj), _Lock(std::move(xLock)) {}
+		Accessor(TLock &&xLock) : _Lock(std::move(xLock)) {}
 
 		MEMBERFUNC_PROBE(toString);
 
+		TObject* _AccessObjRef(void) const {
+			return std::addressof(static_cast<TSyncObj*>(TLockable::__SyncInst(_Lock))->_Instance);
+		}
+
 		template<typename X = TObject>
-		auto _toString(void) const -> decltype(std::enable_if<Has_toString<X>::value, TString>::type())
-		{ return _Lock ? TStringCast(_T("#SObj(L):") << _Obj.toString()) : TStringCast(_T("#SObj(U)@") << (void*)&_Obj); }
+		auto _toString(void) const -> decltype(std::enable_if<Has_toString<X>::value, TString>::type()) {
+			return Valid() ? TStringCast(_T("#SObj(L):") << (*this)->toString()) : TStringCast(_T("#SObj(U)") << _AccessObjRef());
+		}
 
 		template<typename X = TObject, typename = void>
-		auto _toString(void) const -> decltype(std::enable_if<!Has_toString<X>::value, TString>::type())
-		{ return TStringCast(_T("#SObj(") << (_Lock ? _T('L') : _T('U')) << _T("):") << (void*)&_Obj); }
+		auto _toString(void) const -> decltype(std::enable_if<!Has_toString<X>::value, TString>::type()) {
+			return TStringCast(_T("#SObj(") << (Valid() ? _T('L') : _T('U')) << _T("):") << _AccessObjRef());
+		}
 
-		TObject* _ObjPointer(void) const override
-		{ if (!_Lock.Locked) FAIL(_T("Lock not engaged")); return _Obj; }
-
-		TObject* _ObjExchange(TObject *xObj) override
-		{ FAIL(_T("Unsupported Operation")); }
+		TObject* _ObjPointer(void) const {
+			if (!Valid()) FAIL(_T("Invalid accessor state"));
+			return _AccessObjRef();
+		}
 
 	public:
-		// Move construction is OK, because we may want to return local lock
-		Accessor(_this &&xSyncedObj) : _Obj(xSyncedObj._Obj), _Lock(std::move(xSyncedObj._Lock)) {}
+		// Move construction for returning accessors
+		Accessor(_this &&xAccessor) : _Lock(std::move(xAccessor._Lock)) {}
 
-		TString toString(void) const
-		{ return _toString(); }
+		TString toString(void) const {
+			return _toString();
+		}
 
-		bool Valid(void) const
-		{ return _Lock.Locked; }
-		operator bool() const
-		{ return Valid(); }
+		bool Valid(void) const {
+			return _Lock;
+		}
+
+		operator bool() const {
+			return Valid();
+		}
+
+		// Duplicate partial implementation of Reference to avoid cost of virtual function call
+		_this* operator~(void) {
+			return this;
+		}
+		_this const* operator~(void) const {
+			return this;
+		}
+
+		TObject* operator&(void) const {
+			return _ObjPointer();
+		}
+		TObject& operator*(void) const {
+			return *_ObjPointer();
+		}
+		TObject* operator->(void) const {
+			return _ObjPointer();
+		}
+
 	};
-	typedef ManagedRef<Accessor> MRSyncedObj;
-
-	L& Lockable(void)
-	{ return *_Lockable; }
-
-	TLock Lock(TWaitable *AbortEvent = nullptr) override
-	{ return _Lockable->Lock(AbortEvent); }
-
-	TLock TryLock(void) override
-	{ return _Lockable->TryLock(); }
 
 	/**
-	 * Lock and return an reference of managed T instance
+	 * Lock and return an accessor of managed T instance
 	 **/
-	virtual Accessor Pickup(TWaitable *AbortEvent = nullptr)
-	{ return Accessor(this, Lock(AbortEvent)); }
+	Accessor Pickup(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		// Clone the implementation of Lock() to avoid cost of virtual function call
+		return { Lock(Timeout, AbortEvent) };
+	}
+
 	/**
-	 * Try to lock and return a pointer to managed T instance, NULL if could not obtain lock
+	 * Try to lock and return an accessor of managed T instance, check validty before access
 	 **/
-	virtual Accessor TryPickup(void)
-	{ return Accessor(this, TryLock()); }
+	Accessor TryPickup(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		// Clone the implementation of TryLock() to avoid cost of virtual function call
+		return { TryLock(Spin) };
+	}
+
+	/**
+	 * Return an invalid accessor
+	 **/
+	Accessor NullAccessor(void) {
+		return { NullLock() };
+	}
 
 };
+
+#else
+
+template<class TObject, class L = TLockableCS>
+class TSyncObj : public TLockable {
+	ENFORCE_DERIVE(TLockable, L);
+	typedef TSyncObj _this;
+
+public:
+	typedef ManagedRef<L> MRLockable;
+	typedef IObjAllocator<L> TLAlloc;
+
+protected:
+	TObject _Instance;
+	MRLockable _Lockable;
+
+	void __Unlock(TLockInfo *LockInfo) override {
+		__Cascade_Unlock(&_Lockable, LockInfo);
+	}
+
+public:
+	template<typename... Params>
+	TSyncObj(TLAlloc &xLAlloc = DefaultObjAllocator<L>(), Params&&... xParams) :
+		_Instance(std::forward<Params>(xParams)...), _Lockable(CONSTRUCTION::EMPLACE, xLAlloc) {}
+
+	template<typename... Params>
+	TSyncObj(MRLockable &xLockable, Params&&... xParams) :
+		_Instance(std::forward<Params>(xParams)...), _Lockable(xLockable) {}
+
+	template<
+		typename X, typename... Params,
+		typename = std::enable_if<!std::is_assignable<X, TLAlloc&>::value>::type,
+		typename = std::enable_if<!std::is_assignable<X, MRLockable&>::value>::type
+	>
+		TSyncObj(X &&xParam, Params&&... xParams) :
+		TSyncObj(DefaultObjAllocator<L>(), xParam, std::forward<Params>(xParams)...) {}
+
+	// Copy and move constructions are hard to reason, therefore better disable it
+	TSyncObj(_this const &xSyncObj) = delete;
+	TSyncObj(_this &&xSyncObj) = delete;
+
+	// Assignment operations are wacky, the meaning is hard to reason, therefore better disable it
+	_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&) = delete;
+
+	// Note: For performance reasons, we do not have a virtual destructor
+	// Hence we seal this class and do not allow further derivation
+	class Accessor final {
+		typedef Accessor _this;
+		friend class TSyncObj<TObject, L>;
+
+	protected:
+		TLock _Lock;
+
+		Accessor(TLock &&xLock) : _Lock(std::move(xLock)) {}
+
+		MEMBERFUNC_PROBE(toString);
+
+		TObject* _AccessObjRef(void) const {
+			return std::addressof(static_cast<TSyncObj*>(TLockable::__SyncInst(_Lock))->_Instance);
+		}
+
+		template<typename X = TObject>
+		auto _toString(void) const -> decltype(std::enable_if<Has_toString<X>::value, TString>::type()) {
+			return Valid() ? TStringCast(_T("#SObj(L):") << (*this)->toString()) : TStringCast(_T("#SObj(U)") << _AccessObjRef());
+		}
+
+		template<typename X = TObject, typename = void>
+		auto _toString(void) const -> decltype(std::enable_if<!Has_toString<X>::value, TString>::type()) {
+			return TStringCast(_T("#SObj(") << (Valid() ? _T('L') : _T('U')) << _T("):") << _AccessObjRef());
+		}
+
+		TObject* _ObjPointer(void) const {
+			if (!Valid()) FAIL(_T("Invalid accessor state"));
+			return _AccessObjRef();
+		}
+
+	public:
+		// Move construction for returning accessors
+		Accessor(_this &&xAccessor) : _Lock(std::move(xAccessor._Lock)) {}
+
+		TString toString(void) const {
+			return _toString();
+		}
+
+		bool Valid(void) const {
+			return _Lock;
+		}
+
+		operator bool() const {
+			return Valid();
+		}
+
+		// Duplicate partial implementation of Reference to avoid cost of virtual function call
+		_this* operator~(void) {
+			return this;
+		}
+		_this const* operator~(void) const {
+			return this;
+		}
+
+		TObject* operator&(void) const {
+			return _ObjPointer();
+		}
+		TObject& operator*(void) const {
+			return *_ObjPointer();
+		}
+		TObject* operator->(void) const {
+			return _ObjPointer();
+		}
+
+	};
+
+	TLock Lock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) override {
+		return std::move(__Adopt(_Lockable->Lock(Timeout, AbortEvent)));
+	}
+
+	TLock TryLock(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) override {
+		return std::move(__Adopt(_Lockable->TryLock(SpinCount)));
+	}
+
+	/**
+	 * Lock and return an accessor of managed T instance
+	 **/
+	Accessor Pickup(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		// Clone Lock function to avoid virtual function call cost
+		return { std::move(__Adopt(_Lockable->Lock(Timeout, AbortEvent))) };
+	}
+
+	/**
+	 * Try to lock and return an accessor of managed T instance, check validty before access
+	 **/
+	Accessor TryPickup(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+		// Clone TryLock function to avoid virtual function call cost
+		return { std::move(__Adopt(_Lockable->TryLock(SpinCount))) };
+	}
+
+	/**
+	 * Return an invalid accessor
+	 **/
+	Accessor NullAccessor(void) {
+		return { NullLock() };
+	}
+
+};
+
+#endif
 
 #endif

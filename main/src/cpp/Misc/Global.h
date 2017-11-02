@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

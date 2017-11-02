@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_SysError_H
 #define ZWUtils_SysError_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 
 #include "Memory/ObjAllocator.h"
@@ -110,8 +112,8 @@ DecodeSysError(errcode, __SysErrMsg, __VA_ARGS__);
 #ifdef WINDOWS
 
 void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
-										PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-										PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
+	PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
+	PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
 
 #define __FormatCtxAndDecodeSysError(ErrCode, CtxBuffer, CtxBufLen, CtxBufFmt, ErrBuffer, ErrBufLen, ...) \
 	__ModuleFormatCtxAndDecodeSysError(0, ErrCode, CtxBuffer, CtxBufLen, CtxBufFmt, ErrBuffer, ErrBufLen, __VA_ARGS__)
@@ -119,7 +121,7 @@ void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 #else
 
 void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-								  PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
+	PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
 
 #endif
 
@@ -191,14 +193,14 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
  **/
 class SystemError : public Exception {
 	typedef SystemError _this;
-	friend class IObjAllocator < _this > ;
+	friend class IObjAllocator<_this>;
 
 protected:
 	TString const rErrorMsg = EmptyWText;
 
 	template<typename... Params>
 	SystemError(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, xParams...), ErrorCode(xErrorCode) {}
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ErrorCode(xErrorCode) {}
 
 public:
 	unsigned int const ErrorCode = 0;
@@ -209,7 +211,7 @@ public:
 	template<typename... Params>
 	static SystemError* Create(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
 		return DefaultObjAllocator<SystemError>().Create(
-			RLAMBDANEW(SystemError, xErrorCode, std::move(xSource), ReasonFmt, xParams...));
+			RLAMBDANEW(SystemError, xErrorCode, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
 	}
 };
 

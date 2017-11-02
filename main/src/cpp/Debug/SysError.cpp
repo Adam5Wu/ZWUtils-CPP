@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -116,8 +116,8 @@ void DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_li
 }
 
 void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
-										PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-										PTCHAR ErrBuffer, size_t &ErrBufLen, ...) {
+	PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
+	PTCHAR ErrBuffer, size_t &ErrBufLen, ...) {
 	va_list params;
 	va_start(params, ErrCode);
 	TInitResource<va_list> Params(params, [&](va_list &X) {va_end(X); });

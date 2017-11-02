@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_SyncQueue_H
 #define ZWUtils_SyncQueue_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 
 #include "Debug/Debug.h"
@@ -50,6 +52,32 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <deque>
 
+// Lite version performs 20% better in low contention scenario, via bypassing SyncObj layer
+#define __SDQ_LITE
+
+#define __SDQ_SYNCSPIN	DEFAULT_CRITICALSECTION_SPIN
+
+// Enables iterator access to the underlying deque
+// - The queue must be Push+Pop locked, otherwise iterators do not make sense (iterating a changing deque?)
+#define __SDQ_ITERATORS
+
+#ifdef __SDQ_ITERATORS
+// Enables mutable iterator access to the underlying deque
+// - If disabled, only const iterators will be available, and they are concurrently avaiable to all threads;
+// - If enabled, without concurrent const iterator support, any iterator will only be available to one thread at a time.
+#define __SDQ_MUTABLE_ITERATORS
+
+#ifdef __SDQ_MUTABLE_ITERATORS
+// Enables concurrent const iterator support
+// - If enabled, mutable iterators will only be available to one thread at a time, while const iterators will be
+//     concurrently avaiable to all threads *when there are no active mutable iterator(s)*;
+//     otherwise, if active mutable iterator(s) present, only thread that owns them will have access to const iterators.
+#define __SDQ_CONCURRENT_CONST_ITERATORS
+
+#endif //__SDQ_MUTABLE_ITERATORS
+
+#endif //__SDQ_ITERATORS
+
 /**
  * @ingroup Threading
  * @brief Synchronized queue
@@ -58,124 +86,377 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Note: Currently implementation does not have faireness guarantee
  **/
 template<class T>
-class TSyncBlockingDeque : TLockable {
-	typedef TSyncBlockingDeque _this;
+class TSyncBlockingDeque : public TLockable, public TWaitable {
+	typedef TSyncBlockingDeque<T> _this;
 	typedef std::deque<T> Container;
 
+#ifdef __SDQ_ITERATORS
 public:
-	typedef typename Container::size_type size_type;
+	typedef ManagedRef<TLock> MRLock;
 
 protected:
-	volatile bool __Cleanup;
+	template<class Iter>
+	class __Locked_Iterator : public Iter {
+		typedef __Locked_Iterator<Iter> _this;
+		friend class TSyncBlockingDeque<T>;
+	protected:
+		MRLock _LockRef;
 
+		__Locked_Iterator(void) {}
+
+		__Locked_Iterator(Iter &&xIter, MRLock &xLockRef) :
+			Iter(std::move(xIter)), _LockRef(xLockRef) {}
+
+		__Locked_Iterator(_this &&xIterator, Iter &&xIter) :
+			Iter(std::move(xIter)),
+			_LockRef(std::move(xIterator._LockRef)) {}
+
+	public:
+		__Locked_Iterator(_this &&xIterator) :
+			Iter(std::move(xIterator)),
+			_LockRef(std::move(xIterator._LockRef)) {}
+
+		_this& operator=(_this &&xIterator) {
+			Iter::operator=(std::move(xIterator));
+			_LockRef = std::move(xIterator._LockRef);
+			return *this;
+		}
+
+		bool Valid(void) { return !_LockRef.Empty() && *_LockRef; }
+	};
+#endif // __SDQ_ITERATORS
+
+public:
+	using size_type = typename Container::size_type;
+
+#ifdef __SDQ_ITERATORS
+
+#ifdef __SDQ_MUTABLE_ITERATORS
+	typedef __Locked_Iterator<typename Container::iterator> iterator;
+	typedef __Locked_Iterator<typename Container::reverse_iterator> reverse_iterator;
+#endif
+	typedef __Locked_Iterator<typename Container::const_iterator> const_iterator;
+	typedef __Locked_Iterator<typename Container::const_reverse_iterator> const_reverse_iterator;
+#endif // __SDQ_ITERATORS
+
+protected:
+	volatile bool __Cleanup = false;
+	volatile __ARC_INT PopWaiters = 0;
+	volatile __ARC_INT EmptyWaiters = 0;
+
+#ifdef __SDQ_LITE
+	TLockableCS _Sync;
+	Container _Queue;
+	typedef Container* TQueueAccessor;
+#else
 	typedef TSyncObj<Container> TSyncDeque;
+	typedef typename TSyncDeque::Accessor TQueueAccessor;
 	TSyncDeque SyncDeque;
-	TEvent EntryEvent, EmptyEvent, PreEntryEvent;
+#endif
 
 	typedef TInterlockedOrdinal32<long> TSyncCounter;
-	TSyncCounter EntryWaiters = 0;
-	TSyncCounter EmptyWaiters = 0;
-	TSyncCounter PreEntryWaiters = 0;
+	TSyncCounter PushHold = 0;
+	TSyncCounter PopHold = 0;
 
-	typename TSyncDeque::Accessor __Safe_Pickup(void);
+	TEvent PushWait = { true, true };
+	TEvent PopWait = { true, true };
 
-	bool __Signal_Event(TSyncCounter &Counter, TEvent &Event)
-	{ return (~Counter) ? Event.Set(), true : false; }
+	TEvent EmptyWait = { true, true };
+	TEvent ContentWait = { true, true };
 
-	bool __WaitFor_Event(TEvent &Event, WAITTIME Timeout, TimeStamp const &StartTime, THandleWaitable *AbortEvent);
+#if defined(__SDQ_ITERATORS) && defined(__SDQ_MUTABLE_ITERATORS)
 
-	void __PreEntry_Check(void);
+#ifdef __SDQ_CONCURRENT_CONST_ITERATORS
+#ifdef __ZWUTILS_SYNC_SLIMRWLOCK
+	TLockableSRW SRWSync;
+	TInterlockedArchInt IterWaiters = 0;
+	TEvent IterWaitEvent = TEvent(CONSTRUCTION::DEFER);
+#else
+#error Lack of slim RW lock support, cannot support mutable iterators + concurrent const iterators!
+#endif
+#else
+#pragma WARNING("Iterator concurrency not enabled, iterators will be available to one thread at a time!")
+	TLockableCS ExclusiveSync;
+#endif
 
-	typedef void(Container::*TEntryCPush)(T const &entry);
-	typedef void(Container::*TEntryMPush)(T &&entry);
-	size_type __Push_Do(TEntryCPush const &EntryPush, T const &entry);
-	size_type __Push_Do(TEntryMPush const &EntryPush, T &&entry);
+#endif // __SDQ_ITERATORS && __SDQ_MUTABLE_ITERATORS
 
-	typedef T&(Container::*TEntryGet)(void);
-	typedef void(Container::*TEntryDiscard)(void);
-	bool __Pop_Do(TEntryGet const &EntryGet, TEntryDiscard const &EntryDiscard, T &entry);
+	class TSDQBaseLockInfo : public TLockInfo {
+	public:
+		bool const Push, Pop;
+		TSDQBaseLockInfo(bool xPush, bool xPop) : Push(xPush), Pop(xPop) {}
+#ifdef __SDQ_MUTABLE_ITERATORS
+		virtual ~TSDQBaseLockInfo(void) {}
+#endif
+	};
 
-	bool __Pop_Front(T &entry)
-	{ return __Pop_Do(&Container::front, &Container::pop_front, entry); }
+	static TSDQBaseLockInfo __PushLockInfo;
+	static TSDQBaseLockInfo __PopLockInfo;
 
-	bool __Pop_Back(T &entry)
-	{ return __Pop_Do(&Container::back, &Container::pop_back, entry); }
+#ifdef __SDQ_ITERATORS
+	template<class Iter>
+	using FCIterGetter = Iter(Container::*)(void) const;
 
-	typedef bool(_this::*TPopFunc)(T &entry);
-	bool __Pop(TPopFunc const &PopFunc, T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent);
+#ifdef __SDQ_MUTABLE_ITERATORS
+	template<class Iter>
+	using FMIterGetter = Iter(Container::*)(void);
 
-	TLock __LockEmpty(void);
+#ifdef __SDQ_CONCURRENT_CONST_ITERATORS
+#ifdef __ZWUTILS_SYNC_SLIMRWLOCK
+	class TSDQDynamicLockInfo : public TSDQBaseLockInfo {
+	protected:
+		TSDQDynamicLockInfo(bool xPush, bool xPop) : TSDQBaseLockInfo(xPush, xPop) {}
+	public:
+		virtual void __Release(TSyncBlockingDeque<T> &SDQueue) {};
+	};
 
-	typedef typename Container::const_iterator(Container::*TGetCIter)(void) const;
-	typename Container::const_iterator LockedGetCIter(TLock const &Lock, TGetCIter const &GetCIter);
+	class TSDQPushPopLockInfo : public TSDQDynamicLockInfo {
+	public:
+		TLock * _SharedLock = nullptr;
+		TLock * _ExclusiveLock = nullptr;
+
+		TSDQPushPopLockInfo(void) : TSDQDynamicLockInfo(true, true) {}
+	};
+
+	class TSDQIterLockInfo : public TSDQDynamicLockInfo {
+	public:
+		MRLock _IterLock;
+		MRLock _SDQLock;
+
+		TSDQIterLockInfo(TLock &&xIterLock, TLock &xSDQLock) :
+			TSDQDynamicLockInfo(false, false),
+			_IterLock(CONSTRUCTION::EMPLACE, std::move(xIterLock)),
+			_SDQLock(&xSDQLock) {}
+
+		void __Release(TSyncBlockingDeque<T> &SDQueue) override;
+	};
+
+	TSDQPushPopLockInfo* __PushPopLock_Check(TLock const &Lock) const;
+
+	void __Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool isExclusive);
+
+	MRLock __GetExclusiveIterLock(TLock const& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
+	MRLock __GetSharedIterLock(TLock const& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
+
+#else
+#error Unimplemented sharing support!
+#endif
+
+#else
+	class TSDQDynamicLockInfo : public TSDQBaseLockInfo {
+	protected:
+		MRLock _IterLock;
+		MRLock _SDQLock;
+	public:
+		TSDQDynamicLockInfo(TLock &&xIterLock, MRLock &xSDQLock) :
+			TSDQBaseLockInfo(false, false),
+			_IterLock(CONSTRUCTION::EMPLACE, std::move(xIterLock)),
+			_SDQLock(xSDQLock) {}
+	};
+
+	static TSDQBaseLockInfo __PushPopLockInfo;
+	void __PushPopLock_Check(TLock const &Lock) const;
+#endif
+
+
+	template<class Iter>
+	__Locked_Iterator<Iter> __Create_Iterator(FCIterGetter<Iter> const &IterGetter, MRLock &LockRef,
+		WAITTIME Timeout, THandleWaitable *AbortEvent) const;
+
+	template<class Iter>
+	__Locked_Iterator<Iter> __Create_Iterator(FMIterGetter<Iter> const &IterGetter, MRLock &LockRef,
+		WAITTIME Timeout, THandleWaitable *AbortEvent);
+#else 
+	static TSDQBaseLockInfo __PushPopLockInfo;
+	void __PushPopLock_Check(TLock const &Lock) const;
+
+	template<class Iter>
+	__Locked_Iterator<Iter> __Create_Iterator(FCIterGetter<Iter> const &IterGetter, MRLock &LockRef) const;
+#endif
+
+#else
+	static TSDQBaseLockInfo __PushPopLockInfo;
+#endif // __SDQ_ITERATORS
+
+	void __Lock_Sanity(TLock const &Lock) const;
+	void __Unlock(TLockInfo *LockInfo) override;
+
+	TLock __Accessor_Sync(void) {
+#ifdef __SDQ_LITE
+		return _Sync.Lock();
+#else
+		return SyncDeque.Lock();
+#endif
+	}
+
+	static WaitResult __WaitFor_Event(TEvent &Event, TimeStamp &EntryTS, WAITTIME &Timeout, THandleWaitable *AbortEvent);
+
+	TQueueAccessor __Accessor_Pickup_Safe(void);
+	TQueueAccessor __Accessor_Pickup_Gated(TSyncCounter &Hold, TEvent &Sync, TimeStamp &EntryTS,
+		WAITTIME &Timeout, THandleWaitable *AbortEvent);
+
+#define __Impl__Push(method)								\
+	if (Accessor->empty() && PopWaiters) ContentWait.Set();	\
+	Accessor-> ##method## ;									\
+	return Accessor->size();
+
+	size_type __Push_Front(TQueueAccessor &Accessor, T const &entry) {
+		__Impl__Push(push_front(entry));
+	}
+
+	size_type __Push_Front(TQueueAccessor &Accessor, T &&entry) {
+		__Impl__Push(push_front(std::move(entry)));
+	}
+
+	size_type __Push_Back(TQueueAccessor &Accessor, T const &entry) {
+		__Impl__Push(push_back(entry));
+	}
+
+	size_type __Push_Back(TQueueAccessor &Accessor, T &&entry) {
+		__Impl__Push(push_back(std::move(entry)));
+	}
+
+#define __Impl__Pop(dir)									\
+	entry = Accessor-> ##dir## ();							\
+	Accessor->pop_ ##dir## ();								\
+	if (Accessor->empty() && EmptyWaiters) EmptyWait.Set();
+
+	void __Pop_Front(TQueueAccessor &Accessor, T &entry) {
+		__Impl__Pop(front);
+	}
+
+	void __Pop_Back(TQueueAccessor &Accessor, T &entry) {
+		__Impl__Pop(back);
+	}
 
 public:
 	TString const Name;
 
-	TSyncBlockingDeque(TString const &xName) : Name(xName), __Cleanup(false), EntryEvent(true), EmptyEvent(true, true), PreEntryEvent(true) {}
-	~TSyncBlockingDeque() override;
+	TSyncBlockingDeque(TString const &xName) : Name(xName) {}
+	~TSyncBlockingDeque(void) override;
 
-	TLock Lock(TWaitable *AbortEvent = nullptr) override
-	{ return SyncDeque.Lock(AbortEvent); }
+	TLock Lock_Push(void) {
+		if (!PushHold++) PushWait.Reset();
+		return __New_Lock(&__PushLockInfo);
+	}
 
-	TLock TryLock(void) override
-	{ return SyncDeque.TryLock(); }
+	TLock Lock_Pop(void) {
+		if (!PopHold++) PopWait.Reset();
+		return __New_Lock(&__PopLockInfo);
+	}
 
-	typename Container::const_iterator Locked_cbegin(TLock const &Lock)
-	{ return LockedGetCIter(Lock, static_cast<TGetCIter>(&Container::cbegin)); }
+	TLock Lock_PushPop(void) {
+		if (!PushHold++) PushWait.Reset();
+		if (!PopHold++) PopWait.Reset();
+#if defined(__SDQ_ITERATORS) && defined(__SDQ_MUTABLE_ITERATORS) && defined(__SDQ_CONCURRENT_CONST_ITERATORS)
+		return __New_Lock(DefaultObjAllocator<TSDQPushPopLockInfo>().Create(RLAMBDANEW(TSDQPushPopLockInfo)));
+#else
+		return __New_Lock(&__PushPopLockInfo);
+#endif // __SDQ_ITERATORS && __SDQ_MUTABLE_ITERATORS && __SDQ_CONCURRENT_CONST_ITERATORS
+	}
 
-	typename Container::const_iterator Locked_cend(TLock const &Lock)
-	{ return LockedGetCIter(Lock, static_cast<TGetCIter>(&Container::cend)); }
+	void Sync(TLock const &Lock) {
+		__Lock_Sanity(Lock);
+		__Accessor_Sync();
+	}
 
-	typename Container::const_iterator Locked_crbegin(TLock const &Lock)
-	{ return LockedGetCIter(Lock, static_cast<TGetCIter>(&Container::crbegin)); }
+	TLock Lock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) override {
+		auto Ret = Lock_PushPop();
+		__Accessor_Sync();
+		return std::move(Ret);
+	}
 
-	typename Container::const_iterator Locked_crend(TLock const &Lock)
-	{ return LockedGetCIter(Lock, static_cast<TGetCIter>(&Container::crend)); }
+	TLock TryLock(__ARC_UINT SpinCount = 1) override {
+#ifdef _DEBUG
+		if (!SpinCount) FAIL(_T("Spin count must be a natrual number"));
+#endif
+		TLock Ret = NullLock();
+		while (--SpinCount && !(Ret = std::move(Lock(0))));
+		return SpinCount ? std::move(Ret) : Lock(0);
+	}
+
+#ifdef __SDQ_ITERATORS
+
+#ifdef __SDQ_MUTABLE_ITERATORS
+	// Mutable iterators are available for a thread at a time
+	iterator begin(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	iterator end(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	reverse_iterator rbegin(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	reverse_iterator rend(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+
+	iterator erase(iterator &Iter);
+	iterator insert(iterator &Iter, T const &Val);
+	reverse_iterator erase(reverse_iterator &Iter);
+	reverse_iterator insert(reverse_iterator &Iter, T const &Val);
+
+#ifdef __SDQ_CONCURRENT_CONST_ITERATORS
+	// Constant iterators are shared across all threads, block/by mutable iterators
+#else
+	// Constant iterators are available for a thread at a time
+#endif
+	const_iterator cbegin(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) const;
+	const_iterator cend(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) const;
+	const_reverse_iterator crbegin(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) const;
+	const_reverse_iterator crend(MRLock &PushPopLock, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) const;
+#else
+	// Constant iterators are shared across all threads
+	const_iterator cbegin(MRLock &PushPopLock) const;
+	const_iterator cend(MRLock &PushPopLock) const;
+	const_reverse_iterator crbegin(MRLock &PushPopLock) const;
+	const_reverse_iterator crend(MRLock &PushPopLock) const;
+#endif
+
+#endif // __SDQ_ITERATORS
 
 	/**
 	 * Put an object into the queue-front
 	 **/
-	size_type Push_Front(T const &entry)
-	{ return __Push_Do(static_cast<TEntryCPush>(&Container::push_front), entry); }
-
-	size_type Push_Front(T &&entry)
-	{ return __Push_Do(static_cast<TEntryMPush>(&Container::push_front), std::move(entry)); }
+	size_type Push_Front(T const &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Front(T &&entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Put an object into the queue-back
 	 **/
-	size_type Push_Back(T const &entry)
-	{ return __Push_Do(static_cast<TEntryCPush>(&Container::push_back), entry); }
-
-	size_type Push_Back(T &&entry)
-	{ return __Push_Do(static_cast<TEntryMPush>(&Container::push_back), std::move(entry)); }
+	size_type Push_Back(T const &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Back(T &&entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Try get an object from the queue-front with given timeout
 	 **/
-	bool Pop_Front(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr)
-	{ return __Pop(&TSyncBlockingDeque<T>::__Pop_Front, entry, Timeout, AbortEvent); }
+	bool Pop_Front(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Try get an object from the queue-back with given timeout
 	 **/
-	bool Pop_Back(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr)
-	{ return __Pop(&TSyncBlockingDeque<T>::__Pop_Back, entry, Timeout, AbortEvent); }
+	bool Pop_Back(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Return the instantaneous length of the queue
 	 **/
-	size_type Length(void)
-	{ return SyncDeque.Pickup()->size(); }
+	size_type Length(void) const {
+		auto Ret = (const_cast<_this*>(this)->__Accessor_Pickup_Safe())->size();
+#ifdef __SDQ_LITE
+		(*const_cast<_this*>(this)->_Sync).Leave();
+#endif
+		return Ret;
+	}
 
-	void AdjustSize(void)
-	{ SyncDeque.Pickup()->shrink_to_fit(); }
+	void Deflate(void) const {
+		(const_cast<_this*>(this)->__Accessor_Pickup_Safe())->shrink_to_fit();
+#ifdef __SDQ_LITE
+		(*const_cast<_this*>(this)->_Sync).Leave();
+#endif
+	}
 
 	/**
 	 * Try waiting for queue to become empty and hold lock on the queue
 	 **/
-	TLock EmptyLock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	TLock DrainAndLock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+
+	WaitResult WaitFor(WAITTIME Timeout) const override {
+		return ContentWait.WaitFor(Timeout);
+	}
+
 };
 
 #define SDQLogTag _T("SyncDQ '%s'")
@@ -188,16 +469,18 @@ class TSyncBlockingDequeException : public Exception {
 
 protected:
 	template <typename... Params>
-	TSyncBlockingDequeException(TString const &xContainerName, TString &&xSource, LPCTSTR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, xParams...), ContainerName(xContainerName) {}
+	TSyncBlockingDequeException(TString const &xContainerName, TString &&xSource,
+		LPCTSTR ReasonFmt, Params&&... xParams) :
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ContainerName(xContainerName) {}
 
 public:
 	TString const ContainerName;
 
 	template <class CSyncQueue, typename... Params>
-	static _this* Create(CSyncQueue const &xSyncQueue, TString &&xSource, LPCTSTR ReasonFmt, Params&&... xParams) {
+	static _this* Create(CSyncQueue const &xSyncQueue, TString &&xSource,
+		LPCTSTR ReasonFmt, Params&&... xParams) {
 		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this,
-			xSyncQueue.Name, std::move(xSource), ReasonFmt, xParams...));
+			xSyncQueue.Name, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
 	}
 
 	TString const& Why(void) const override {
@@ -212,9 +495,9 @@ public:
 
 //! @ingroup Threading
 //! Raise an exception within a synchronized queue with formatted string message
-#define SDQFAIL(...) {																		\
-	SOURCEMARK;																				\
-	throw TSyncBlockingDequeException::Create(*this, std::move(__SrcMark), __VA_ARGS__);	\
+#define __SDQFAIL(inst, ...) {															\
+	SOURCEMARK;																			\
+	throw TSyncBlockingDequeException::Create(inst, std::move(__SrcMark), __VA_ARGS__);	\
 }
 
 //! Perform logging within a synchronized queue
@@ -225,149 +508,635 @@ public:
 #define DESTRUCTION_MESSAGE _T("Destruction in progress...")
 
 template<class T>
-typename TSyncBlockingDeque<T>::TSyncDeque::Accessor TSyncBlockingDeque<T>::__Safe_Pickup(void) {
-	while (true) {
-		if (auto Queue = SyncDeque.TryPickup()) return Queue;
-		if (__Cleanup) SDQFAIL(DESTRUCTION_MESSAGE);
+typename TSyncBlockingDeque<T>::TSDQBaseLockInfo TSyncBlockingDeque<T>::__PushLockInfo = { true,false };
+
+template<class T>
+typename TSyncBlockingDeque<T>::TSDQBaseLockInfo TSyncBlockingDeque<T>::__PopLockInfo = { false,true };
+
+#ifdef __SDQ_ITERATORS
+
+#if defined(__SDQ_MUTABLE_ITERATORS) && defined(__SDQ_CONCURRENT_CONST_ITERATORS)
+
+#ifdef __ZWUTILS_SYNC_SLIMRWLOCK
+
+template<class T>
+void TSyncBlockingDeque<T>::TSDQIterLockInfo::__Release(TSyncBlockingDeque<T> &SDQueue) {
+	auto LinkedLockBaseInfo = static_cast<TSDQBaseLockInfo*>(__LockInfo(*_SDQLock));
+	auto LinkedLockInfo = dynamic_cast<TSDQPushPopLockInfo*>(LinkedLockBaseInfo);
+	SDQueue.__Lock_Demote(LinkedLockInfo, SDQueue.SRWSync.ForWrite(*_IterLock));
+
+	// Release lock and then send signal if needed
+	_IterLock.Clear();
+	if (~SDQueue.IterWaiters) {
+		// We are in a transient state of deferred event creation
+		// Just hold the breath for a while
+		while (!SDQueue.IterWaitEvent.Allocated()) SwitchToThread();
+		SDQueue.IterWaitEvent.Set();
 	}
 }
 
+#else
+#error Unimplemented sharing support!
+#endif
+
+#endif
+
+#endif // __SDQ_ITERATORS
+
+#define SDQFAIL(...) __SDQFAIL(*this, __VA_ARGS__)
+
+#ifdef __SDQ_LITE
+#define __SyncLock_RAII		TInitResource<int> __RAII(0, [&](int &) {(*_Sync).Leave(); })
+#define __SyncLock_RAII_C	TInitResource<int> __RAII(0, [&](int &) {(*const_cast<_this*>(this)->_Sync).Leave(); })
+#else
+#define __SyncLock_RAII
+#define __SyncLock_RAII_C
+#endif
+
+#ifdef __SDQ_ITERATORS
+
+#ifdef __SDQ_MUTABLE_ITERATORS
+
+#ifdef __SDQ_CONCURRENT_CONST_ITERATORS
+
 template<class T>
-TSyncBlockingDeque<T>::~TSyncBlockingDeque() {
-	auto Queue = __Safe_Pickup();
-	__Cleanup = true;
-
-	if (size_t Size = Queue->size()) {
-		SDQLOG(_T("WARNING: There are %d left over entries"), (int)Size);
-	}
-
-	if (long Count = ~EntryWaiters) {
-		SDQLOG(_T("WARNING: There are %d entry waiters"), Count);
-		EntryEvent.Set();
-	}
-
-	if (long Count = ~EmptyWaiters) {
-		SDQLOG(_T("WARNING: There are %d empty waiters"), Count);
-		EmptyEvent.Set();
-	}
-
-	if (long Count = ~PreEntryWaiters) {
-		SDQLOG(_T("WARNING: There are %d push waiters"), Count);
-		PreEntryEvent.Set();
-	}
+typename TSyncBlockingDeque<T>::TSDQPushPopLockInfo*
+TSyncBlockingDeque<T>::__PushPopLock_Check(TLock const &Lock) const {
+	__Lock_Sanity(Lock);
+	TSDQBaseLockInfo *__Info = static_cast<TSDQBaseLockInfo*>(__LockInfo(Lock));
+	auto PushPopLockInfo = dynamic_cast<TSDQPushPopLockInfo*>(__Info);
+	if (!PushPopLockInfo) SDQFAIL(_T("Operation requires a push-pop lock"));
+	return PushPopLockInfo;
 }
 
 template<class T>
-bool TSyncBlockingDeque<T>::__WaitFor_Event(TEvent &Event, WAITTIME Timeout, TimeStamp const &StartTime, THandleWaitable *AbortEvent) {
-	// Calculate how long to wait
-	DWORD Delta = 0;
+void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool isExclusive) {
+	if (isExclusive) {
+		if (LockInfo->_SharedLock) {
+			// Downgrade to shared lock
+			auto QueueLock = __Accessor_Sync();
+			{
+				auto LinkedLockBaseInfo = static_cast<TSDQBaseLockInfo*>(__LockInfo(*LockInfo->_ExclusiveLock));
+				auto LinkedLockInfo = dynamic_cast<TSDQIterLockInfo*>(LinkedLockBaseInfo);
+				__LockDrop(*LinkedLockInfo->_IterLock);
+			}
+			(*SRWSync).EndWrite();
+			{
+				auto LinkedLockBaseInfo = static_cast<TSDQBaseLockInfo*>(__LockInfo(*LockInfo->_SharedLock));
+				auto LinkedLockInfo = dynamic_cast<TSDQIterLockInfo*>(LinkedLockBaseInfo);
+				*LinkedLockInfo->_IterLock = SRWSync.Lock_Read();
+			}
+		}
+		LockInfo->_ExclusiveLock = nullptr;
+	} else {
+		LockInfo->_SharedLock = nullptr;
+	}
+}
+
+#define __IMPL_IterLockOp(sync_raii,free_olock,regain_olock_raii,replace_olock,spin_nlock,single_nlock,opname)	\
+	TAllocResource<__ARC_INT> WaitCounter([&] { return IterWaiters++; }, [&](__ARC_INT &) { --IterWaiters; });	\
+	TimeStamp EntryTS;																							\
+	while (true) {																								\
+		{																										\
+			sync_raii;																							\
+			free_olock;																							\
+			{																									\
+				regain_olock_raii;																				\
+				if (##spin_nlock##) {																			\
+					replace_olock;																				\
+					break;																						\
+				}																								\
+				/* Allocate wait counter */																		\
+				if (!WaitCounter.Allocated()) {																	\
+					if (*WaitCounter) {																			\
+						/* Check if we are racing against the event object allocation */						\
+						while (!IterWaitEvent.Allocated()) SwitchToThread();									\
+					}																							\
+					/* Check again before wait */																\
+					if (##single_nlock##) {																		\
+						replace_olock;																			\
+						break;																					\
+					}																							\
+				}																								\
+			}																									\
+		}																										\
+		/* Calculate remaining wait time */																		\
+		if (Timeout != FOREVER) {																				\
+			if (!EntryTS) {																						\
+				EntryTS = TimeStamp::Now();																		\
+			} else {																							\
+				TimeStamp Now = TimeStamp::Now();																\
+				INT64 WaitDur = (Now - EntryTS).GetValue(TimeUnit::MSEC);										\
+				Timeout = Timeout > WaitDur ? Timeout - (WAITTIME)WaitDur : 0;									\
+				EntryTS = Now;																					\
+			}																									\
+		}																										\
+		/* Perform the wait */																					\
+		WaitResult WRet = AbortEvent ?																			\
+			WaitMultiple({ IterWaitEvent, *AbortEvent }, false, Timeout) :										\
+			IterWaitEvent.WaitFor(Timeout);																		\
+		/* Analyze the result */																				\
+		switch (WRet) {																							\
+			case WaitResult::Error: SYSFAIL(_T("Failed to " ##opname## ));										\
+			case WaitResult::Signaled:																			\
+			case WaitResult::Signaled_0: continue;																\
+			case WaitResult::Signaled_1:																		\
+			case WaitResult::TimedOut: break;																	\
+			default: SYSFAIL(_T("Unable to " ##opname## ));														\
+		}																										\
+		break;																									\
+	}
+
+#define __IMPL_LinkLock(exlock, lockbase, container)							\
+	container = &(																\
+		*Ret = const_cast<_this*>(this)->__New_Lock(							\
+			DefaultObjAllocator<TSDQIterLockInfo>().Create(						\
+				RLAMBDANEW(TSDQIterLockInfo, std::move(exlock), lockbase)		\
+			)																	\
+		)																		\
+	)
+
+template<class T>
+typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock const& BaseLock,
+	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	// Check if we have already promoted
+	if (LockInfo->_ExclusiveLock) return { LockInfo->_ExclusiveLock };
+
+	MRLock Ret(CONSTRUCTION::EMPLACE, SRWSync.NullLock());
+	// Check if we have a shared iterator lock
+	if (LockInfo->_SharedLock) {
+		auto LinkedLockBaseInfo = static_cast<TSDQBaseLockInfo*>(__LockInfo(*LockInfo->_SharedLock));
+		auto LinkedLockInfo = dynamic_cast<TSDQIterLockInfo*>(LinkedLockBaseInfo);
+		__IMPL_IterLockOp(auto QueueLock = __Accessor_Sync(),
+			{
+				(*SRWSync).EndRead(); __LockDrop(*LinkedLockInfo->_IterLock);
+			},
+			TAllocResource<int> __LockRecover_RAII(0,
+				[&](int &) { *LinkedLockInfo->_IterLock = SRWSync.Lock_Read(); }
+			),
+			{
+				__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_ExclusiveLock);
+				__LockRecover_RAII.Invalidate();
+			},
+				*Ret = SRWSync.TryLock_Write(),
+				*Ret = SRWSync.TryLock_Write(1),
+				"promote to exclusive lock"
+				);
+	} else {
+		__IMPL_IterLockOp(auto QueueLock = __Accessor_Sync(), {}, {},
+			__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_ExclusiveLock),
+			*Ret = SRWSync.TryLock_Write(),
+			*Ret = SRWSync.TryLock_Write(1),
+			"acquire exclusive lock"
+		);
+	}
+	return std::move(Ret);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock const& BaseLock,
+	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	// Check if we already have a shared iterator lock
+	if (LockInfo->_SharedLock) return { LockInfo->_SharedLock };
+
+	MRLock Ret(CONSTRUCTION::EMPLACE, SRWSync.NullLock());
+	// Check if we are in exclusive mode
+	if (LockInfo->_ExclusiveLock) {
+		__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_SharedLock);
+	} else {
+		__IMPL_IterLockOp({}, {}, {},
+			__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_SharedLock),
+			*Ret = SRWSync.TryLock_Read(),
+			*Ret = SRWSync.TryLock_Read(1),
+			"acquire shared lock"
+		);
+	}
+	return std::move(Ret);
+}
+
+#define __IMPL_Create_Iterator												\
+	if (*IterLock) {														\
+		auto Queue = const_cast<_this*>(this)->__Accessor_Pickup_Safe();	\
+		__SyncLock_RAII_C;													\
+		return { ((*Queue).*IterGetter)(), IterLock };						\
+	} else return {}
+
+template<class T>
+template<class Iter>
+typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::__Create_Iterator(
+	FCIterGetter<Iter> const &IterGetter, MRLock &LockRef, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	auto LockInfo = __PushPopLock_Check(*LockRef);
+	auto IterLock = const_cast<_this*>(this)->__GetSharedIterLock(*LockRef, LockInfo, Timeout, AbortEvent);
+	__IMPL_Create_Iterator;
+}
+
+template<class T>
+template<class Iter>
+typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::__Create_Iterator(
+	FMIterGetter<Iter> const &IterGetter, MRLock &LockRef, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	auto LockInfo = __PushPopLock_Check(*LockRef);
+	auto IterLock = __GetExclusiveIterLock(*LockRef, LockInfo, Timeout, AbortEvent);
+	__IMPL_Create_Iterator;
+}
+
+#else
+
+template<class T>
+typename TSyncBlockingDeque<T>::TSDQBaseLockInfo TSyncBlockingDeque<T>::__PushPopLockInfo = { true,true };
+
+template<class T>
+void TSyncBlockingDeque<T>::__PushPopLock_Check(TLock const &Lock) const {
+	__Lock_Sanity(Lock);
+	TSDQBaseLockInfo *__Info = static_cast<TSDQBaseLockInfo*>(__LockInfo(Lock));
+	if (!__Info->Push || !__Info->Pop) SDQFAIL(_T("Operation requires a push-pop lock"));
+}
+
+#define __IMPL_Create_Iterator																			\
+	__PushPopLock_Check(*LockRef);																		\
+	auto IterLock = (const_cast<_this*>(this)->ExclusiveSync).Lock(Timeout, AbortEvent);				\
+	if (IterLock) {																						\
+		MRLock DynamicLock(CONSTRUCTION::EMPLACE, const_cast<_this*>(this)->__New_Lock(					\
+			DefaultObjAllocator<TSDQDynamicLockInfo>().Create(											\
+				RLAMBDANEW(TSDQDynamicLockInfo, std::move(IterLock), LockRef)							\
+			)																							\
+		));																								\
+		auto Queue = const_cast<_this*>(this)->__Accessor_Pickup_Safe();								\
+		__SyncLock_RAII_C;																				\
+		return { ((*Queue).*IterGetter)(), DynamicLock };												\
+	} else return {}
+
+template<class T>
+template<class Iter>
+typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::__Create_Iterator(
+	FCIterGetter<Iter> const &IterGetter, MRLock &LockRef, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	__IMPL_Create_Iterator;
+}
+
+template<class T>
+template<class Iter>
+typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::__Create_Iterator(
+	FMIterGetter<Iter> const &IterGetter, MRLock &LockRef, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__IMPL_Create_Iterator;
+}
+
+#endif
+
+#else
+
+template<class T>
+typename TSyncBlockingDeque<T>::TSDQBaseLockInfo TSyncBlockingDeque<T>::__PushPopLockInfo = { true,true };
+
+template<class T>
+void TSyncBlockingDeque<T>::__PushPopLock_Check(TLock const &Lock) const {
+	__Lock_Sanity(Lock);
+	TSDQBaseLockInfo *__Info = static_cast<TSDQBaseLockInfo*>(__LockInfo(Lock));
+	if (!__Info->Push || !__Info->Pop) SDQFAIL(_T("Operation requires a push-pop lock"));
+}
+
+template<class T>
+template<class Iter>
+typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::__Create_Iterator(
+	FCIterGetter<Iter> const &IterGetter, MRLock &LockRef) const {
+	__PushPopLock_Check(*LockRef);
+	auto Queue = const_cast<_this*>(this)->__Accessor_Pickup_Safe();
+	__SyncLock_RAII_C;
+	return { ((*Queue).*IterGetter)(), LockRef };
+}
+
+#endif
+
+#else
+
+template<class T>
+typename TSyncBlockingDeque<T>::TSDQBaseLockInfo TSyncBlockingDeque<T>::__PushPopLockInfo = { true,true };
+
+#endif // __SDQ_ITERATORS
+
+template<class T>
+void TSyncBlockingDeque<T>::__Lock_Sanity(TLock const &Lock) const {
+	if (!By(Lock)) SDQFAIL(_T("Incorrect locking context"));
+}
+
+template<class T>
+void TSyncBlockingDeque<T>::__Unlock(TLockInfo *LockInfo) {
+	TSDQBaseLockInfo *__Info = static_cast<TSDQBaseLockInfo*>(LockInfo);
+	if (__Info->Push) {
+		if (!--PushHold) PushWait.Set();
+	}
+	if (__Info->Pop) {
+		if (!--PopHold) PopWait.Set();
+	}
+
+#if defined(__SDQ_ITERATORS) && defined(__SDQ_MUTABLE_ITERATORS)
+	TSDQDynamicLockInfo *__AdvInfo = dynamic_cast<TSDQDynamicLockInfo*>(__Info);
+	if (__AdvInfo) {
+#ifdef __SDQ_CONCURRENT_CONST_ITERATORS
+		__AdvInfo->__Release(*this);
+#endif
+		DefaultObjAllocator<TSDQDynamicLockInfo>().Destroy(__AdvInfo);
+	}
+#endif // __SDQ_ITERATORS && __SDQ_MUTABLE_ITERATORS
+}
+
+template<class T>
+WaitResult TSyncBlockingDeque<T>::__WaitFor_Event(TEvent &Event, TimeStamp &EntryTS,
+	WAITTIME &Timeout, THandleWaitable *AbortEvent) {
+	WaitResult WRet = AbortEvent ?
+		WaitMultiple({ Event, *AbortEvent }, false, Timeout) :
+		Event.WaitFor(Timeout);
+
 	if (Timeout != FOREVER) {
-		Delta = (DWORD)StartTime.To(TimeStamp::Now()).GetValue(TimeUnit::MSEC);
-		if (Delta > Timeout) return false;
+		TimeStamp Now = TimeStamp::Now();
+		INT64 WaitDur = (Now - EntryTS).GetValue(TimeUnit::MSEC);
+		Timeout = Timeout > WaitDur ? Timeout - (WAITTIME)WaitDur : 0;
+		EntryTS = Now;
 	}
-	Timeout -= Delta;
-
-	return AbortEvent == nullptr ? Event.WaitFor(Timeout) == WaitResult::Signaled :
-		WaitMultiple({Event, *AbortEvent}, false, Timeout) == WaitResult::Signaled_0;
+	return WRet;
 }
 
 template<class T>
-void TSyncBlockingDeque<T>::__PreEntry_Check(void) {
-	if (~EmptyWaiters) {
-		TInitResource<long> WaitTicket(PreEntryWaiters++, [&](long &) {PreEntryWaiters--; });
-		PreEntryEvent.WaitFor();
+typename TSyncBlockingDeque<T>::TQueueAccessor TSyncBlockingDeque<T>::__Accessor_Pickup_Safe(void) {
+#ifdef __SDQ_LITE
+	(*_Sync).Enter();
+	if (__Cleanup) {
+		(*_Sync).Leave();
+		SDQFAIL(DESTRUCTION_MESSAGE);
 	}
+	return &_Queue;
+#else
+	auto Queue = SyncDeque.Pickup();
+	if (__Cleanup) SDQFAIL(DESTRUCTION_MESSAGE);
+	return Queue;
+#endif
 }
 
 template<class T>
-typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::__Push_Do(TEntryCPush const &EntryPush, T const &entry) {
-	__PreEntry_Check();
-	auto Queue = __Safe_Pickup();
-	return ((&Queue)->*EntryPush)(entry), __Signal_Event(EntryWaiters, EntryEvent), Queue->size();
-}
-
-template<class T>
-typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::__Push_Do(TEntryMPush const &EntryPush, T &&entry) {
-	__PreEntry_Check();
-	auto Queue = __Safe_Pickup();
-	return ((&Queue)->*EntryPush)(std::move(entry)), __Signal_Event(EntryWaiters, EntryEvent), Queue->size();
-}
-
-template<class T>
-bool TSyncBlockingDeque<T>::__Pop_Do(TEntryGet const &EntryGet, TEntryDiscard const &EntryDiscard, T &entry) {
-	auto Queue = __Safe_Pickup();
-	size_t Size = Queue->size();
-	if (Size > 0) {
-		entry = std::move(((&Queue)->*EntryGet)()), ((&Queue)->*EntryDiscard)();
-		if (!--Size) {
-			EntryEvent.Reset();
-			EmptyEvent.Set();
+typename TSyncBlockingDeque<T>::TQueueAccessor TSyncBlockingDeque<T>::__Accessor_Pickup_Gated(
+	TSyncCounter &Hold, TEvent &Sync, TimeStamp &EntryTS, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
+	while (true) {
+		while (~Hold) {
+			switch (__WaitFor_Event(Sync, EntryTS, Timeout, AbortEvent)) {
+				case WaitResult::Error: SYSFAIL(_T("Failed to wait for pickup event"));
+				case WaitResult::Signaled:
+				case WaitResult::Signaled_0: break;
+				case WaitResult::Signaled_1:
+				case WaitResult::TimedOut:
+#ifdef __SDQ_LITE
+					return nullptr;
+#else
+					return SyncDeque.NullAccessor();
+#endif
+				default: SYSFAIL(_T("Unable to wait for pickup event"));
+			}
+			if (__Cleanup) SDQFAIL(DESTRUCTION_MESSAGE);
 		}
-		return true;
+#ifdef __SDQ_LITE
+		if ((*_Sync).TryEnter(__SDQ_SYNCSPIN)) return &_Queue;
+#else
+		if (auto Queue = SyncDeque.TryPickup(__SDQ_SYNCSPIN)) return Queue;
+#endif
 	}
-	return false;
 }
 
 template<class T>
-bool TSyncBlockingDeque<T>::__Pop(TPopFunc const &PopFunc, T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	if ((this->*PopFunc)(entry)) return true;
+TSyncBlockingDeque<T>::~TSyncBlockingDeque(void) {
+	{
+		// Ensure concurrent operation finish, and future operation will be rejected
+		auto _Lock = Lock_PushPop();
+		__Cleanup = true;
+		__Accessor_Sync();
+	}
 
-	TimeStamp EnterTime = TimeStamp::Now();
+	{
+#ifdef __SDQ_LITE
+		auto _Queue = &this->_Queue;
+#else
+		auto _Queue = SyncDeque.Pickup();
+#endif
+		if (size_t Size = _Queue->size()) {
+			SDQLOG(_T("WARNING: There are %d left over entries"), (int)Size);
+		}
+		if (long Count = ~PushHold) {
+			SDQLOG(_T("WARNING: There are %d unreleased push hold"), Count);
+		}
+		if (long Count = ~PopHold) {
+			SDQLOG(_T("WARNING: There are %d unreleased pop hold"), Count);
+		}
+	}
+
+	PushWait.Set();
+	PopWait.Set();
+	EmptyWait.Set();
+	ContentWait.Set();
+}
+
+#ifdef __SDQ_ITERATORS
+
+#ifdef __SDQ_MUTABLE_ITERATORS
+
+template<class T>
+typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::begin(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	return __Create_Iterator((FMIterGetter<typename Container::iterator>)&Container::begin,
+		PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::end(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	return __Create_Iterator((FMIterGetter<typename Container::iterator>)&Container::end,
+		PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::rbegin(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	return __Create_Iterator((FMIterGetter<typename Container::reverse_iterator>)&Container::rbegin,
+		PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::rend(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	return __Create_Iterator((FMIterGetter<typename Container::reverse_iterator>)&Container::rend,
+		PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_iterator TSyncBlockingDeque<T>::cbegin(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	return __Create_Iterator(&Container::cbegin, PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_iterator TSyncBlockingDeque<T>::cend(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	return __Create_Iterator(&Container::cend, PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::crbegin(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	return __Create_Iterator(&Container::crbegin, PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::crend(
+	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) const {
+	return __Create_Iterator(&Container::crend, PushPopLock, Timeout, AbortEvent);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::erase(iterator &Iter) {
+#ifdef __SDQ_LITE
+	return { std::move(Iter), _Queue.erase(Iter) };
+#else
+	return { std::move(Iter), __Accessor_Pickup_Safe()->erase(Iter) };
+#endif
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::insert(iterator &Iter, T const &Val) {
+#ifdef __SDQ_LITE
+	return { std::move(Iter), _Queue.insert(Iter, Val) };
+#else
+	return { std::move(Iter), __Accessor_Pickup_Safe()->insert(Iter, Val) };
+#endif
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::erase(reverse_iterator &Iter) {
+#ifdef __SDQ_LITE
+	return { std::move(Iter), _Queue.erase(Iter) };
+#else
+	return { std::move(Iter), __Accessor_Pickup_Safe()->erase(Iter) };
+#endif
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::insert(reverse_iterator &Iter, T const &Val) {
+#ifdef __SDQ_LITE
+	return { std::move(Iter), _Queue.insert(Iter, Val) };
+#else
+	return { std::move(Iter), __Accessor_Pickup_Safe()->insert(Iter, Val) };
+#endif
+}
+
+#else
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_iterator TSyncBlockingDeque<T>::cbegin(MRLock &PushPopLock) const {
+	return __Create_Iterator(&Container::cbegin, PushPopLock);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_iterator TSyncBlockingDeque<T>::cend(MRLock &PushPopLock) const {
+	return __Create_Iterator(&Container::cend, PushPopLock);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::crbegin(MRLock &PushPopLock) const {
+	return __Create_Iterator(&Container::crbegin, PushPopLock);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::crend(MRLock &PushPopLock) const {
+	return __Create_Iterator(&Container::crend, PushPopLock);
+}
+
+#endif
+
+#endif // __SDQ_ITERATORS
+
+#define __Impl_Push(dir,data)																	\
+	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();				\
+	auto Accessor = __Accessor_Pickup_Gated(PushHold, PushWait, EntryTS, Timeout, AbortEvent);	\
+	if (!Accessor) return -1;																	\
+	{																							\
+		__SyncLock_RAII;																		\
+		return __Push_ ##dir## (Accessor, ##data##);											\
+	}
+
+template<class T>
+typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Front(
+	T const &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Push(Front, entry);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Front(
+	T &&entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Push(Front, std::move(entry));
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
+	T const &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Push(Back, entry);
+}
+
+template<class T>
+typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
+	T &&entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Push(Back, std::move(entry));
+}
+
+#define __Impl_Pop(dir)																							\
+	TAllocResource<__ARC_INT> WaitCounter([&] { return PopWaiters++; }, [&](__ARC_INT &) { --PopWaiters; });	\
+	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();								\
+	while (true) {																								\
+		{																										\
+			auto Accessor = __Accessor_Pickup_Gated(PopHold, PopWait, EntryTS, Timeout, AbortEvent);			\
+			if (!Accessor) return false;																		\
+			{																									\
+				__SyncLock_RAII;																				\
+				if (!Accessor->empty()) return __Pop_ ##dir## (Accessor, entry), true;							\
+				if (!*WaitCounter) ContentWait.Reset();															\
+			}																									\
+		}																										\
+		switch (__WaitFor_Event(ContentWait, EntryTS, Timeout, AbortEvent)) {									\
+			case WaitResult::Error: SYSFAIL(_T("Failed to wait for pop event"));								\
+			case WaitResult::Signaled:																			\
+			case WaitResult::Signaled_0: continue;																\
+			case WaitResult::Signaled_1:																		\
+			case WaitResult::TimedOut: return false;															\
+			default: SYSFAIL(_T("Unable to wait for pop event"));												\
+		}																										\
+	}
+
+template<class T>
+bool TSyncBlockingDeque<T>::Pop_Front(T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Pop(Front);
+}
+
+template<class T>
+bool TSyncBlockingDeque<T>::Pop_Back(T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	__Impl_Pop(Back);
+}
+
+template<class T>
+typename TLockable::TLock TSyncBlockingDeque<T>::DrainAndLock(WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	TAllocResource<__ARC_INT> WaitCounter([&] { return EmptyWaiters++; }, [&](__ARC_INT &) { --EmptyWaiters; });
+	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();
+	auto _Lock = Lock_Push();
 	while (true) {
 		{
-			// Signal we are in waiting stage
-			TInitResource<long> WaitTicket(EntryWaiters++, [&](long &) {EntryWaiters--; });
-			// Check again before long wait
-			if ((this->*PopFunc)(entry)) return true;
-			// Play the waiting game...
-			if (!__WaitFor_Event(EntryEvent, Timeout, EnterTime, AbortEvent)) break;
+			auto Accessor = __Accessor_Pickup_Safe();
+			{
+				__SyncLock_RAII;
+				if (Accessor->size() == 0) return std::move(_Lock);
+				if (!*WaitCounter) EmptyWait.Reset();
+			}
 		}
-		// Check after signaled wakeup
-		if ((this->*PopFunc)(entry)) return true;
-	}
-	return false;
-}
-
-template<class T>
-typename TSyncBlockingDeque<T>::TLock TSyncBlockingDeque<T>::__LockEmpty(void) {
-	auto Queue = __Safe_Pickup();
-	if (Queue->empty()) {
-		return SyncDeque.Lock();
-	}
-	EmptyEvent.Reset();
-	return SyncDeque.NullLock();
-}
-
-template<class T>
-typename TSyncBlockingDeque<T>::TLock TSyncBlockingDeque<T>::EmptyLock(WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	if (TLock _Ret{__LockEmpty()}) return _Ret;
-
-	TimeStamp EnterTime = TimeStamp::Now();
-	while (true) {
-		{
-			// Signal we are in waiting stage
-			TInitResource<long> WaitTicket(EmptyWaiters++, [&](long &) {if (--EmptyWaiters == 0) PreEntryEvent.Set(); });
-			if (*WaitTicket == 0) PreEntryEvent.Reset();
-			// Check again before long wait
-			if (TLock _Ret{__LockEmpty()}) return _Ret;
-			// Play the waiting game...
-			if (!__WaitFor_Event(EmptyEvent, Timeout, EnterTime, AbortEvent)) break;
+		switch (__WaitFor_Event(EmptyWait, EntryTS, Timeout, AbortEvent)) {
+			case WaitResult::Error: SYSFAIL(_T("Failed to wait for queue drain"));
+			case WaitResult::Signaled:
+			case WaitResult::Signaled_0: break;
+			case WaitResult::Signaled_1:
+			case WaitResult::TimedOut: return NullLock();
+			default: SYSFAIL(_T("Unable to wait for queue drain"));
 		}
-		// Check after signaled wakeup
-		if (TLock _Ret{__LockEmpty()}) return _Ret;
 	}
-	return __LockEmpty();
-}
-
-template<class T>
-typename TSyncBlockingDeque<T>::Container::const_iterator TSyncBlockingDeque<T>::LockedGetCIter(TLock const &Lock, TGetCIter const &GetCIter) {
-	if (!Lock.For(SyncDeque.Lockable()))
-		SDQFAIL(_T("Incorrect locking context"));
-	if (!Lock)
-		SDQFAIL(_T("Lock not engaged"));
-
-	auto Queue = __Safe_Pickup();
-	return ((&Queue)->*GetCIter)();
 }
 
 #undef SDQFAIL

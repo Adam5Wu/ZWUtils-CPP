@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_ObjAllocator_H
 #define ZWUtils_ObjAllocator_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/Types.h"
 
 #include <functional>
@@ -90,11 +92,13 @@ public:
 #define RLAMBDANEW(cls, ...) [&](void *X) {return new (X) cls (__VA_ARGS__);}
 
 template<class T>
-bool operator ==(IObjAllocator<T> const &A, IObjAllocator<T> const &B)
-{ return std::addressof(A) == std::addressof(B); }
+bool operator ==(IObjAllocator<T> const &A, IObjAllocator<T> const &B) {
+	return std::addressof(A) == std::addressof(B);
+}
 template<class T>
-bool operator !=(IObjAllocator<T> const &A, IObjAllocator<T> const &B)
-{ return !(A == B); }
+bool operator !=(IObjAllocator<T> const &A, IObjAllocator<T> const &B) {
+	return !(A == B);
+}
 
 #include "Allocator.h"
 #include "Resource.h"
@@ -106,7 +110,7 @@ template<class T>
  *
  * Delegate memory management to an allocator
  **/
-class CascadeObjAllocator : public IObjAllocator < T > {
+class CascadeObjAllocator : public IObjAllocator<T> {
 	typedef CascadeObjAllocator _this;
 
 protected:
@@ -121,8 +125,9 @@ public:
 		auto Ret = xNew(&ObjMem);
 		return ObjMem.Invalidate(), Ret;
 	}
-	void Destroy(T *Obj) override
-	{ _DefDestroy(Obj), _Alloc.Dealloc(Obj); }
+	void Destroy(T *Obj) override {
+		_DefDestroy(Obj), _Alloc.Dealloc(Obj);
+	}
 	T* Transfer(T *Obj, IObjAllocator<T> &OAlloc) override {
 		auto rAlloc = dynamic_cast<_this*>(std::addressof(OAlloc));
 		return rAlloc ? (_Alloc == rAlloc->_Alloc ? Obj : nullptr) : nullptr;
@@ -140,7 +145,7 @@ template<class T>
  * @ingroup Utilities
  * @brief External managed object allocator
  **/
-class ExtObjAllocator : public IObjAllocator < T > {
+class ExtObjAllocator : public IObjAllocator<T> {
 	typedef ExtObjAllocator _this;
 
 public:
@@ -148,26 +153,31 @@ public:
 
 	T* Create(TNew const &xNew) override;
 	void Destroy(T *Obj) {}
-	T* Transfer(T *Obj, IObjAllocator<T> &OAlloc)
-	{ return dynamic_cast<_this*>(std::addressof(OAlloc)) ? Obj : nullptr; }
+	T* Transfer(T *Obj, IObjAllocator<T> &OAlloc) {
+		return dynamic_cast<_this*>(std::addressof(OAlloc)) ? Obj : nullptr;
+	}
 };
 
 #include "Debug/Exception.h"
 
 template<class T>
-T* IObjAllocator<T>::Create(TNew const &xNew)
-{ FAIL(_T("Abstract function")); }
+T* IObjAllocator<T>::Create(TNew const &xNew) {
+	FAIL(_T("Abstract function"));
+}
 
 template<class T>
-void IObjAllocator<T>::Destroy(T *Obj)
-{ FAIL(_T("Abstract function")); }
+void IObjAllocator<T>::Destroy(T *Obj) {
+	FAIL(_T("Abstract function"));
+}
 
 template<class T>
-T* IObjAllocator<T>::Transfer(T *Obj, _this &OAlloc)
-{ FAIL(_T("Abstract function")); }
+T* IObjAllocator<T>::Transfer(T *Obj, _this &OAlloc) {
+	FAIL(_T("Abstract function"));
+}
 
 template<class T>
-T* ExtObjAllocator<T>::Create(TNew const &xNew)
-{ FAIL(_T("Should not reach")); }
+T* ExtObjAllocator<T>::Create(TNew const &xNew) {
+	FAIL(_T("Should not reach"));
+}
 
 #endif

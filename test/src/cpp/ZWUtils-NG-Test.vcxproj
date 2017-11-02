@@ -46,7 +46,7 @@
     <ProjectGuid>{C09326D4-FE51-4EB9-84E7-8F9CE1CC283B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ZWUtilsNGTest</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -214,6 +214,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <UseFullPaths>true</UseFullPaths>
       <ExceptionHandling>Async</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -236,6 +237,8 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <UseFullPaths>true</UseFullPaths>
       <ExceptionHandling>Async</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <OmitFramePointers>false</OmitFramePointers>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -272,6 +275,7 @@
       <DelayLoadDLLs>Dbghelp.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -301,6 +305,7 @@
       <DelayLoadDLLs>Dbghelp.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|Win32'">
@@ -446,6 +451,7 @@
       <DelayLoadDLLs>Dbghelp.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseD|x64'">
@@ -475,6 +481,7 @@
       <DelayLoadDLLs>Dbghelp.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

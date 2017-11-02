@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Reference_H
 #define ZWUtils_Reference_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Debug/Exception.h"
 
 #include "ObjAllocator.h"
@@ -51,13 +53,17 @@ class Reference {
 protected:
 	Reference() {}
 
-	virtual ~Reference(void) {}
+	// Note: For performance reasons, we do not have a virtual destructor
+	// Hence we prevent arbitrary destruction of this instance
+	~Reference(void) {}
 
-	virtual T* _ObjPointer(void) const
-	{ FAIL(_T("Abstract Function")); }
+	virtual T* _ObjPointer(void) const {
+		FAIL(_T("Abstract Function"));
+	}
 
-	virtual T* _ObjExchange(T *xObj)
-	{ FAIL(_T("Abstract Function")); }
+	virtual T* _ObjExchange(T *xObj) {
+		FAIL(_T("Abstract Function"));
+	}
 
 public:
 	// Disable copy and move constructions for generial references
@@ -68,34 +74,45 @@ public:
 	_this& operator=(_this const &) = delete;
 	_this& operator=(_this &&) = delete;
 
-	_this* operator~(void)
-	{ return this; }
-	_this const* operator~(void) const
-	{ return this; }
+	_this* operator~(void) {
+		return this;
+	}
+	_this const* operator~(void) const {
+		return this;
+	}
 
-	T* operator&(void) const
-	{ return _ObjPointer(); }
-	T& operator*(void) const
-	{ return *_ObjPointer(); }
-	T* operator->(void) const
-	{ return _ObjPointer(); }
-	bool operator==(_this const &xRef) const
-	{ return **this == *xRef; }
+	T* operator&(void) const {
+		return _ObjPointer();
+	}
+	T& operator*(void) const {
+		return *_ObjPointer();
+	}
+	T* operator->(void) const {
+		return _ObjPointer();
+	}
+	bool operator==(_this const &xRef) const {
+		return **this == *xRef;
+	}
 
-	virtual T* Assign(T *xObj)
-	{ return _ObjExchange(xObj); }
+	virtual T* Assign(T *xObj) {
+		return _ObjExchange(xObj);
+	}
 
-	virtual T* Drop(void)
-	{ return _ObjExchange(nullptr); }
+	virtual T* Drop(void) {
+		return _ObjExchange(nullptr);
+	}
 
-	T* operator=(T *xObj)
-	{ return Assign(xObj), xObj; }
+	T* operator=(T *xObj) {
+		return Assign(xObj), xObj;
+	}
 
-	virtual bool Empty(void) const
-	{ return _ObjPointer() == nullptr; }
+	virtual bool Empty(void) const {
+		return _ObjPointer() == nullptr;
+	}
 
-	virtual void Clear(void)
-	{ Assign(nullptr); }
+	virtual void Clear(void) {
+		Assign(nullptr);
+	}
 };
 
 #endif

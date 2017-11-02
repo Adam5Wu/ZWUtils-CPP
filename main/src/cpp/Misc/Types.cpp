@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -108,14 +108,14 @@ size_t Cardinal256::hashcode(void) const {
 TString Cardinal256::toString(void) const {
 #ifdef LITTLE_ENDIAN
 	return TStringCast(std::hex << std::uppercase
-					   << std::setw(16) << U64[3] << std::setw(16) << U64[2]
-					   << std::setw(16) << U64[1] << std::setw(16) << U64[0]);
+		<< std::setw(16) << U64[3] << std::setw(16) << U64[2]
+		<< std::setw(16) << U64[1] << std::setw(16) << U64[0]);
 #endif
 
 #ifdef BIG_ENDIAN
 	return TStringCast(std::hex << std::uppercase
-					   << std::setw(16) << U64[0] << std::setw(16) << U64[1]
-					   << std::setw(16) << U64[2] << std::setw(16) << U64[3]);
+		<< std::setw(16) << U64[0] << std::setw(16) << U64[1]
+		<< std::setw(16) << U64[2] << std::setw(16) << U64[3]);
 #endif
 }
 
@@ -127,7 +127,7 @@ Cardinal256 const& Cardinal256::ZERO(void) {
 #if _MSC_VER >= 1900
 	static Cardinal256 __IoFU(0ULL, 0ULL, 0ULL, 0ULL);
 #else
-	static Cardinal256 __IoFU = {0, 0, 0, 0};
+	static Cardinal256 __IoFU = { 0, 0, 0, 0 };
 #endif
 
 	return __IoFU;
@@ -137,9 +137,9 @@ TString UUIDToString(UUID const &Val) {
 	TString Ret(40, NullTChar);
 	Cardinal128 const &Value = (Cardinal128 const &)Val;
 	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1, _T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
-							  Value.U32[0], Value.U16[2], Value.U16[3],
-							  Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
-							  Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
+		Value.U32[0], Value.U16[2], Value.U16[3],
+		Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
+		Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
 	if (result < 0)
 		FAIL(_T("Converting from GUID to string failed with error code %d"), errno);
 	return Ret;
@@ -151,9 +151,9 @@ UUID UUIDFromString(TString const &Str) {
 	// Work around VC++ missing support for "hhX"
 	int tail8[8];
 	int result = _stscanf_s(Str.c_str(), _T("%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X"),
-							&Value.U32[0], &Value.U16[2], &Value.U16[3],
-							&tail8[0], &tail8[1], &tail8[2], &tail8[3],
-							&tail8[4], &tail8[5], &tail8[6], &tail8[7]);
+		&Value.U32[0], &Value.U16[2], &Value.U16[3],
+		&tail8[0], &tail8[1], &tail8[2], &tail8[3],
+		&tail8[4], &tail8[5], &tail8[6], &tail8[7]);
 	if (result < 0)
 		FAIL(_T("Converting from string to GUID failed with error code %d"), errno);
 	if (result < 11)
@@ -164,7 +164,7 @@ UUID UUIDFromString(TString const &Str) {
 	return (UUID &)Value;
 }
 
-UUID const UUID_NULL = {0};
+UUID const UUID_NULL = { 0 };
 
 TString HexInspect(void* Buf, size_t Len) {
 	TString HexBuf;
@@ -181,3 +181,5 @@ TString HexInspect(void* Buf, size_t Len) {
 struct CONSTRUCTION::EMPLACE_T const CONSTRUCTION::EMPLACE;
 struct CONSTRUCTION::HANDOFF_T const CONSTRUCTION::HANDOFF;
 struct CONSTRUCTION::CLONE_T const CONSTRUCTION::CLONE;
+struct CONSTRUCTION::DEFER_T const CONSTRUCTION::DEFER;
+struct CONSTRUCTION::VALIDATED_T const CONSTRUCTION::VALIDATED;

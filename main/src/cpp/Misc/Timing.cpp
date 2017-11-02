@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iomanip>
 
-TimeSpan const TimeSpan::Null = {0, TimeUnit::HNSEC};
+TimeSpan const TimeSpan::Null;
 
 TimeSpan& TimeSpan::operator=(_this const &xTimeSpan) {
 	*const_cast<TimeUnit*>(&Unit) = xTimeSpan.Unit;
@@ -51,21 +51,21 @@ TimeSpan& TimeSpan::operator=(_this const &xTimeSpan) {
 TimeSpan TimeSpan::operator+(_this const &xTimeSpan) const {
 	TimeUnit MergeUnit = Unit < xTimeSpan.Unit ? Unit : xTimeSpan.Unit;
 	long long MergeValue = GetValue(MergeUnit) + xTimeSpan.GetValue(MergeUnit);
-	return TimeSpan(MergeValue, MergeUnit);
+	return { MergeValue, MergeUnit };
 }
 
 long long TimeSpan::GetValue(TimeUnit const &Resolution) const {
-	long long RValue = Value.S64;
+	unsigned long long RValue = Value.S64;
 	Convert(RValue, Unit, Resolution);
 	return RValue;
 }
 
-TString TimeSpan::toString(TimeUnit const &Unit, bool Abbrv) const {
-	return toString(Abbrv, Unit, Unit);
+TString TimeSpan::toString(TimeUnit const &Unit, bool Abbrv, bool OmitPlus) const {
+	return toString(Abbrv, OmitPlus, Unit, Unit);
 }
 
-TString TimeSpan::toString(bool Abbrv, TimeUnit const &HiUnit, TimeUnit const &LoUnit) const {
-	return ToString(Value.S64, Unit, Abbrv, HiUnit, LoUnit);
+TString TimeSpan::toString(bool Abbrv, bool OmitPlus, TimeUnit const &HiUnit, TimeUnit const &LoUnit) const {
+	return ToString(Value.S64, Unit, Abbrv, OmitPlus, HiUnit, LoUnit);
 }
 
 // Choose the smallest possible granularity
@@ -73,28 +73,30 @@ TimeUnit const TimeStamp::__UNIT = TimeUnit::HNSEC;
 // Choose the eariliest possible start time
 TimeSystem const TimeStamp::__SYSTEM = TimeSystem::GREGORIAN;
 
+TimeStamp const TimeStamp::Null;
+
 TimeStamp& TimeStamp::operator=(_this const &xTimeStamp) {
 	const_cast<Cardinal64*>(&Value)->U64 = xTimeStamp.Value.U64;
 	return *this;
 }
 
 long long TimeStamp::Normalize(long long const &xValue, TimeUnit const &xUnit, TimeSystem const &xSystem) {
-	long long RValue = xValue;
+	unsigned long long RValue = xValue;
 	Convert(RValue, xUnit, __UNIT);
-	long long Offset = (unsigned long long) xSystem - (unsigned long long) __SYSTEM;
+	unsigned long long Offset = (unsigned long long) xSystem - (unsigned long long) __SYSTEM;
 	Convert(Offset, TimeUnit::MSEC, __UNIT);
 	return RValue + Offset;
 }
 
 long long TimeStamp::UNIXMS(void) const {
-	long long RValue = Value.U64;
+	unsigned long long RValue = Value.U64;
 	Convert(RValue, __UNIT, TimeUnit::MSEC);
 	long long Offset = (unsigned long long) __SYSTEM - (unsigned long long) TimeSystem::UNIX;
 	return RValue + Offset;
 }
 
 long long TimeStamp::MSWINTS(void) const {
-	long long RValue = Value.U64;
+	unsigned long long RValue = Value.U64;
 	Convert(RValue, __UNIT, TimeUnit::HNSEC);
 	long long Offset = (unsigned long long) __SYSTEM - (unsigned long long) TimeSystem::GREGORIAN;
 	return RValue + Offset;
@@ -132,31 +134,11 @@ TString TimeStamp::toString(TimeUnit const &Resolution) const {
 #endif
 }
 
-bool TimeStamp::At(_this const &TS) const {
-	return TS.Value.U64 == Value.U64;
-}
-
-bool TimeStamp::Before(TimeStamp const &TS, bool inclusive) const {
-	return TS.Value.U64 > Value.U64 || (inclusive && TS.Value.U64 == Value.U64);
-}
-
-bool TimeStamp::After(TimeStamp const &TS, bool inclusive) const {
-	return TS.Value.U64 < Value.U64 || (inclusive && TS.Value.U64 == Value.U64);
-}
-
 bool TimeStamp::OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &TLate,
-					   bool EInc, bool LInc) const {
+	bool EInc, bool LInc) const {
 	_this BLine = *this - TEarly;
 	_this DLine = *this + TLate;
-	return TS.After(BLine, EInc) && TS.Before(DLine, LInc);
-}
-
-TimeStamp TimeStamp::Offset(TimeSpan const &Ofs) const {
-	return{Value.U64 + Ofs.GetValue(__UNIT), __UNIT, __SYSTEM};
-}
-
-TimeSpan TimeStamp::From(TimeStamp const &xTimeStamp) const {
-	return{Value.S64 - xTimeStamp.Value.S64, __UNIT};
+	return (EInc ? TS >= BLine : TS > BLine) && (LInc ? TS <= DLine : TS < DLine);
 }
 
 TimeStamp TimeStamp::Now(TimeSpan const &Offset) {
@@ -164,6 +146,6 @@ TimeStamp TimeStamp::Now(TimeSpan const &Offset) {
 	Cardinal64 FileTime;
 	GetSystemTimeAsFileTime((FILETIME*)&FileTime);
 	// NOTE: Windows FileTime is already in the native time unit and system
-	return{FileTime.U64 + Offset.GetValue(__UNIT), __UNIT, __SYSTEM};
+	return { FileTime.U64 + Offset.GetValue(__UNIT), __UNIT, __SYSTEM };
 #endif
 }

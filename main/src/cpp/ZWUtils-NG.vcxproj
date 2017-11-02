@@ -46,7 +46,7 @@
     <ProjectGuid>{DB79A950-A9B8-4C18-96C2-6AED866A73EC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ZWUtilsNG</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -205,6 +205,7 @@
       <AdditionalIncludeDirectories>.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -226,6 +227,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <OmitFramePointers>false</OmitFramePointers>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -462,7 +464,9 @@
     <ClCompile Include="Misc\TString.cpp" />
     <ClCompile Include="Misc\Types.cpp" />
     <ClCompile Include="Misc\Units.cpp" />
+    <ClCompile Include="Memory\Resource.cpp" />
     <ClCompile Include="Threading\SyncElements.cpp" />
+    <ClCompile Include="Threading\SyncObjects.cpp" />
     <ClCompile Include="Threading\WorkerThread.cpp" />
   </ItemGroup>
   <ItemGroup>

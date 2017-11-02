@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_WorkerThread_H
 #define ZWUtils_WorkerThread_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 
 #include "Memory/Allocator.h"
@@ -68,8 +70,9 @@ public:
 	/**
 	 * The "main" function of the runnable object
 	 **/
-	virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg)
-	{ FAIL(_T("Abstract function")); }
+	virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
+		FAIL(_T("Abstract function"));
+	}
 
 	/**
 	 * Notify the stop request from worker thread
@@ -85,8 +88,8 @@ public:
  **/
 class TWorkerThread : public THandleWaitable {
 	typedef TWorkerThread _this;
-	friend class ManagedRef < _this >;
-	friend class IObjAllocator < _this >;
+	friend class ManagedRef<_this>;
+	friend class IObjAllocator<_this>;
 public:
 	enum class State : unsigned int {
 		Constructed,
@@ -100,7 +103,7 @@ public:
 
 private:
 	HANDLE __CreateThread(size_t StackSize, bool xSelfFree);
-	void __DestroyThread(TString const &Name);
+	void __DestroyThread(TString const &Name, HANDLE &X);
 
 #ifdef WINDOWS
 	void CollectSEHException(struct _EXCEPTION_POINTERS *SEH);
@@ -127,9 +130,9 @@ protected:
 	 *       Basically, once started, you should give up *ALL* active control and communication.
 	 **/
 	template<class IRunnable>
-	TWorkerThread(TString const &xName, IRunnable &xRunnable, bool xSelfFree = false, size_t xStackSize = 0) :
-		THandleWaitable(__CreateThread(xStackSize, xSelfFree), [&, xName](HANDLE &X) {__DestroyThread(xName); }),
-		rRunnable(std::addressof(xRunnable), CONSTRUCTION::HANDOFF), Name(xName) {
+	TWorkerThread(TString const &xName, IRunnable *xRunnable, bool xSelfFree = false, size_t xStackSize = 0) :
+		THandleWaitable(__CreateThread(xStackSize, xSelfFree), [&, xName](HANDLE &X) {__DestroyThread(xName, X); }),
+		rRunnable(xRunnable, CONSTRUCTION::HANDOFF), Name(xName) {
 		__StateNotify(~_State);
 	}
 
@@ -140,7 +143,7 @@ public:
 
 	~TWorkerThread(void) { Deallocate(); }
 
-	WaitResult WaitFor(WAITTIME Timeout = FOREVER) override;
+	WaitResult WaitFor(WAITTIME Timeout = FOREVER) const override;
 	THandle WaitHandle(void) override;
 
 	/**
@@ -172,8 +175,9 @@ public:
 	/**
 	 * Get current the thread state
 	 **/
-	State CurrentState(void)
-	{ return ~_State; }
+	State CurrentState(void) const {
+		return ~_State;
+	}
 
 	/**
 	 * Get the return data of the thread
@@ -185,9 +189,9 @@ public:
 	/**
 	 * Get the Exception object that terminated the thread
 	 * @note Must be called AFTER worker thread goes to wtsTerminated
-	 * @note The caller does *NOT* own the retrieved exception, DO NOT FREE!
+	 * @note The caller does *NOT* own the retrieved exception unless it is pruned!
 	 **/
-	Exception* FatalException(void);
+	Exception* FatalException(bool Prune = false);
 
 	typedef std::function<void(TWorkerThread &, State const &) throw()> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;
@@ -200,7 +204,7 @@ public:
 	static TNotificationStub GStateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
 
 	template<class IRunnable>
-	static TWorkerThread* Create(TString const &xName, IRunnable &xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
+	static TWorkerThread* Create(TString const &xName, IRunnable *xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
 		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this, xName, xRunnable, xSelfFree, xStackSize));
 	}
 
@@ -212,6 +216,8 @@ protected:
 	void __StateNotify(State const &rState);
 };
 
+typedef ManagedRef<TWorkerThread> MRWorkerThread;
+
 //! @ingroup Threading
 //! Worker thread specific exception
 class TWorkerThreadException : public Exception {
@@ -220,14 +226,16 @@ class TWorkerThreadException : public Exception {
 protected:
 	template<typename... Params>
 	TWorkerThreadException(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, xParams...), WorkerThreadName(xWorkerThread.Name) {}
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), WorkerThreadName(xWorkerThread.Name) {}
 
 public:
 	TString const WorkerThreadName;
 
 	template<typename... Params>
 	static _this* Create(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this, xWorkerThread, std::move(xSource), ReasonFmt, xParams...));
+		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(
+			_this, xWorkerThread, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...
+		));
 	}
 
 	TString const& Why(void) const override;

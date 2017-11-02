@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,53 +39,60 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Resource_H
 #define ZWUtils_Resource_H
 
+ // Project global control 
 #include "Misc/Global.h"
 
 #include "Allocator.h"
 #include "Reference.h"
 
-// Order is important:
+// Order is important here!
 #include "Debug/Exception.h"
 
 #include <functional>
 
 template<typename X>
-class TResource : public Reference < X > {
+class TResource : public Reference<X> {
 	typedef TResource _this;
 
 protected:
-	X* _ObjPointer(void) const override
-	{ return &const_cast<_this*>(this)->Refer(); }
+	X* _ObjPointer(void) const override {
+		return &const_cast<_this*>(this)->Refer();
+	}
 
-	X* _ObjExchange(X *) override
-	{ FAIL(_T("Function not available")); }
+	X* _ObjExchange(X *) override {
+		FAIL(_T("Function not available"));
+	}
 
-	virtual X& Refer(void)
-	{ FAIL(_T("Abstract function")); }
+	virtual X& Refer(void) {
+		FAIL(_T("Abstract function"));
+	}
 
 public:
 	typedef std::function<X(void)> TResAlloc;
 	typedef std::function<void(X &)> TResDealloc;
 
-	static X NoAlloc()
-	{ FAIL(_T("Function not available")); }
-	static void NoDealloc(X &)
-	{ FAIL(_T("Function not available")); }
+	static X NoAlloc() {
+		FAIL(_T("Function not available"));
+	}
+	static void NoDealloc(X &) {
+		FAIL(_T("Function not available"));
+	}
 	static void NullDealloc(X &) {}
 
 	virtual ~TResource(void) {}
 };
 
 template<typename X>
-class TInitResource : public TResource < X > {
+class TInitResource : public TResource<X> {
 	typedef TInitResource _this;
 
 protected:
 	X _ResRef;
 	TResDealloc _Dealloc;
 
-	X& Refer(void) override
-	{ return _ResRef; }
+	X& Refer(void) override {
+		return _ResRef;
+	}
 
 public:
 	TInitResource(X const &xResRef, TResDealloc const &xDealloc) :
@@ -102,12 +109,13 @@ public:
 	// Move assignment is not defined
 	_this& operator=(_this &&) = delete;
 
-	bool Empty(void) const override
-	{ return false; }
+	bool Empty(void) const override {
+		return false;
+	}
 };
 
 template<typename X>
-class TAllocResource : public TResource < X > {
+class TAllocResource : public TResource<X> {
 	typedef TAllocResource _this;
 
 protected:
@@ -116,16 +124,22 @@ protected:
 	TResAlloc _Alloc;
 	TResDealloc _Dealloc;
 
-	X& Refer(void) override
-	{ return _ResValid ? _ResRef : _ResRef = _Alloc(), _ResValid = true, _ResRef; }
+	X& Refer(void) override {
+		if (!_ResValid) {
+			_ResRef = _Alloc();
+			_ResValid = true;
+		}
+		return _ResRef;
+	}
 
 public:
 	TAllocResource(TResAlloc const &xAlloc, TResDealloc const &xDealloc) :
 		_Alloc(xAlloc), _Dealloc(xDealloc) {}
 	TAllocResource(X const &xResRef, TResDealloc const &xDealloc, TResAlloc const &xAlloc = NoAlloc) :
 		_ResRef(xResRef), _ResValid(true), _Dealloc(xDealloc), _Alloc(xAlloc) {}
-	~TAllocResource(void) override
-	{ Deallocate(); }
+	~TAllocResource(void) override {
+		Deallocate();
+	}
 
 	// Copy consutrction does not make sense
 	TAllocResource(_this const &) = delete;
@@ -148,25 +162,48 @@ public:
 		return *this;
 	}
 
-	bool Allocated(void) const
-	{ return _ResValid; }
-	virtual bool Invalidate(void)
-	{ return _ResValid ? _ResValid = false, true : false; }
-	virtual bool Deallocate(void)
-	{ return _ResValid ? _Dealloc(_ResRef), Invalidate() : false; }
+	bool Allocated(void) const {
+		return _ResValid;
+	}
 
-	bool Empty(void) const override
-	{ return !Allocated(); }
+	virtual bool Invalidate(void) {
+		return _ResValid ? _ResValid = false, true : false;
+	}
 
-	void Clear(void) override
-	{ Deallocate(); }
+	virtual bool Deallocate(void) {
+		return _ResValid ? _Dealloc(_ResRef), Invalidate() : false;
+	}
+
+	bool Empty(void) const override {
+		return !Allocated();
+	}
+
+	void Clear(void) override {
+		Deallocate();
+	}
+
+	X* Drop(void) override {
+		X* Ret = Allocated() ? &_ResRef : nullptr;
+		return Invalidate(), Ret;
+	}
 
 };
 
 #ifdef WINDOWS
 
-typedef TAllocResource<HANDLE> THandle;
-typedef TAllocResource<HMODULE> TModule;
+class THandle : public TAllocResource<HANDLE> {
+public:
+	static HANDLE ValidateHandle(HANDLE const &Ref);
+	static void HandleDealloc_Standard(HANDLE &Res);
+	static void HandleDealloc_BestEffort(HANDLE &Res);
+
+	THandle(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
+		TAllocResource(xAlloc, xDealloc) {}
+	THandle(HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
+	THandle(CONSTRUCTION::VALIDATED_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(xResRef, xDealloc, xAlloc) {}
+};
 
 #endif
 
@@ -185,30 +222,32 @@ protected:
 		return NewBuf;
 	}
 
-	static void Dealloc(IAllocator &xAllocator, T* &xBuf)
-	{ xAllocator.Dealloc(xBuf); }
+	static void Dealloc(IAllocator &xAllocator, T* &xBuf) {
+		xAllocator.Dealloc(xBuf);
+	}
 
 	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
 	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
-		[=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+			[=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 
 	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 	_TTypedBuffer(T *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
-		[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
+			[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
 	// Move construction
 	_TTypedBuffer(_this &&xResource) : TAllocResource(std::move(xResource)) {}
 
 public:
-	T* operator&(void) const
-	{ return *_ObjPointer(); }
+	T* operator&(void) const {
+		return *_ObjPointer();
+	}
 };
 
 template<typename T>
-class TTypedBuffer : public _TTypedBuffer < T > {
+class TTypedBuffer : public _TTypedBuffer<T> {
 	typedef TTypedBuffer _this;
 
 public:
@@ -229,14 +268,16 @@ public:
 		return *this;
 	}
 
-	T& operator*(void) const
-	{ return **_ObjPointer(); }
-	T* operator->(void) const
-	{ return *_ObjPointer(); }
+	T& operator*(void) const {
+		return **_ObjPointer();
+	}
+	T* operator->(void) const {
+		return *_ObjPointer();
+	}
 };
 
 template<>
-class TTypedBuffer<void> : public _TTypedBuffer < void >{
+class TTypedBuffer<void> : public _TTypedBuffer<void> {
 	typedef TTypedBuffer _this;
 
 public:
@@ -283,7 +324,7 @@ protected:
 			return (xSize + DYNBUFFER_OVERPROVISION_FIXBLOCK - 1) & ~(DYNBUFFER_OVERPROVISION_FIXBLOCK - 1);
 
 		size_t Ret = (xSize >= DYNBUFFER_OVERPROVISION_NOSHRINK) ?
-		DYNBUFFER_OVERPROVISION_NOSHRINK : DYNBUFFER_OVERPROVISION_MINIMUM;
+			DYNBUFFER_OVERPROVISION_NOSHRINK : DYNBUFFER_OVERPROVISION_MINIMUM;
 		while (Ret < xSize) Ret <<= 1;
 		return Ret;
 	}
@@ -345,11 +386,13 @@ protected:
 	}
 
 public:
-	T* operator&(void) const
-	{ return *_ObjPointer(); }
+	T* operator&(void) const {
+		return *_ObjPointer();
+	}
 
-	size_t GetSize(void) const
-	{ return _Size; }
+	size_t GetSize(void) const {
+		return _Size;
+	}
 
 	bool SetSize(size_t const &NewSize) {
 		_ResRef = Realloc(_ResValid ? _ResRef : nullptr, NewSize);
@@ -357,16 +400,18 @@ public:
 		return NewSize == _Size;
 	}
 
-	bool Grow(size_t const &AddSize)
-	{ return SetSize(_Size + AddSize); }
+	bool Grow(size_t const &AddSize) {
+		return SetSize(_Size + AddSize);
+	}
 
-	virtual bool Invalidate(void)
-	{ return TAllocResource::Invalidate() ? _PVSize = 0, true : false; }
+	virtual bool Invalidate(void) {
+		return TAllocResource::Invalidate() ? _PVSize = 0, true : false;
+	}
 
 };
 
 template<typename T>
-class TTypedDynBuffer : public _TTypedDynBuffer < T > {
+class TTypedDynBuffer : public _TTypedDynBuffer<T> {
 	typedef TTypedDynBuffer _this;
 
 public:
@@ -382,14 +427,17 @@ public:
 	// Move assignment
 	using _TTypedDynBuffer::operator=;
 
-	T& operator*(void) const
-	{ return **_ObjPointer(); }
-	T* operator->(void) const
-	{ return *_ObjPointer(); }
+	T& operator*(void) const {
+		return **_ObjPointer();
+	}
+
+	T* operator->(void) const {
+		return *_ObjPointer();
+	}
 };
 
 template<>
-class TTypedDynBuffer<void> : public _TTypedDynBuffer < void >{
+class TTypedDynBuffer<void> : public _TTypedDynBuffer<void> {
 	typedef TTypedDynBuffer _this;
 
 public:

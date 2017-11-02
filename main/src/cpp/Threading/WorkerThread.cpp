@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -49,8 +49,9 @@ public:
 		WorkerThread(xWorkerThread), ThreadMain(xThreadMain), SelfFree(xSelfFree) {}
 	~TThreadRecord(void) { if (SelfFree) DefaultObjAllocator<TWorkerThread>().Destroy(WorkerThread); }
 
-	DWORD operator()(void)
-	{ return (WorkerThread->*ThreadMain)(); }
+	DWORD operator()(void) {
+		return (WorkerThread->*ThreadMain)();
+	}
 };
 typedef ManagedRef<TThreadRecord> MRThreadRecord;
 
@@ -88,7 +89,7 @@ TWorkerThread::TNotificationStub TWorkerThread::StateNotify(TString const &Name,
 	}
 	SubscriberList->emplace_back(Name, Func);
 
-	return TNotificationStub(Name, [&, rState](TString const &EvtName) {
+	return { Name, [&, rState](TString const &EvtName) {
 		auto UnsubscriberList(LSubscribers[(unsigned int)rState].Pickup());
 		auto Iter = UnsubscriberList->begin();
 		while (Iter != UnsubscriberList->end()) {
@@ -98,7 +99,8 @@ TWorkerThread::TNotificationStub TWorkerThread::StateNotify(TString const &Name,
 			}
 		}
 		LOG(WTLogHeader _T("WARNING: Failed to unregister [%s] event '%s'"), Name.c_str(), STR_State(rState), EvtName.c_str());
-	});
+		}
+	};
 }
 
 TSyncObj<TWorkerThread::TSubscriberList> TWorkerThread::GSubscribers[(unsigned int)State::__MAX_STATES];
@@ -111,7 +113,7 @@ TWorkerThread::TNotificationStub TWorkerThread::GStateNotify(TString const &Name
 	}
 	SubscriberList->emplace_back(Name, Func);
 
-	return TNotificationStub(Name, [&, rState](TString const &EvtName) {
+	return { Name, [&, rState](TString const &EvtName) {
 		auto UnsubscriberList(GSubscribers[(unsigned int)rState].Pickup());
 		auto Iter = UnsubscriberList->begin();
 		while (Iter != UnsubscriberList->end()) {
@@ -121,7 +123,8 @@ TWorkerThread::TNotificationStub TWorkerThread::GStateNotify(TString const &Name
 			}
 		}
 		LOG(_T("WARNING: Failed to unregister WorkerThread [%s] global event '%s'"), STR_State(rState), EvtName.c_str());
-	});
+		}
+	};
 }
 
 //! @ingroup Threading
@@ -163,7 +166,7 @@ typedef unsigned(__stdcall *__ThreadProc) (void *);
 HANDLE TWorkerThread::__CreateThread(size_t StackSize, bool xSelfFree) {
 	MRThreadRecord Foward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__CallForwarder, xSelfFree);
 	HANDLE rThread = (HANDLE)_beginthreadex(nullptr, (UINT)StackSize, (__ThreadProc)&_ThreadProc,
-											&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
+		&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
 	if (rThread == nullptr) SYSFAIL(_T("Failed to create thread for worker '%s'"), Name.c_str());
 	return Foward.Drop(), rThread;
 }
@@ -183,7 +186,7 @@ void TWorkerThread::__Pre_Destroy(void) {
 	}
 }
 
-void TWorkerThread::__DestroyThread(TString const &Name) {
+void TWorkerThread::__DestroyThread(TString const &Name, HANDLE &X) {
 	if (GetCurrentThreadId() != _ThreadID) {
 		State PrevState = SignalTerminate();
 		if ((PrevState == State::Running) || (PrevState == State::Terminating)) {
@@ -193,6 +196,9 @@ void TWorkerThread::__DestroyThread(TString const &Name) {
 	} else {
 		WTLOGV(_T("Self destruction in progress..."));
 	}
+
+	// Close the thread handle
+	THandle::HandleDealloc_BestEffort(X);
 }
 
 DWORD TWorkerThread::__CallForwarder(void) {
@@ -274,14 +280,14 @@ void* TWorkerThread::ReturnData(void) {
 	return *rReturnData;
 }
 
-Exception* TWorkerThread::FatalException(void) {
+Exception* TWorkerThread::FatalException(bool Prune) {
 	State iCurState = CurrentState();
 	if (iCurState != State::Terminated)
 		WTFAIL(_T("Could not get fatal exception while in state '%s'"), STR_State(iCurState));
-	return &rException;
+	return Prune? rException.Drop() : &rException;
 }
 
-WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) {
+WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) const {
 	while (!_ResValid) {
 		switch (CurrentState()) {
 			case State::Constructed:

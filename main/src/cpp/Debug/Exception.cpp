@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -84,10 +84,10 @@ std::deque<TString> STException::TraceStack(int PopFrame) {
 	CONTEXT CurContext;	RtlCaptureContext(&CurContext);
 	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), CurContext,
 		[&](TStackWalker::CallstackEntry const& Entry) {
-		if (--PopFrame < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
-		return true;
-	})) StrTrace.emplace_back(TraceFailureMessage);
-	return StrTrace;
+			if (--PopFrame < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
+			return true;
+		})) StrTrace.emplace_back(TraceFailureMessage);
+		return StrTrace;
 }
 
 #define FSEHMessage	_T("%s @%p")
@@ -106,7 +106,7 @@ TString SEHException::STR_ExceptCode(PEXCEPTION_RECORD ExcRecord) {
 				case 8: SUBTYPE = AccessOp_Execute; break;
 			}
 			return TStringCast(_T("ACCESS VIOLATION, ") << SUBTYPE << _T(" OF ADDRESS ")
-							   << (PVOID)ExcRecord->ExceptionInformation[1]);
+				<< (PVOID)ExcRecord->ExceptionInformation[1]);
 		}
 		case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
 			return TStringCast(_T("ARRAY BOUND EXCEEDED"));
@@ -140,8 +140,8 @@ TString SEHException::STR_ExceptCode(PEXCEPTION_RECORD ExcRecord) {
 				case 8: SUBTYPE = AccessOp_Execute; break;
 			}
 			return TStringCast(_T("PAGE-IN ERROR, ") << SUBTYPE << _T(" OF ADDRESS ")
-							   << (PVOID)ExcRecord->ExceptionInformation[1] << _T(" DUE TO ")
-							   << std::hex << ExcRecord->ExceptionInformation[2]);
+				<< (PVOID)ExcRecord->ExceptionInformation[1] << _T(" DUE TO ")
+				<< std::hex << ExcRecord->ExceptionInformation[2]);
 		}
 		case EXCEPTION_INT_DIVIDE_BY_ZERO:
 			return TStringCast(_T("INTEGER DIVISION BY ZERO"));
@@ -165,17 +165,17 @@ TString SEHException::STR_ExceptCode(PEXCEPTION_RECORD ExcRecord) {
 }
 
 SEHException::SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
-STException(xSource, std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
+	STException(xSource, std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
 SEHException::SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
-STException(std::move(xSource), std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
+	STException(std::move(xSource), std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
 SEHException::SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace) :
-STException(std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
+	STException(std::move(xStackTrace), FSEHMessage, STR_ExceptCode(ExcRecord).c_str(), ExcRecord->ExceptionAddress) {
 	// Do Nothing
 }
 
@@ -184,11 +184,11 @@ void SEHException::Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr) 
 	CONTEXT ExcContext = *ExcPtr->ContextRecord;
 	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), ExcContext,
 		[&](TStackWalker::CallstackEntry const &Entry) {
-		return StrTrace.emplace_back(TStackWalker::FormatEntry(Entry)), true;
-	})) StrTrace.emplace_back(TraceFailureMessage);
+			return StrTrace.emplace_back(TStackWalker::FormatEntry(Entry)), true;
+		})) StrTrace.emplace_back(TraceFailureMessage);
 
-	throw DefaultObjAllocator<SEHException>().Create(RLAMBDANEW(SEHException,
-		_T("<SEH Exception Translator>"), ExcPtr->ExceptionRecord, std::move(StrTrace)));
+		throw DefaultObjAllocator<SEHException>().Create(RLAMBDANEW(SEHException,
+			_T("<SEH Exception Translator>"), ExcPtr->ExceptionRecord, std::move(StrTrace)));
 }
 
 bool SEHTranslation = false;

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Units.h"
 
-long long _Convert(long long &Value, unsigned long long const &FromBase, unsigned long long const &ToBase) {
+unsigned long long _Convert(unsigned long long &Value, unsigned long long const &FromBase, unsigned long long const &ToBase) {
 	unsigned long long Factor;
 	unsigned long long Rem;
 	if (FromBase >= ToBase) {
@@ -47,12 +47,21 @@ long long _Convert(long long &Value, unsigned long long const &FromBase, unsigne
 	return Rem;
 }
 
-long long Convert(long long &Value, TimeUnit const &From, TimeUnit const &To) {
+unsigned long long Convert(unsigned long long &Value, TimeUnit const &From, TimeUnit const &To) {
 	return _Convert(Value, (unsigned long long) From, (unsigned long long) To);
 }
 
-long long Convert(long long const &Value, TimeUnit const &From, TimeUnit const &To) {
-	long long iValue = Value;
+unsigned long long Convert(unsigned long long const &Value, TimeUnit const &From, TimeUnit const &To) {
+	unsigned long long iValue = Value;
+	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To), iValue;
+}
+
+unsigned long long Convert(unsigned long long &Value, SizeUnit const &From, SizeUnit const &To) {
+	return _Convert(Value, (unsigned long long) From, (unsigned long long) To);
+}
+
+unsigned long long Convert(unsigned long long const &Value, SizeUnit const &From, SizeUnit const &To) {
+	unsigned long long iValue = Value;
 	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To), iValue;
 }
 
@@ -70,43 +79,6 @@ PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv) {
 	}
 }
 
-template <class T>
-TString _ToString(long long const &Value, T const &DataUnit, bool const &Abbrv, T const &HiUnit, T const &LoUnit) {
-	long long Rem = Value;
-	long long RValue = 0;
-	auto CurRes = (HiUnit > LoUnit) ? HiUnit : LoUnit;
-	TString Ret;
-	while (CurRes >= LoUnit) {
-		if ((RValue = Rem) == 0) {
-			if (!Ret.empty()) break;
-		}
-		Rem = Convert(RValue, DataUnit, CurRes);
-		if ((RValue != 0) || (CurRes <= LoUnit)) {
-			Ret.append(Ret.empty() ? 0 : 1, _T(' '))
-				.append(TStringCast(RValue))
-				.append(Abbrv ? 0 : 1, _T(' '))
-				.append(UnitName(CurRes, Abbrv))
-				.append(!Abbrv && (RValue > 1) ? 1 : 0, _T('s'));
-		}
-		--CurRes;
-	}
-	return Ret.append(Rem != 0 ? 1 : 0, _T('+'));
-}
-
-TString ToString(long long const &Value, TimeUnit const &DataUnit, bool const &Abbrv, TimeUnit const &HiUnit, TimeUnit const &LoUnit) {
-	return _ToString(Value, DataUnit, Abbrv, HiUnit, LoUnit);
-}
-
-
-long long Convert(long long &Value, SizeUnit const &From, SizeUnit const &To) {
-	return _Convert(Value, (unsigned long long) From, (unsigned long long) To);
-}
-
-long long Convert(long long const &Value, SizeUnit const &From, SizeUnit const &To) {
-	long long iValue = Value;
-	return _Convert(iValue, (unsigned long long) From, (unsigned long long) To), iValue;
-}
-
 PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv) {
 	switch (Unit) {
 		case SizeUnit::BYTE: return Abbrv ? _T("B") : _T("byte");
@@ -119,6 +91,38 @@ PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv) {
 	}
 }
 
-TString ToString(long long const &Value, SizeUnit const &DataUnit, bool const &Abbrv, SizeUnit const &HiUnit, SizeUnit const &LoUnit) {
-	return _ToString(Value, DataUnit, Abbrv, HiUnit, LoUnit);
+template <class T>
+TString _ToString(long long const &Value, T const &DataUnit, bool Abbrv, bool OmitPlus, T const &HiUnit, T const &LoUnit) {
+	TString Ret;
+
+	unsigned long long Rem = abs(Value);
+	unsigned long long RValue = 0;
+	auto CurRes = (HiUnit > LoUnit) ? HiUnit : LoUnit;
+	while (CurRes >= LoUnit) {
+		if ((RValue = Rem) == 0) {
+			if (!Ret.empty()) break;
+		}
+		Rem = Convert(RValue, DataUnit, CurRes);
+		if ((RValue != 0) || (CurRes <= LoUnit)) {
+			if (Ret.empty()) {
+				if (Value > 0 && !OmitPlus) Ret.append(1, _T('+'));
+				else if (Value < 0) Ret.append(1, _T('-'));
+			} else Ret.append(1, _T(' '));
+
+			Ret.append(TStringCast(RValue))
+				.append(Abbrv ? 0 : 1, _T(' '))
+				.append(UnitName(CurRes, Abbrv))
+				.append(!Abbrv && (RValue > 1) ? 1 : 0, _T('s'));
+		}
+		--CurRes;
+	}
+	return Ret.append(Rem != 0 ? 1 : 0, _T('~'));
+}
+
+TString ToString(long long const &Value, TimeUnit const &DataUnit, bool Abbrv, bool OmitPlus, TimeUnit const &HiUnit, TimeUnit const &LoUnit) {
+	return _ToString(Value, DataUnit, Abbrv, OmitPlus, HiUnit, LoUnit);
+}
+
+TString ToString(long long const &Value, SizeUnit const &DataUnit, bool Abbrv, bool OmitPlus, SizeUnit const &HiUnit, SizeUnit const &LoUnit) {
+	return _ToString(Value, DataUnit, Abbrv, OmitPlus, HiUnit, LoUnit);
 }

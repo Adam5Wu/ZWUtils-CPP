@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Exception_H
 #define ZWUtils_Exception_H
 
+ // Project global control 
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
 
 #include "Debug.h"
@@ -54,22 +56,25 @@ template<typename T> class IObjAllocator;
  **/
 class Exception {
 	typedef Exception _this;
-	friend class IObjAllocator < _this >;
+	friend class IObjAllocator<_this>;
 
 protected:
 	TString const rWhy = EmptyWText;
 
 	template<typename... Params>
-	void PopulateReason(PCTCHAR ReasonFmt, Params&&... xParams)
-	{ if (ReasonFmt) STR_ERRMSGFMT(const_cast<TString*>(&Reason), ReasonFmt, xParams...); }
+	void PopulateReason(PCTCHAR ReasonFmt, Params&&... xParams) {
+		if (ReasonFmt) STR_ERRMSGFMT(const_cast<TString*>(&Reason), ReasonFmt, std::forward<Params>(xParams)...);
+	}
 
 	template<typename... Params>
-	Exception(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(xSource)
-	{ PopulateReason(ReasonFmt, xParams...); }
+	Exception(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(xSource) {
+		PopulateReason(ReasonFmt, std::forward<Params>(xParams)...);
+	}
 
 	template<typename... Params>
-	Exception(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(std::move(xSource))
-	{ PopulateReason(ReasonFmt, xParams...); }
+	Exception(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(std::move(xSource)) {
+		PopulateReason(ReasonFmt, std::forward<Params>(xParams)...);
+	}
 
 	virtual ~Exception(void) {}
 
@@ -134,15 +139,15 @@ protected:
 
 	template<typename... Params>
 	STException(TString &&xSource, std::deque<TString> &&xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), rStackTrace(std::move(xStackTrace)) {}
 
 	template<typename... Params>
 	STException(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(xSource, ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
+		Exception(xSource, ReasonFmt, std::forward<Params>(xParams)...), rStackTrace(std::move(xStackTrace)) {}
 
 	template<typename... Params>
 	STException(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(ExtractTopFrame(xStackTrace), ReasonFmt, xParams...), rStackTrace(std::move(xStackTrace)) {}
+		Exception(ExtractTopFrame(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...), rStackTrace(std::move(xStackTrace)) {}
 
 public:
 	std::deque<TString> const rStackTrace;
@@ -190,27 +195,27 @@ bool ControlSEHTranslation(bool Enable);
 
 template<typename... Params>
 static Exception* Exception::Create(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, xSource, ReasonFmt, xParams...));
+	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, xSource, ReasonFmt, std::forward<Params>(xParams)...));
 }
 
 template<typename... Params>
 static Exception* Exception::Create(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, std::move(xSource), ReasonFmt, xParams...));
+	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
 }
 
 template<typename... Params>
 static STException* STException::Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, xSource, std::move(xStackTrace), ReasonFmt, xParams...));
+	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, xSource, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
 }
 
 template<typename... Params>
 static STException* STException::Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, xParams...));
+	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
 }
 
 template<typename... Params>
 static STException* STException::Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xStackTrace), ReasonFmt, xParams...));
+	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
 }
 
 #endif

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &Err
 	ErrMessage.clear();
 
 	if (Str.length() == 0)
-		return CString(EMPTY_CSTRING());
+		return EMPTY_CSTRING();
 
 #ifdef WINDOWS
 	DWORD dwConversionFlags = 0;
@@ -83,7 +83,7 @@ CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &Err
 		0,						// request buffer size
 		NULL,					// use system default char
 		UsedDefaultChar			// check if default char is used
-		);
+	);
 	if (cbCP == 0) {
 		DWORD ErrCode = GetLastError();
 #if (WINVER >= 0x0600)
@@ -100,7 +100,7 @@ CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &Err
 				0,						// request buffer size
 				NULL,					// use system default char
 				UsedDefaultChar			// check if default char is used
-				);
+			);
 		}
 		if (cbCP == 0)
 #endif
@@ -126,7 +126,7 @@ CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &Err
 		&Ret.front(),			// destination buffer
 		cbCP,					// destination buffer size, in bytes
 		NULL, NULL				// unused
-		);
+	);
 	if (result == 0)
 		SYSFAIL(_T("Failed to convert unicode string"));
 
@@ -137,7 +137,7 @@ CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &Err
 
 WString CStringtoWString(UINT CodePage, CString const &Str) {
 	if (Str.length() == 0)
-		return TString(EMPTY_TSTRING());
+		return EMPTY_WSTRING();
 
 #ifdef WINDOWS
 	//
@@ -150,7 +150,7 @@ WString CStringtoWString(UINT CodePage, CString const &Str) {
 		(int)Str.length(),		// total length of source UTF-8 string,
 		NULL,					// unused - no conversion done in this step
 		0						// request size of destination buffer, in WCHAR's
-		);
+	);
 	if (cchUTF16 == 0)
 		SYSFAIL(_T("Unable to test convert codepage #%u string"), CodePage);
 
@@ -169,7 +169,7 @@ WString CStringtoWString(UINT CodePage, CString const &Str) {
 		(int)Str.length(),		// total length of source UTF-8 string,
 		&Ret.front(),			// destination buffer
 		cchUTF16				// size of destination buffer, in WCHAR's
-		);
+	);
 	if (result == 0)
 		SYSFAIL(_T("Failed to convert codepage #%u string"), CodePage);
 

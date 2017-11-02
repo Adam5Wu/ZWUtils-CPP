@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Timing_H
 #define ZWUtils_Timing_H
 
+ // Project global control 
 #include "Global.h"
+
 #include "TString.h"
 #include "Types.h"
 #include "Units.h"
@@ -58,33 +60,90 @@ protected:
 	Cardinal64 const Value;
 
 public:
-	TimeSpan(long long const &xValue, TimeUnit const &xUnit) :
+	TimeSpan(long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC) :
 		Unit(xUnit), Value(xValue) {}
+
 	virtual ~TimeSpan(void) {}
 
 	// Copy assignment operation is supported
 	_this& operator=(_this const &xTimeSpan);
 
 	long long GetValue(TimeUnit const &Resolution) const;
-	TString toString(TimeUnit const &Unit, bool Abbrv) const;
-	TString toString(bool Abbrv = false, TimeUnit const &MaxUnit = TimeUnit::__END,
-					 TimeUnit const &MinUnit = TimeUnit::__BEGIN) const;
+	TString toString(TimeUnit const &Unit, bool Abbrv = true, bool OmitPlus = true) const;
+	TString toString(bool Abbrv = false, bool OmitPlus = true, TimeUnit const &MaxUnit = TimeUnit::__END,
+		TimeUnit const &MinUnit = TimeUnit::__BEGIN) const;
 
-	_this operator-(void) const
-	{ return TimeSpan(-Value.S64, Unit); }
+	_this operator-(void) const {
+		return { -Value.S64, Unit };
+	}
 
 	_this operator+(_this const &xTimeSpan) const;
 
-	_this operator-(_this const &xTimeSpan) const
-	{ return *this + -xTimeSpan; }
+	_this operator-(_this const &xTimeSpan) const {
+		return *this + -xTimeSpan;
+	}
 
-	_this& operator+=(_this const &xTimeSpan)
-	{ return *this = *this + xTimeSpan; }
+	_this& operator+=(_this const &xTimeSpan) {
+		return *this = *this + xTimeSpan;
+	}
 
-	_this& operator-=(_this const &xTimeSpan)
-	{ return *this += -xTimeSpan; }
+	_this& operator-=(_this const &xTimeSpan) {
+		return *this += -xTimeSpan;
+	}
+
+	bool Same(_this const &TS) const {
+		return Same(TS, min(Unit, TS.Unit));
+	}
+
+	bool Same(_this const &TS, TimeUnit const &Resolution) const {
+		return GetValue(Resolution) == TS.GetValue(Resolution);
+	}
+
+	bool MoreThan(_this const &TS) const {
+		return MoreThan(TS, min(Unit, TS.Unit));
+	}
+
+	bool MoreThan(_this const &TS, TimeUnit const &Resolution) const {
+		return GetValue(Resolution) > TS.GetValue(Resolution);
+	}
+
+	bool LessThan(_this const &TS) const {
+		return LessThan(TS, min(Unit, TS.Unit));
+	}
+
+	bool LessThan(_this const &TS, TimeUnit const &Resolution) const {
+		return GetValue(Resolution) < TS.GetValue(Resolution);
+	}
+
+	bool operator==(_this const &TS) const {
+		return Same(TS);
+	}
+
+	bool operator!=(_this const &TS) const {
+		return !Same(TS);
+	}
+
+	bool operator<(_this const &TS) const {
+		return LessThan(TS);
+	}
+
+	bool operator>(_this const &TS) const {
+		return MoreThan(TS);
+	}
+
+	bool operator<=(_this const &TS) const {
+		return !MoreThan(TS);
+	}
+
+	bool operator>=(_this const &TS) const {
+		return !LessThan(TS);
+	}
 
 	static TimeSpan const Null;
+
+	operator bool() const {
+		return Value.U64 != 0;
+	}
 };
 
 class TimeStamp {
@@ -100,13 +159,13 @@ protected:
 public:
 #ifdef WINDOWS
 	TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::HNSEC,
-			  TimeSystem const &xSystem = TimeSystem::GREGORIAN) :
+		TimeSystem const &xSystem = TimeSystem::GREGORIAN) :
 #endif
 #ifdef UNIX
-			  TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC,
-			  TimeSystem const &xSystem = TimeSystem::UNIX) :
+		TimeStamp(unsigned long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC,
+			TimeSystem const &xSystem = TimeSystem::UNIX) :
 #endif
-			  Value(Normalize(xValue, xUnit, xSystem)) {}
+		Value(Normalize(xValue, xUnit, xSystem)) {}
 	virtual ~TimeStamp(void) {}
 
 	// Copy assignment operation is supported
@@ -115,54 +174,84 @@ public:
 	long long UNIXMS(void) const;
 	long long MSWINTS(void) const;
 
-	bool At(_this const &TS) const;
-	bool Before(_this const &TS, bool inclusive = false) const;
-	bool After(_this const &TS, bool inclusive = false) const;
+	bool At(_this const &TS) const {
+		return TS.Value.U64 == Value.U64;
+	}
+
+	bool Before(_this const &TS) const {
+		return TS.Value.U64 > Value.U64;
+	}
+
+	bool After(_this const &TS) const {
+		return TS.Value.U64 < Value.U64;
+	}
 
 	bool OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &TLate,
-				bool EInc = true, bool LInc = true) const;
+		bool EInc = true, bool LInc = true) const;
 
-	bool operator==(_this const &TS) const
-	{ return At(TS); }
+	bool operator==(_this const &TS) const {
+		return At(TS);
+	}
 
-	bool operator!=(_this const &TS) const
-	{ return !At(TS); }
+	bool operator!=(_this const &TS) const {
+		return !At(TS);
+	}
 
-	bool operator<(_this const &TS) const
-	{ return Before(TS); }
+	bool operator<(_this const &TS) const {
+		return Before(TS);
+	}
 
-	bool operator>(_this const &TS) const
-	{ return After(TS); }
+	bool operator>(_this const &TS) const {
+		return After(TS);
+	}
 
-	bool operator<=(_this const &TS) const
-	{ return Before(TS, true); }
+	bool operator<=(_this const &TS) const {
+		return !After(TS);
+	}
 
-	bool operator>=(_this const &TS) const
-	{ return After(TS, true); }
+	bool operator>=(_this const &TS) const {
+		return !Before(TS);
+	}
 
-	_this Offset(TimeSpan const &Ofs) const;
+	_this Offset(TimeSpan const &Ofs) const {
+		return { Value.U64 + Ofs.GetValue(__UNIT), __UNIT, __SYSTEM };
+	}
 
-	_this operator+(TimeSpan const &Ofs) const
-	{ return Offset(Ofs); }
+	_this operator+(TimeSpan const &Ofs) const {
+		return Offset(Ofs);
+	}
 
-	_this operator-(TimeSpan const &Ofs) const
-	{ return Offset(-Ofs); }
+	_this operator-(TimeSpan const &Ofs) const {
+		return Offset(-Ofs);
+	}
 
-	_this& operator+=(TimeSpan const &Ofs)
-	{ return *this = *this + Ofs; }
+	_this& operator+=(TimeSpan const &Ofs) {
+		return *this = *this + Ofs;
+	}
 
-	_this& operator-=(TimeSpan const &Ofs)
-	{ return *this += -Ofs; }
+	_this& operator-=(TimeSpan const &Ofs) {
+		return *this += -Ofs;
+	}
 
-	TimeSpan From(_this const &xTimeStamp) const;
+	TimeSpan From(_this const &xTimeStamp) const {
+		return { Value.S64 - xTimeStamp.Value.S64, __UNIT };
+	}
 
-	TimeSpan To(_this const &xTimeStamp) const
-	{ return xTimeStamp.From(*this); }
+	TimeSpan To(_this const &xTimeStamp) const {
+		return xTimeStamp.From(*this);
+	}
 
-	TimeSpan operator-(_this const &xTimeStamp) const
-	{ return From(xTimeStamp); }
+	TimeSpan operator-(_this const &xTimeStamp) const {
+		return From(xTimeStamp);
+	}
 
 	TString toString(TimeUnit const &Unit = TimeUnit::MSEC) const;
+
+	static TimeStamp const Null;
+
+	operator bool() const {
+		return Value.U64 != 0;
+	}
 
 	static _this Now(TimeSpan const &Offset = TimeSpan::Null);
 };

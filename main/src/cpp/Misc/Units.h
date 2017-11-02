@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Units_H
 #define ZWUtils_Units_H
 
+ // Project global control 
 #include "Global.h"
+
 #include "TString.h"
 
 enum class TimeUnit : unsigned long long {
@@ -56,11 +58,11 @@ enum class TimeUnit : unsigned long long {
 	__END = DAY
 };
 
-long long Convert(long long const &Value, TimeUnit const &From, TimeUnit const &To);
-long long Convert(long long &Value, TimeUnit const &From, TimeUnit const &To);
+unsigned long long Convert(unsigned long long const &Value, TimeUnit const &From, TimeUnit const &To);
+unsigned long long Convert(unsigned long long &Value, TimeUnit const &From, TimeUnit const &To);
 PCTCHAR UnitName(TimeUnit const &Unit, bool const &Abbrv = false);
-TString ToString(long long const &Value, TimeUnit const &DataUnit, bool const &Abbrv = false,
-				 TimeUnit const &HiUnit = TimeUnit::__END, TimeUnit const &LoUnit = TimeUnit::__BEGIN);
+TString ToString(long long const &Value, TimeUnit const &DataUnit, bool Abbrv = false, bool OmitPlus = true,
+	TimeUnit const &HiUnit = TimeUnit::__END, TimeUnit const &LoUnit = TimeUnit::__BEGIN);
 
 inline TimeUnit operator++(TimeUnit& x) {
 	switch (x) {
@@ -86,9 +88,9 @@ inline TimeUnit operator--(TimeUnit& x) {
 	}
 	return x = TimeUnit::__BEGIN;
 }
-inline TimeUnit operator*(TimeUnit r)	{ return r; }
-inline TimeUnit begin(TimeUnit r)		{ return TimeUnit::__BEGIN; }
-inline TimeUnit end(TimeUnit r)			{ return TimeUnit::__END; }
+inline TimeUnit operator*(TimeUnit r) { return r; }
+inline TimeUnit begin(TimeUnit r) { return TimeUnit::__BEGIN; }
+inline TimeUnit end(TimeUnit r) { return TimeUnit::__END; }
 
 enum class SizeUnit : unsigned long long {
 	BYTE = 1,
@@ -102,11 +104,11 @@ enum class SizeUnit : unsigned long long {
 	__END = PB
 };
 
-long long Convert(long long const &Value, SizeUnit const &From, SizeUnit const &To);
-long long Convert(long long &Value, SizeUnit const &From, SizeUnit const &To);
+unsigned long long Convert(unsigned long long const &Value, SizeUnit const &From, SizeUnit const &To);
+unsigned long long Convert(unsigned long long &Value, SizeUnit const &From, SizeUnit const &To);
 PCTCHAR UnitName(SizeUnit const &Unit, bool const &Abbrv = false);
-TString ToString(long long const &Value, SizeUnit const &DataUnit, bool const &Abbrv = false,
-				 SizeUnit const &HiUnit = SizeUnit::__END, SizeUnit const &LoUnit = SizeUnit::__BEGIN);
+TString ToString(long long const &Value, SizeUnit const &DataUnit, bool Abbrv = false, bool OmitPlus = true,
+	SizeUnit const &HiUnit = SizeUnit::__END, SizeUnit const &LoUnit = SizeUnit::__BEGIN);
 
 inline SizeUnit operator++(SizeUnit& x) {
 	switch (x) {
@@ -130,8 +132,8 @@ inline SizeUnit operator--(SizeUnit& x) {
 	}
 	return x = SizeUnit::__BEGIN;
 }
-inline SizeUnit operator*(SizeUnit r)	{ return r; }
-inline SizeUnit begin(SizeUnit r)		{ return SizeUnit::__BEGIN; }
-inline SizeUnit end(SizeUnit r)			{ return SizeUnit::__END; }
+inline SizeUnit operator*(SizeUnit r) { return r; }
+inline SizeUnit begin(SizeUnit r) { return SizeUnit::__BEGIN; }
+inline SizeUnit end(SizeUnit r) { return SizeUnit::__END; }
 
 #endif

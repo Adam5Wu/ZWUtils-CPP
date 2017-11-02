@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,8 +39,12 @@ Cloneable* Cloneable::MakeClone(IObjAllocator<void> &_Alloc) const {
 	FAIL(_T("Abstract function"));
 }
 
+#ifndef __MANAGEDOBJ_LITE
+
 ManagedObj::~ManagedObj(void) {
 	if (RefCount()) {
 		LOGV(_T("WARNING: Destruction of %s"), this->toString().c_str());
 	}
 }
+
+#endif

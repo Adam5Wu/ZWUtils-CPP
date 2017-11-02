@@ -49,6 +49,10 @@
     <ClCompile Include="Debug\StackWalker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Memory\Resource.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Threading\SyncObjects.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">

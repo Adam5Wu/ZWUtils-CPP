@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Debug/SysError.h"
 
 #include "Memory/ManagedRef.h"
+#include "Memory/Resource.h"
 
 #include "Threading/SyncObjects.h"
 
@@ -117,18 +118,18 @@ bool TStackWalker::LogError(LPCTSTR FuncHint, DWORD errCode, PVOID addr) {
 TString TStackWalker::FormatEntry(CallstackEntry const &Entry) {
 	return Entry.FileName.empty() ?
 		TStringCast(_T('!')
-		<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
-		<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
-		<< _T("<+") << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase << _T('>')) :
-		TStringCast(Entry.Address)) << _T(':')
-		<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-		<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
+			<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
+			<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
+				<< _T("<+") << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase << _T('>')) :
+				TStringCast(Entry.Address)) << _T(':')
+			<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
+			<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
 		:
 		TStringCast(Entry.FileName << _T('(') << Entry.LineNumber
-		//<< (Entry.LineOffset ? TStringCast(_T("<+") << Entry.LineOffset << _T('>')) : _T("")) << _T("):")
-		<< (Entry.LineOffset ? _T("+") : _T("")) << _T("):")
-		<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-		//<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T(""))
+			//<< (Entry.LineOffset ? TStringCast(_T("<+") << Entry.LineOffset << _T('>')) : _T("")) << _T("):")
+			<< (Entry.LineOffset ? _T("+") : _T("")) << _T("):")
+			<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
+			//<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T(""))
 		);
 }
 
@@ -200,7 +201,7 @@ public:
 	TString const OptSymPath;
 
 	StackWalker_Impl(bool xOnlineSymServer, TString const &xOptSymPath) :
-		StackWalker_Impl(THandle(GetCurrentProcess(), TResource<HANDLE>::NullDealloc), xOnlineSymServer, xOptSymPath) {}
+		StackWalker_Impl(THandle(CONSTRUCTION::VALIDATED, GetCurrentProcess(), THandle::NullDealloc), xOnlineSymServer, xOptSymPath) {}
 
 	StackWalker_Impl(THandle &&xProcess, bool xOnlineSymServer, TString const &xOptSymPath) :
 		Process(std::move(xProcess)), OnlineSymServer(xOnlineSymServer), OptSymPath(xOptSymPath) {
@@ -208,7 +209,7 @@ public:
 		TraceSymPath = GetSymPath();
 
 		// Initialize symbols
-		if (!SymInitializeT(GetCurrentProcess(), TraceSymPath.c_str(), TRUE))
+		if (!SymInitializeT(*Process, TraceSymPath.c_str(), TRUE))
 			SYSFAIL(_T("Unable to initialize symbol"));
 
 		// Configure symbol lookup
@@ -377,8 +378,8 @@ void LocalStackWalker_Init(bool xOnlineSymServer, TString const &xOptSymPath) {
 }
 
 bool LocalStackTrace(THandle const &Thread, CONTEXT &Context,
-					 TStackWalker::OnStackEntry const &EntryCallback,
-					 TStackWalker::OnTraceError const &ErrorCallback) {
+	TStackWalker::OnStackEntry const &EntryCallback,
+	TStackWalker::OnTraceError const &ErrorCallback) {
 	auto AMRSW = _LocalStackWalker(true, EMPTY_TSTRING()).Pickup(); // Hold the Lock
 	return (*AMRSW)->Trace(Thread, std::move(Context), EntryCallback, ErrorCallback);
 }

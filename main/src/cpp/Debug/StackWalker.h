@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2016, Zhenyu Wu; 2012 - 2016, NEC Labs America Inc.
+Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef ZWUtils_StackWalker_H
 #define ZWUtils_StackWalker_H
+
+ // Project global control 
+#include "Misc/Global.h"
 
 #include "Exception.h"
 
@@ -80,8 +83,8 @@ public:
 	static TString FormatError(LPCTSTR FuncHint, DWORD errCode, PVOID addr);
 
 	virtual bool Trace(THandle const &Thread, CONTEXT &Context,
-					   OnStackEntry const &EntryCallback = LogEntry,
-					   OnTraceError const &ErrorCallback = LogError) {
+		OnStackEntry const &EntryCallback = LogEntry,
+		OnTraceError const &ErrorCallback = LogError) {
 		FAIL(_T("Abstract Function"));
 	}
 };
@@ -89,8 +92,8 @@ public:
 void LocalStackWalker_Init(bool xOnlineSymServer = true, TString const &xOptSymPath = EMPTY_TSTRING());
 
 bool LocalStackTrace(THandle const &Thread, CONTEXT &Context,
-					 TStackWalker::OnStackEntry const& EntryCallback = TStackWalker::LogEntry,
-					 TStackWalker::OnTraceError const& ErrorCallback = TStackWalker::LogError);
+	TStackWalker::OnStackEntry const& EntryCallback = TStackWalker::LogEntry,
+	TStackWalker::OnTraceError const& ErrorCallback = TStackWalker::LogError);
 
 #endif
 
