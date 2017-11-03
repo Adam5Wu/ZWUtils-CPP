@@ -206,6 +206,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -228,6 +229,7 @@
       <OmitFramePointers>false</OmitFramePointers>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

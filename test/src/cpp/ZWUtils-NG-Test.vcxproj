@@ -215,6 +215,7 @@
       <UseFullPaths>true</UseFullPaths>
       <ExceptionHandling>Async</ExceptionHandling>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -239,6 +240,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <OmitFramePointers>false</OmitFramePointers>
+      <AdditionalOptions>/bigobj</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
