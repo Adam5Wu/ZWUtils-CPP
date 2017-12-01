@@ -51,8 +51,10 @@ TString const& LOGTARGET_CONSOLE(void);
 //! Add or remove a debug log target
 void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message = nullptr);
 
-//! Print a formatted debug string message
-void __LOG(PCTCHAR Fmt, ...);
+//! Print a formatted debug string message to a log target
+void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
+
+#define __LOG(...)	__LOG_DO(nullptr VAWRAP(__VA_ARGS__))
 
 //-------------- LOGGING
 

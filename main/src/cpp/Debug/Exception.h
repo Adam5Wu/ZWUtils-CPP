@@ -108,9 +108,9 @@ public:
 //! @ingroup Utilities
 //! Raise an exception with a formatted string message
 #define FAILS(src, fmt, ...)	throw Exception::Create(src, fmt VAWRAP(__VA_ARGS__));
-#define FAIL(fmt, ...) {							\
-	SOURCEMARK										\
-	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);	\
+#define FAIL(fmt, ...) {									\
+	SOURCEMARK												\
+	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);			\
 }
 
 #define LOGEXCEPTIONV(e,fmt,...)							\

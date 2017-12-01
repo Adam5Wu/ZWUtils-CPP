@@ -96,7 +96,7 @@ void __LocaleInit(void) {
 	}
 }
 
-void __LOG(PCTCHAR Fmt, ...) {
+void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...) {
 	va_list params;
 	va_start(params, Fmt);
 	TInitResource<va_list> Params(params, [&](va_list &X) {va_end(X); });
@@ -104,8 +104,10 @@ void __LOG(PCTCHAR Fmt, ...) {
 	__LocaleInit();
 	for (size_t i = 0; i < LogTargets->size(); i++) {
 		auto &entry = LogTargets->at(i);
-		_vftprintf(entry.second, Fmt, params);
-		DEBUG_DO(fflush(entry.second));
+		if ((!Target && entry.first.at(0) != _T('.')) || (Target && entry.first == *Target)) {
+			_vftprintf(entry.second, Fmt, params);
+			DEBUG_DO(fflush(entry.second));
+		}
 	}
 }
 
