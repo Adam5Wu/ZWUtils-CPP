@@ -50,6 +50,7 @@ TString const& LOGTARGET_CONSOLE(void);
 
 //! Add or remove a debug log target
 void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message = nullptr);
+FILE * GETLOGTARGET(TString const &Name);
 
 //! Print a formatted debug string message to a log target
 void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);

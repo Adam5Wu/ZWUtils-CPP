@@ -42,7 +42,7 @@ size_t Cardinal32::hashcode(void) const {
 }
 
 TString Cardinal32::toString(void) const {
-	return TStringCast(std::hex << std::uppercase << std::setw(8) << U32);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(8) << U32);
 }
 
 bool Cardinal32::equalto(Cardinal32 const &T) const {
@@ -61,7 +61,7 @@ size_t Cardinal64::hashcode(void) const {
 }
 
 TString Cardinal64::toString(void) const {
-	return TStringCast(std::hex << std::uppercase << std::setw(16) << U64);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64);
 }
 
 bool Cardinal64::equalto(Cardinal64 const &T) const {
@@ -81,11 +81,11 @@ size_t Cardinal128::hashcode(void) const {
 
 TString Cardinal128::toString(void) const {
 #ifdef LITTLE_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setw(16) << U64B << std::setw(16) << U64A);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64B << std::setw(16) << U64A);
 #endif
 
 #ifdef BIG_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setw(16) << U64A << std::setw(16) << U64B);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64A << std::setw(16) << U64B);
 #endif
 }
 
@@ -107,13 +107,13 @@ size_t Cardinal256::hashcode(void) const {
 
 TString Cardinal256::toString(void) const {
 #ifdef LITTLE_ENDIAN
-	return TStringCast(std::hex << std::uppercase
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
 		<< std::setw(16) << U64[3] << std::setw(16) << U64[2]
 		<< std::setw(16) << U64[1] << std::setw(16) << U64[0]);
 #endif
 
 #ifdef BIG_ENDIAN
-	return TStringCast(std::hex << std::uppercase
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
 		<< std::setw(16) << U64[0] << std::setw(16) << U64[1]
 		<< std::setw(16) << U64[2] << std::setw(16) << U64[3]);
 #endif
