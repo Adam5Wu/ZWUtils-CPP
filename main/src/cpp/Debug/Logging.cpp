@@ -82,6 +82,17 @@ void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message) {
 	}
 }
 
+FILE * GETLOGTARGET(TString const &Name) {
+	auto LogTargets(LOGTARGETS().Pickup());
+	auto Iter = LogTargets->begin();
+	while (Iter != LogTargets->end()) {
+		if (Iter->first.compare(Name) == 0) {
+			return Iter->second;
+		}
+	}
+	return nullptr;
+}
+
 #ifdef WINDOWS
 
 // Interest read: http://codesnipers.com/?q=the-secret-family-split-in-windows-code-page-functions
