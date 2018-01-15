@@ -182,6 +182,20 @@ TString HexInspect(void* Buf, size_t Len) {
 	return HexBuf;
 }
 
+UINT32 CountBits32(UINT32 Mask) {
+	UINT32 Ret = Mask - ((Mask >> 1) & 0x55555555);
+	Ret = (Ret & 0x33333333) + ((Ret >> 2) & 0x33333333);
+	Ret = (Ret + (Ret >> 4)) & 0x0f0f0f0f;
+	return (Ret * 0x01010101) >> 24;
+}
+
+UINT32 CountBits64(UINT64 Mask) {
+	UINT64 Ret = Mask - ((Mask >> 1) & 0x5555555555555555);
+	Ret = (Ret & 0x3333333333333333) + ((Ret >> 2) & 0x3333333333333333);
+	Ret = (Ret + (Ret >> 4)) & 0x0f0f0f0f0f0f0f0f;
+	return (Ret * 0x0101010101010101) >> 56;
+}
+
 struct CONSTRUCTION::EMPLACE_T const CONSTRUCTION::EMPLACE;
 struct CONSTRUCTION::HANDOFF_T const CONSTRUCTION::HANDOFF;
 struct CONSTRUCTION::CLONE_T const CONSTRUCTION::CLONE;

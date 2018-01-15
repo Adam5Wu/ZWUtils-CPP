@@ -221,6 +221,14 @@ extern UUID const UUID_NULL;
 
 TString HexInspect(void* Buf, size_t Len);
 
+UINT32 CountBits32(UINT32 Mask);
+UINT32 CountBits64(UINT64 Mask);
+#ifdef _WIN64
+#define CountBits CountBits64
+#else
+#define CountBits CountBits32
+#endif
+
 //#define __INTERLOCK_VALUEQUERY
 
 template<typename TOrdinal32>

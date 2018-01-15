@@ -122,6 +122,14 @@ CString WStringtoUTF8(WString const &Str);
 CString WStringtoUTF8(WString const &Str, WString &ErrMessage);
 WString UTF8toWString(CString const &Str);
 
+#ifdef UNICODE
+#define TStringtoUTF8	WStringtoUTF8
+#define UTF8toTString	UTF8toWString
+#else
+#define TStringtoUTF8
+#define UTF8toTString
+#endif
+
 #ifdef WINDOWS
 TCHAR const* ACP_LOCALE(void);
 #endif
