@@ -81,11 +81,13 @@ size_t Cardinal128::hashcode(void) const {
 
 TString Cardinal128::toString(void) const {
 #ifdef LITTLE_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64B << std::setw(16) << U64A);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
+		<< std::setw(16) << U64B << std::setw(16) << U64A);
 #endif
 
 #ifdef BIG_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64A << std::setw(16) << U64B);
+	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
+		<< std::setw(16) << U64A << std::setw(16) << U64B);
 #endif
 }
 
@@ -136,7 +138,8 @@ Cardinal256 const& Cardinal256::ZERO(void) {
 TString UUIDToString(UUID const &Val) {
 	TString Ret(40, NullTChar);
 	Cardinal128 const &Value = (Cardinal128 const &)Val;
-	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1, _T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
+	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1,
+		_T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
 		Value.U32[0], Value.U16[2], Value.U16[3],
 		Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
 		Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
@@ -170,7 +173,8 @@ TString HexInspect(void* Buf, size_t Len) {
 	TString HexBuf;
 	unsigned char* ByteBuf = (unsigned char*)Buf;
 	for (size_t i = 0; i < Len; i++) {
-		HexBuf.append(TStringCast(_T(' ') << std::setfill(_T('0')) << std::setw(2) << std::hex << std::uppercase << ByteBuf[i]));
+		HexBuf.append(TStringCast(_T(' ') << std::hex << std::uppercase << std::setfill(_T('0'))
+			<< std::setw(2) << ByteBuf[i]));
 		if ((i & 15) == 15) HexBuf.append(_T("\n"));
 		else if ((i & 7) == 7) HexBuf.append(_T("\t"));
 	}
