@@ -55,7 +55,7 @@ class TResource : public Reference<X> {
 	typedef TResource _this;
 
 protected:
-	X* _ObjPointer(void) const override {
+	X * _ObjPointer(void) const override {
 		return &const_cast<_this*>(this)->Refer();
 	}
 
@@ -205,6 +205,23 @@ public:
 		TAllocResource(xResRef, xDealloc, xAlloc) {}
 };
 
+class TModule : public TAllocResource<HMODULE> {
+public:
+	static HMODULE ValidateHandle(HMODULE const &Ref);
+	static void HandleDealloc_Standard(HMODULE &Res);
+	static void HandleDealloc_BestEffort(HMODULE &Res);
+
+	TModule(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
+		TAllocResource(xAlloc, xDealloc) {}
+	TModule(HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
+	TModule(CONSTRUCTION::VALIDATED_T const&, HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(xResRef, xDealloc, xAlloc) {}
+
+	static TModule GetLoaded(TString const &Name);
+	static TModule const MAIN;
+};
+
 #endif
 
 //---------------------
@@ -241,7 +258,7 @@ protected:
 	_TTypedBuffer(_this &&xResource) : TAllocResource(std::move(xResource)) {}
 
 public:
-	T* operator&(void) const {
+	T * operator&(void) const {
 		return *_ObjPointer();
 	}
 };
@@ -316,7 +333,7 @@ private:
 	size_t _PVSize;
 
 protected:
-	IAllocator &_Allocator;
+	IAllocator & _Allocator;
 	size_t _Size;
 
 	size_t ProvisionSize(size_t xSize) {
@@ -386,7 +403,7 @@ protected:
 	}
 
 public:
-	T* operator&(void) const {
+	T * operator&(void) const {
 		return *_ObjPointer();
 	}
 
@@ -425,7 +442,10 @@ public:
 	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
 
 	// Move assignment
-	using _TTypedDynBuffer::operator=;
+	_this& operator=(_this &&xResource) {
+		_TTypedDynBuffer::operator=(std::move(xResource));
+		return *this;
+	}
 
 	T& operator*(void) const {
 		return **_ObjPointer();
@@ -450,7 +470,10 @@ public:
 	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
 
 	// Move assignment
-	using _TTypedDynBuffer::operator=;
+	_this& operator=(_this &&xResource) {
+		_TTypedDynBuffer::operator=(std::move(xResource));
+		return *this;
+	}
 };
 
 typedef TTypedDynBuffer<void> TDynBuffer;

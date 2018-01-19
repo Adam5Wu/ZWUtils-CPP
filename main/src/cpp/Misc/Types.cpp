@@ -45,6 +45,15 @@ TString Cardinal32::toString(void) const {
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(8) << U32);
 }
 
+TString Cardinal32::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
+}
+
 bool Cardinal32::equalto(Cardinal32 const &T) const {
 	return U32 == T.U32;
 }
@@ -62,6 +71,15 @@ size_t Cardinal64::hashcode(void) const {
 
 TString Cardinal64::toString(void) const {
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64);
+}
+
+TString Cardinal64::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
 }
 
 bool Cardinal64::equalto(Cardinal64 const &T) const {
@@ -91,8 +109,25 @@ TString Cardinal128::toString(void) const {
 #endif
 }
 
+TString Cardinal128::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
+}
+
 bool Cardinal128::equalto(Cardinal128 const &T) const {
 	return ((U64A ^ T.U64A) | (U64B ^ T.U64B)) == 0;
+}
+
+GUID Cardinal128::toGUID(void) {
+	return *(LPGUID)U8;
+}
+
+void Cardinal128::loadGUID(GUID const &V) {
+	memcpy(U8, &V, sizeof(GUID));
 }
 
 Cardinal128 const& Cardinal128::ZERO(void) {
@@ -121,6 +156,15 @@ TString Cardinal256::toString(void) const {
 #endif
 }
 
+TString Cardinal256::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
+}
+
 bool Cardinal256::equalto(Cardinal256 const &T) const {
 	return ((U64[0] ^ T.U64[0]) | (U64[1] ^ T.U64[1]) | (U64[2] ^ T.U64[2]) | (U64[3] ^ T.U64[3])) == 0;
 }
@@ -137,7 +181,7 @@ Cardinal256 const& Cardinal256::ZERO(void) {
 
 TString UUIDToString(UUID const &Val) {
 	TString Ret(40, NullTChar);
-	Cardinal128 const &Value = (Cardinal128 const &)Val;
+	Cardinal128 Value(Val);
 	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1,
 		_T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
 		Value.U32[0], Value.U16[2], Value.U16[3],
@@ -164,7 +208,7 @@ UUID UUIDFromString(TString const &Str) {
 	// Work around VC++ missing support for "hhX"
 	for (int i = 0; i < 8; i++)
 		Value.U8[8 + i] = tail8[i];
-	return (UUID &)Value;
+	return Value.toGUID();
 }
 
 UUID const UUID_NULL = { 0 };

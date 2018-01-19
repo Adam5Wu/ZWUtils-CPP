@@ -110,6 +110,7 @@ union Cardinal32 {
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
+	TString toString(unsigned int bcnt) const;
 	bool equalto(Cardinal32 const &T) const;
 
 	static Cardinal32 const& ZERO(void);
@@ -138,6 +139,7 @@ union Cardinal64 {
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
+	TString toString(unsigned int bcnt) const;
 	bool equalto(Cardinal64 const &T) const;
 
 	static Cardinal64 const& ZERO(void);
@@ -163,10 +165,15 @@ union Cardinal128 {
 	Cardinal128(void) {}
 	Cardinal128(unsigned long long const & _VA, unsigned long long const & _VB) : U64A(_VA), U64B(_VB) {}
 	Cardinal128(long long const & _VA, long long const & _VB) : S64A(_VA), S64B(_VB) {}
+	Cardinal128(GUID const &_V) { loadGUID(_V); }
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
+	TString toString(unsigned int bcnt) const;
 	bool equalto(Cardinal128 const &T) const;
+
+	GUID toGUID(void);
+	void loadGUID(GUID const &V);
 
 	static Cardinal128 const& ZERO(void);
 };
@@ -198,6 +205,7 @@ union Cardinal256 {
 
 	size_t hashcode(void) const;
 	TString toString(void) const;
+	TString toString(unsigned int bcnt) const;
 	bool equalto(Cardinal256 const &T) const;
 
 	static Cardinal256 const& ZERO(void);

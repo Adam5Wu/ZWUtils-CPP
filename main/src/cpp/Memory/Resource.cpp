@@ -52,4 +52,27 @@ void THandle::HandleDealloc_BestEffort(HANDLE &Res) {
 		SYSERRLOG(_T("Failed to release handle"));
 }
 
+HMODULE TModule::ValidateHandle(HMODULE const &Ref) {
+	if (Ref == NULL)
+		FAIL(_T("Cannot assign invalid module"));
+	return Ref;
+}
+
+void TModule::HandleDealloc_Standard(HMODULE &Res) {
+	if (!FreeLibrary(Res))
+		SYSFAIL(_T("Failed to release module"));
+}
+
+void TModule::HandleDealloc_BestEffort(HMODULE &Res) {
+	if (!FreeLibrary(Res))
+		SYSERRLOG(_T("Failed to release module"));
+}
+
+TModule TModule::GetLoaded(TString const &Name) {
+	return { GetModuleHandle(Name.c_str()), TModule::NullDealloc };
+}
+
+TModule const TModule::MAIN(CONSTRUCTION::VALIDATED, NULL, TModule::NullDealloc);
+
+
 #endif
