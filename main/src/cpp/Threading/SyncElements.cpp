@@ -88,8 +88,7 @@ inline WaitResult __FilterWaitResult(DWORD Ret, size_t ObjCnt, bool WaitAll) {
 		return WaitResult::Message;
 	} else if ((Ret >= WAIT_ABANDONED_0) && (Ret < WAIT_ABANDONED_0 + ObjCnt)) {
 		LOGVV(_T("WARNING: Wait Succeed (with abandoned mutex)"));
-		return WaitAll ?
-			WaitResult::Abandoned :
+		return WaitAll ? WaitResult::Abandoned :
 			(WaitResult)((int)WaitResult::Abandoned_0 - WAIT_ABANDONED_0 + Ret);
 	} if (Ret == WAIT_IO_COMPLETION) {
 		__SYNC_DEBUG(LOGV(_T("NOTE: Wait APC")));
@@ -163,6 +162,14 @@ THandle THandleWaitable::WaitHandle(void) {
 }
 
 // TSemaphore
+HANDLE DupSemSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
+	HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
+	HANDLE Ret;
+	if (DuplicateHandle(sProcess, sHandle, tProcess, &Ret, SEMAPHORE_MODIFY_STATE, Inheritable, 0) == 0)
+		SYSFAIL(_T("Failed to duplicate semaphore signal handle"));
+	return Ret;
+}
+
 HANDLE TSemaphore::Create(long Initial, long Maximum, TString const &Name) {
 	HANDLE Ret = CreateSemaphore(nullptr, Initial, Maximum, Name.empty() ? nullptr : Name.c_str());
 	if (Ret == nullptr)
@@ -174,6 +181,10 @@ HANDLE TSemaphore::Create(long Initial, long Maximum, TString const &Name) {
 		}
 	}
 	return Ret;
+}
+
+THandle TSemaphore::SignalHandle(void) {
+	return { [&] { return DupSemSignalHandle(Refer()); } };
 }
 
 long TSemaphore::Signal(long Count) {
@@ -191,7 +202,7 @@ HANDLE TMutex::Create(bool Acquired, TString const &Name) {
 	if (!Name.empty()) {
 		DWORD ErrCode = GetLastError();
 		if (ErrCode == ERROR_ALREADY_EXISTS) {
-			LOGV(_T("WARNING: Named mutex '%s' already exists!"), Name);
+			LOGV(_T("WARNING: Named mutex '%s' already exists!"), Name.c_str());
 		}
 	}
 	return Ret;
@@ -203,6 +214,14 @@ void TMutex::Release(void) {
 }
 
 // TEvent
+HANDLE DupEventSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
+	HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
+	HANDLE Ret;
+	if (DuplicateHandle(sProcess, sHandle, tProcess, &Ret, EVENT_MODIFY_STATE, Inheritable, 0) == 0)
+		SYSFAIL(_T("Failed to duplicate event signal handle"));
+	return Ret;
+}
+
 HANDLE TEvent::Create(bool ManualReset, bool Initial, TString const &Name) {
 	HANDLE Ret = CreateEvent(nullptr, ManualReset, Initial, Name.empty() ? nullptr : Name.c_str());
 	if (Ret == nullptr)
@@ -210,10 +229,14 @@ HANDLE TEvent::Create(bool ManualReset, bool Initial, TString const &Name) {
 	if (!Name.empty()) {
 		DWORD ErrCode = GetLastError();
 		if (ErrCode == ERROR_ALREADY_EXISTS) {
-			LOGV(_T("WARNING: Named event '%s' already exists!"), Name);
+			LOGV(_T("WARNING: Named event '%s' already exists!"), Name.c_str());
 		}
 	}
 	return Ret;
+}
+
+THandle TEvent::SignalHandle(void) {
+	return { [&] { return DupEventSignalHandle(Refer()); } };
 }
 
 void TEvent::Set(void) {
@@ -291,7 +314,7 @@ public:
 		DEBUGV_DO({
 			LOG("Alarm clock armed @ %s", Ret->ExitTS.toString().c_str());
 			LOG("- Scheduled wake up in: %s", Ret->Remainder.toString(TimeUnit::MSEC).c_str());
-		});
+			});
 
 		Ret->Result = WaitResult::Signaled;
 		try {
@@ -327,7 +350,7 @@ public:
 					LOG("- Wake up time compared with deadline: %s",
 						Ret->Remainder.toString(TimeUnit::MSEC).c_str());
 				}
-			});
+				});
 		} catch (Exception *e) {
 			ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
 			E->Show();

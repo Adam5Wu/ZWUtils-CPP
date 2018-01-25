@@ -63,7 +63,7 @@ PCTCHAR _DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, siz
 		MsgBuf = Buffer;
 
 	DWORD Ret = FormatMessage(MsgFlags, Module, ErrCode, 0, MsgBuf, (DWORD)BufLen, pArgs);
-	if (Ret == 0) SYSFAIL(_T("Unable to decode error code %d"), ErrCode);
+	if (Ret == 0) SYSFAIL(_T("Unable to decode error code %0.8X"), ErrCode);
 
 	BufLen = Ret;
 	return __RLNTrim(MsgBuf, BufLen);

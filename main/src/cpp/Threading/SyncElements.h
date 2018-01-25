@@ -205,6 +205,8 @@ public:
 	TSemaphore(CONSTRUCTION::DEFER_T const&, long Initial = 0, long Maximum = 0x7FFFFFFF, TString const &Name = EMPTY_TSTRING()) :
 		THandleWaitable([=] { return Create(Initial, Maximum, Name); }) {}
 
+	THandle SignalHandle(void);
+
 	/**
 	 * Signal the semaphore with given count
 	 * @return Previous semaphore count
@@ -263,6 +265,8 @@ public:
 		THandleWaitable(Create(ManualReset, Initial, Name)) {}
 	TEvent(CONSTRUCTION::DEFER_T const&, bool ManualReset = false, bool Initial = false, TString const &Name = EMPTY_TSTRING()) :
 		THandleWaitable([=] { return Create(ManualReset, Initial, Name); }) {}
+
+	THandle SignalHandle(void);
 
 	/**
 	 * Set the event

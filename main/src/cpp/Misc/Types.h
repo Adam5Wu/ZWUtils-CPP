@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Types_H
 #define ZWUtils_Types_H
 
-// Project global control 
+ // Project global control 
 #include "Global.h"
 
 #include "TString.h"
@@ -116,6 +116,13 @@ union Cardinal32 {
 	static Cardinal32 const& ZERO(void);
 };
 
+template<>
+struct std::hash<Cardinal32> {
+	size_t operator()(Cardinal32 const &X) const {
+		return X.hashcode();
+	}
+};
+
 inline bool operator ==(Cardinal32 const &A, Cardinal32 const &B) {
 	return A.equalto(B);
 }
@@ -143,6 +150,13 @@ union Cardinal64 {
 	bool equalto(Cardinal64 const &T) const;
 
 	static Cardinal64 const& ZERO(void);
+};
+
+template<>
+struct std::hash<Cardinal64> {
+	size_t operator()(Cardinal64 const &X) const {
+		return X.hashcode();
+	}
 };
 
 inline bool operator ==(Cardinal64 const &A, Cardinal64 const &B) {
@@ -178,6 +192,13 @@ union Cardinal128 {
 	static Cardinal128 const& ZERO(void);
 };
 
+template<>
+struct std::hash<Cardinal128> {
+	size_t operator()(Cardinal128 const &X) const {
+		return X.hashcode();
+	}
+};
+
 inline bool operator ==(Cardinal128 const &A, Cardinal128 const &B) {
 	return A.equalto(B);
 }
@@ -209,6 +230,13 @@ union Cardinal256 {
 	bool equalto(Cardinal256 const &T) const;
 
 	static Cardinal256 const& ZERO(void);
+};
+
+template<>
+struct std::hash<Cardinal256> {
+	size_t operator()(Cardinal256 const &X) const {
+		return X.hashcode();
+	}
 };
 
 inline bool operator ==(Cardinal256 const &A, Cardinal256 const &B) {
