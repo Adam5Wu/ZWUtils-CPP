@@ -32,7 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Units.h"
 
-unsigned long long _Convert(unsigned long long &Value, unsigned long long const &FromBase, unsigned long long const &ToBase) {
+unsigned long long _Convert(unsigned long long &Value, unsigned long long const &FromBase,
+	unsigned long long const &ToBase) {
 	unsigned long long Factor;
 	unsigned long long Rem;
 	if (FromBase >= ToBase) {
