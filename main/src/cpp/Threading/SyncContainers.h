@@ -317,7 +317,7 @@ protected:
 	}
 
 #define __Impl__Pop(dir)									\
-	entry = Accessor-> ##dir## ();							\
+	entry = std::move(Accessor-> ##dir## ());				\
 	Accessor->pop_ ##dir## ();								\
 	if (Accessor->empty() && EmptyWaiters) EmptyWait.Set();
 
