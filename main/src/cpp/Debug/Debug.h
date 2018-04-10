@@ -97,15 +97,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WINDOWS
 
-#define BUFFMT(buf,len,fmt,...) 										\
-{ENFORCE_TYPE(decltype(buf), PTCHAR);}									\
-int __Len = _sntprintf_s(buf, len, _TRUNCATE, fmt VAWRAP(__VA_ARGS__));	\
-if (__Len >= 0) (buf)[__Len] = NullTChar;								\
+#define BUFFMT(buf,len,fmt,...) 									\
+{ENFORCE_TYPE(decltype(buf), PTCHAR);}								\
+int __Len = _sntprintf_s(buf, len, _TRUNCATE, fmt, __VA_ARGS__);	\
+if (__Len >= 0) (buf)[__Len] = NullTChar;							\
 
 #endif
 
-#define STACK_MSGFMT(len,fmt,...)			\
-TCHAR __ErrorMsg[len];						\
+#define STACK_MSGFMT(len,fmt,...)					\
+TCHAR __ErrorMsg[len];								\
 {BUFFMT(__ErrorMsg, len, fmt, __VA_ARGS__)}
 
 #define STACK_ERRMSGFMT(fmt,...)	STACK_MSGFMT(ERRMSG_BUFLEN, fmt, __VA_ARGS__)
@@ -119,8 +119,8 @@ BUFFMT((PTCHAR)(pstr)->data(), len, fmt, __VA_ARGS__);	\
 
 #define STR_ERRMSGFMT(pstr,fmt,...)	STR_MSGFMT(pstr, ERRMSG_BUFLEN, fmt, __VA_ARGS__)
 
-#define HEAPSTR_ERRMSGFMT(fmt,...)				\
-TString __ErrorMsg;								\
+#define HEAPSTR_ERRMSGFMT(fmt,...)						\
+TString __ErrorMsg;										\
 STR_ERRMSGFMT(&__ErrorMsg, fmt, __VA_ARGS__)
 
 PCTCHAR __RelPath(PCTCHAR Path);

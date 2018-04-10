@@ -55,7 +55,7 @@ FILE * GETLOGTARGET(TString const &Name);
 //! Print a formatted debug string message to a log target
 void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
 
-#define __LOG(...)	__LOG_DO(nullptr VAWRAP(__VA_ARGS__))
+#define __LOG(...)	__LOG_DO(nullptr, __VA_ARGS__)
 
 //-------------- LOGGING
 
@@ -77,7 +77,9 @@ LOG_DO({															\
 	_LOG(_T("@<%s> ") fmt, __SrcMark.c_str() VAWRAP(__VA_ARGS__));	\
 })
 
+#ifndef __LOGPFX__
 #define __LOGPFX__
+#endif
 
 //-------------- DEBUG LOGGING
 

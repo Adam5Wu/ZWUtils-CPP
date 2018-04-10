@@ -107,10 +107,10 @@ public:
 
 //! @ingroup Utilities
 //! Raise an exception with a formatted string message
-#define FAILS(src, fmt, ...)	throw Exception::Create(src, fmt VAWRAP(__VA_ARGS__));
-#define FAIL(fmt, ...) {									\
-	SOURCEMARK												\
-	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);			\
+#define FAILS(src, fmt, ...)	throw Exception::Create(src, fmt, __VA_ARGS__);
+#define FAIL(fmt, ...) {							\
+	SOURCEMARK										\
+	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);	\
 }
 
 #define LOGEXCEPTIONV(e,fmt,...)							\
@@ -171,7 +171,7 @@ public:
 	static _this* Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
 };
 
-#define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt VAWRAP(__VA_ARGS__));
+#define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt, __VA_ARGS__);
 
 #ifdef WINDOWS
 

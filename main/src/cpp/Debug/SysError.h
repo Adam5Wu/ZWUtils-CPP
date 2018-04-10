@@ -102,11 +102,11 @@ void DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_li
 TCHAR __SysErrMsg[ERRMSG_BUFLEN];									\
 {																	\
 	size_t __BufLen = ERRMSG_BUFLEN;								\
-	DecodeSysError(errcode, __SysErrMsg, __BufLen,  __VA_ARGS__);	\
+	DecodeSysError(errcode, __SysErrMsg, __BufLen, __VA_ARGS__);	\
 }
 
-#define SYSERRMSG_HEAP(errcode, ...)				\
-TString __SysErrMsg;								\
+#define SYSERRMSG_HEAP(errcode, ...)						\
+TString __SysErrMsg;										\
 DecodeSysError(errcode, __SysErrMsg, __VA_ARGS__);
 
 #ifdef WINDOWS
@@ -139,12 +139,12 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
 
 //! @ingroup Utilities
 //! Log a failure with an argumented system error and context
-#define ERRLOGA(errcode, ctx, ...) {									\
-	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];									\
-	TCHAR __SysErrMsg[ERRMSG_BUFLEN];									\
-	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx, \
-							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);	\
-	LOG(_T("Error %0.8X: %s (%s)"), errcode, __SysErrMsg, __CtxErrMsg);	\
+#define ERRLOGA(errcode, ctx, ...) {										\
+	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];										\
+	TCHAR __SysErrMsg[ERRMSG_BUFLEN];										\
+	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx,		\
+							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);		\
+	LOG(_T("Error %0.8X: %s (%s)"), errcode, __SysErrMsg, __CtxErrMsg);		\
 }
 
 #define ERRLOGSA(errcode, ctx, ...) {										\
@@ -159,22 +159,22 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
 
 //! @ingroup Utilities
 //! Log a failed system call
-#define SYSERRLOG(ctx, ...) {			\
-	DWORD ErrCode = GetLastError();		\
-	ERRLOG(ErrCode, ctx, __VA_ARGS__);	\
-	SetLastError(ErrCode);				\
+#define SYSERRLOG(ctx, ...) {				\
+	DWORD ErrCode = GetLastError();			\
+	ERRLOG(ErrCode, ctx, __VA_ARGS__);		\
+	SetLastError(ErrCode);					\
 }
 
-#define SYSERRLOGA(ctx, ...) {			\
-	DWORD ErrCode = GetLastError();		\
-	ERRLOGA(ErrCode, ctx, __VA_ARGS__);	\
-	SetLastError(ErrCode);				\
+#define SYSERRLOGA(ctx, ...) {				\
+	DWORD ErrCode = GetLastError();			\
+	ERRLOGA(ErrCode, ctx, __VA_ARGS__);		\
+	SetLastError(ErrCode);					\
 }
 
-#define SYSERRLOGS(ctx, ...) {			\
-	DWORD ErrCode = GetLastError();		\
-	ERRLOGS(ErrCode, ctx, __VA_ARGS__);	\
-	SetLastError(ErrCode);				\
+#define SYSERRLOGS(ctx, ...) {				\
+	DWORD ErrCode = GetLastError();			\
+	ERRLOGS(ErrCode, ctx, __VA_ARGS__);		\
+	SetLastError(ErrCode);					\
 }
 
 #define SYSERRLOGSA(ctx, ...) {				\
@@ -217,7 +217,7 @@ public:
 
 //! @ingroup Utilities
 //! Raise a system error exception with a formatted string message
-#define SYSERRFAILS(src, errcode, fmt, ...)	throw SystemError::Create(src, errcode, fmt VAWRAP(__VA_ARGS__));
+#define SYSERRFAILS(src, errcode, fmt, ...)	throw SystemError::Create(src, errcode, fmt, __VA_ARGS__)
 #define SYSERRFAIL(errcode, fmt, ...) {								\
 	SOURCEMARK														\
 	SYSERRFAILS(errcode, std::move(__SrcMark), fmt, __VA_ARGS__);	\
