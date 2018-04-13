@@ -83,14 +83,14 @@ inline WaitResult __FilterWaitResult(DWORD Ret, size_t ObjCnt, bool WaitAll) {
 		return WaitAll ?
 			WaitResult::Signaled :
 			(WaitResult)((int)WaitResult::Signaled_0 - WAIT_OBJECT_0 + Ret);
-	} if (Ret == WAIT_OBJECT_0 + ObjCnt) {
+	} else if (Ret == WAIT_OBJECT_0 + ObjCnt) {
 		__SYNC_DEBUG(LOGV(_T("NOTE: Wait Msg")));
 		return WaitResult::Message;
 	} else if ((Ret >= WAIT_ABANDONED_0) && (Ret < WAIT_ABANDONED_0 + ObjCnt)) {
 		LOGVV(_T("WARNING: Wait Succeed (with abandoned mutex)"));
 		return WaitAll ? WaitResult::Abandoned :
 			(WaitResult)((int)WaitResult::Abandoned_0 - WAIT_ABANDONED_0 + Ret);
-	} if (Ret == WAIT_IO_COMPLETION) {
+	} else if (Ret == WAIT_IO_COMPLETION) {
 		__SYNC_DEBUG(LOGV(_T("NOTE: Wait APC")));
 		return WaitResult::APC;
 	} else if (Ret == WAIT_TIMEOUT) {
@@ -288,7 +288,7 @@ void TConditionVariable::Signal(bool All) {
 
 #endif
 
-#include "Threading\WorkerThread.h"
+#include "Threading/WorkerThread.h"
 
 class __ClockRunner : public TRunnable {
 protected:

@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Resource.h"
 
-#include "Debug\SysError.h"
+#include "Debug/SysError.h"
 
 #ifdef WINDOWS
 

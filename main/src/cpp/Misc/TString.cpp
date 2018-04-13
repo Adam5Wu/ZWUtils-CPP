@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "TString.h"
 
-#include "Debug\Exception.h"
-#include "Debug\SysError.h"
+#include "Debug/Exception.h"
+#include "Debug/SysError.h"
 
 #ifdef WINDOWS
 #include <Windows.h>
