@@ -38,12 +38,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WINDOWS
 
-PTCHAR __RLNTrim(PTCHAR Buf, size_t &Len) {
-	while (--Len >= 0) {
-		if ((Buf[Len] != _T('\n')) && (Buf[Len] != _T('\r'))) break;
-		Buf[Len] = NullTChar;
+void __RLNTrim(PTCHAR Buf, size_t &Len) {
+	while (Len) {
+		TCHAR CVal = Buf[Len - 1];
+		if ((CVal != _T('\n')) && (CVal != _T('\r'))) {
+			break;
+		}
+		Buf[--Len] = NullTChar;
 	}
-	return Len++, Buf;
 }
 
 PCTCHAR _DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
@@ -62,11 +64,11 @@ PCTCHAR _DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, siz
 	} else
 		MsgBuf = Buffer;
 
-	DWORD Ret = FormatMessage(MsgFlags, Module, ErrCode, 0, MsgBuf, (DWORD)BufLen, pArgs);
-	if (Ret == 0) SYSFAIL(_T("Unable to decode error code %0.8X"), ErrCode);
+	BufLen = FormatMessage(MsgFlags, Module, ErrCode, 0, MsgBuf, (DWORD)BufLen, pArgs);
+	if (!BufLen) SYSFAIL(_T("Unable to decode error code %0.8X"), ErrCode);
 
-	BufLen = Ret;
-	return __RLNTrim(MsgBuf, BufLen);
+	__RLNTrim(MsgBuf, BufLen);
+	return MsgBuf;
 }
 
 void FreeSysErrorMessage(PCTCHAR MsgBuf) {
@@ -120,7 +122,7 @@ void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 	PTCHAR ErrBuffer, size_t &ErrBufLen, ...) {
 	va_list params;
 	va_start(params, ErrCode);
-	TInitResource<va_list> Params(params, [&](va_list &X) {va_end(X); });
+	TInitResource<va_list> Params(params, [](va_list &X) {va_end(X); });
 	int __Len = _vsntprintf_s(CtxBuffer, CtxBufLen, _TRUNCATE, CtxBufFmt, params);
 	if (__Len >= 0) CtxBuffer[__Len] = NullTChar;
 	DecodeSysError(Module, ErrCode, ErrBuffer, ErrBufLen, &params);

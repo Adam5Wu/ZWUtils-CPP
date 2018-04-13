@@ -366,7 +366,10 @@ public:
 	/**
 	* Notify the stop request from worker thread
 	**/
-	virtual void StopNotify(TWorkerThread &WorkerThread) {}
+	virtual void StopNotify(TWorkerThread &WorkerThread) {
+		// Instance to be used by unreferenced self-freeing thread
+		// Function implemented by WEvent notifications
+	}
 
 };
 
@@ -378,7 +381,7 @@ void TAlarmClock::Arm(TimeStamp const &Clock) {
 
 bool TAlarmClock::Armed(void) const {
 	if (!_HEvent.Allocated()) return false;
-	WaitResult WRet = const_cast<TEvent*>(std::addressof(_HEvent))->WaitFor(0);
+	WaitResult WRet = _HEvent.WaitFor(0);
 	switch (WRet) {
 		case WaitResult::TimedOut: return true;
 		case WaitResult::Signaled: return false;

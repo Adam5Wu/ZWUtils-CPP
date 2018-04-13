@@ -110,7 +110,7 @@ void __LocaleInit(void) {
 void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...) {
 	va_list params;
 	va_start(params, Fmt);
-	TInitResource<va_list> Params(params, [&](va_list &X) {va_end(X); });
+	TInitResource<va_list> Params(params, [](va_list &X) {va_end(X); });
 	auto LogTargets(LOGTARGETS().Pickup());
 	__LocaleInit();
 	for (size_t i = 0; i < LogTargets->size(); i++) {
