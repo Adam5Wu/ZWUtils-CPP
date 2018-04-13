@@ -117,6 +117,7 @@ TString TimeStamp::toString(TimeUnit const &Resolution) const {
 		case TimeUnit::DAY: break;
 		case TimeUnit::HR:
 			SystemTime.wMinute = 0;
+			// Fall through...
 		case TimeUnit::MIN:
 		case TimeUnit::SEC:
 		case TimeUnit::MSEC:

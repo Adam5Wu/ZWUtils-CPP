@@ -216,6 +216,7 @@ DWORD TWorkerThread::__CallForwarder(void) {
 					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
 				});
 			}
+			// Fall through...
 
 		case State::Terminating:
 			WTLOGV(_T("Terminated"));
@@ -293,6 +294,7 @@ WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) const {
 			case State::Constructed:
 				// Thread not started, cannot wait
 				WTFAIL(_T("Not started"));
+				break;
 
 			case State::Initialzing:
 				// Starting up, yield and try again
@@ -302,6 +304,7 @@ WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) const {
 			case State::Running:
 				// Cannot be in this state!
 				WTFAIL(_T("Internal state inconsistent (Bug-check)"));
+				break;
 
 			case State::Terminating:
 				// Pre-start terminated
@@ -319,6 +322,7 @@ THandle TWorkerThread::WaitHandle(void) {
 			case State::Constructed:
 				// Thread not started, cannot wait
 				WTFAIL(_T("Not started"));
+				break;
 
 			case State::Initialzing:
 				// Starting up, yield and try again
@@ -328,6 +332,7 @@ THandle TWorkerThread::WaitHandle(void) {
 			case State::Running:
 				// Cannot be in this state!
 				WTFAIL(_T("Internal state inconsistent (Bug-check)"));
+				break;
 
 			case State::Terminating:
 				// Pre-start terminated
