@@ -235,8 +235,8 @@ protected:
 
 	void __Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool isExclusive);
 
-	MRLock __GetExclusiveIterLock(TLock const& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
-	MRLock __GetSharedIterLock(TLock const& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
+	MRLock __GetExclusiveIterLock(TLock& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
+	MRLock __GetSharedIterLock(TLock& BaseLock, TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent);
 
 #else
 #error Unimplemented sharing support!
@@ -484,10 +484,9 @@ public:
 	}
 
 	TString const& Why(void) const override {
-		if (rWhy.length() == 0) {
-			PCTCHAR dWhy = Exception::Why().c_str();
-			HEAPSTR_ERRMSGFMT(SDQLogHeader _T("%s"), ContainerName.c_str(), dWhy);
-			const_cast<TString*>(&rWhy)->assign(std::move(__ErrorMsg));
+		if (rWhy.empty()) {
+			HEAPSTR_ERRMSGFMT(SDQLogHeader _T("%s"), ContainerName.c_str(), Exception::Why().c_str());
+			rWhy.assign(std::move(__ErrorMsg));
 		}
 		return rWhy;
 	}
@@ -657,7 +656,7 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 	)
 
 template<class T>
-typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock const& BaseLock,
+typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& BaseLock,
 	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we have already promoted
 	if (LockInfo->_ExclusiveLock) return { LockInfo->_ExclusiveLock };
@@ -675,7 +674,7 @@ typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIter
 				[&](int &) { *LinkedLockInfo->_IterLock = SRWSync.Lock_Read(); }
 			),
 			{
-				__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_ExclusiveLock);
+				__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock);
 				__LockRecover_RAII.Invalidate();
 			},
 				*Ret = SRWSync.TryLock_Write(),
@@ -684,7 +683,7 @@ typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIter
 				);
 	} else {
 		__IMPL_IterLockOp(auto QueueLock = __Accessor_Sync(), {}, {},
-			__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_ExclusiveLock),
+			__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock),
 			*Ret = SRWSync.TryLock_Write(),
 			*Ret = SRWSync.TryLock_Write(1),
 			"acquire exclusive lock"
@@ -694,7 +693,7 @@ typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIter
 }
 
 template<class T>
-typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock const& BaseLock,
+typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock& BaseLock,
 	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we already have a shared iterator lock
 	if (LockInfo->_SharedLock) return { LockInfo->_SharedLock };
@@ -702,10 +701,10 @@ typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetSharedIterLoc
 	MRLock Ret(CONSTRUCTION::EMPLACE, SRWSync.NullLock());
 	// Check if we are in exclusive mode
 	if (LockInfo->_ExclusiveLock) {
-		__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_SharedLock);
+		__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_SharedLock);
 	} else {
 		__IMPL_IterLockOp({}, {}, {},
-			__IMPL_LinkLock(*Ret, const_cast<TLock&>(BaseLock), LockInfo->_SharedLock),
+			__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_SharedLock),
 			*Ret = SRWSync.TryLock_Read(),
 			*Ret = SRWSync.TryLock_Read(1),
 			"acquire shared lock"

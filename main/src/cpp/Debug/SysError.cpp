@@ -131,16 +131,15 @@ void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 #define FSystemErrorMessage _T("%s (Error %0.8X: %s)")
 
 TString const& SystemError::ErrorMessage(void) const {
-	if (rErrorMsg.length() == 0)
-		DecodeSysError(ErrorCode, *const_cast<TString*>(&rErrorMsg));
+	if (rErrorMsg.empty())
+		DecodeSysError(ErrorCode, rErrorMsg);
 	return rErrorMsg;
 }
 
 TString const& SystemError::Why(void) const {
-	if (rWhy.length() == 0) {
-		PCTCHAR dWhy = Exception::Why().c_str();
-		HEAPSTR_ERRMSGFMT(FSystemErrorMessage, dWhy, ErrorCode, ErrorMessage().c_str());
-		const_cast<TString*>(&rWhy)->assign(std::move(__ErrorMsg));
+	if (rWhy.empty()) {
+		HEAPSTR_ERRMSGFMT(FSystemErrorMessage, Exception::Why().c_str(), ErrorCode, ErrorMessage().c_str());
+		rWhy.assign(std::move(__ErrorMsg));
 	}
 	return rWhy;
 }

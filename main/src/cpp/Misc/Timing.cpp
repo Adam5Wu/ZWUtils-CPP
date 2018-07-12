@@ -43,8 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 TimeSpan const TimeSpan::Null;
 
 TimeSpan& TimeSpan::operator=(_this const &xTimeSpan) {
-	*const_cast<TimeUnit*>(&Unit) = xTimeSpan.Unit;
-	const_cast<Cardinal64*>(&Value)->S64 = xTimeSpan.Value.S64;
+	Unit = xTimeSpan.Unit;
+	Value.S64 = xTimeSpan.Value.S64;
 	return *this;
 }
 
@@ -76,7 +76,7 @@ TimeSystem const TimeStamp::__SYSTEM = TimeSystem::GREGORIAN;
 TimeStamp const TimeStamp::Null;
 
 TimeStamp& TimeStamp::operator=(_this const &xTimeStamp) {
-	const_cast<Cardinal64*>(&Value)->U64 = xTimeStamp.Value.U64;
+	Value.U64 = xTimeStamp.Value.U64;
 	return *this;
 }
 

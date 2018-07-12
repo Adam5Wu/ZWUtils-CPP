@@ -118,14 +118,14 @@ public:
 template<class T>
 T* ManagedRef<T>::_RefObj(T *xObj) {
 	if (auto MRef = ManagedObj::Cast(xObj))
-		const_cast<ManagedObj*>(MRef)->_AddRef();
+		MRef->_AddRef();
 	return xObj;
 }
 
 template<class T>
 T* ManagedRef<T>::_RelObj(T *xObj) {
 	if (auto MRef = ManagedObj::Cast(xObj))
-		return const_cast<ManagedObj*>(MRef)->_RemoveRef() ? xObj : nullptr;
+		return MRef->_RemoveRef() ? xObj : nullptr;
 	return xObj;
 }
 
@@ -134,7 +134,7 @@ T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
 	if (xObj == nullptr) return nullptr;
 	if (!ForceClone) {
 		if (auto MRef = ManagedObj::Cast(xObj))
-			return const_cast<ManagedObj*>(MRef)->_AddRef(), xObj;
+			return MRef->_AddRef(), xObj;
 	}
 	return Cloneable::Clone(xObj, xAlloc);
 }

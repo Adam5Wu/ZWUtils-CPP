@@ -56,8 +56,8 @@ class TimeSpan {
 	typedef TimeSpan _this;
 
 protected:
-	TimeUnit const Unit;
-	Cardinal64 const Value;
+	TimeUnit Unit;
+	Cardinal64 Value;
 
 public:
 	TimeSpan(long long const &xValue = 0, TimeUnit const &xUnit = TimeUnit::MSEC) :
@@ -152,7 +152,7 @@ class TimeStamp {
 protected:
 	static TimeUnit const __UNIT;
 	static TimeSystem const __SYSTEM;
-	Cardinal64 const Value;
+	Cardinal64 Value;
 
 	static long long Normalize(long long const &xValue, TimeUnit const &xUnit, TimeSystem const &xSystem);
 
@@ -179,11 +179,11 @@ public:
 	}
 
 	bool Before(_this const &TS) const {
-		return TS.Value.U64 > Value.U64;
+		return Value.U64 < TS.Value.U64;
 	}
 
 	bool After(_this const &TS) const {
-		return TS.Value.U64 < Value.U64;
+		return Value.U64 > TS.Value.U64;
 	}
 
 	bool OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &TLate,

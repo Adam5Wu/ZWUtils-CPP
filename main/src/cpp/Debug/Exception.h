@@ -59,28 +59,30 @@ class Exception {
 	friend class IObjAllocator<_this>;
 
 protected:
-	TString const rWhy = EmptyWText;
+	TString mutable rWhy;
 
 	template<typename... Params>
-	void PopulateReason(PCTCHAR ReasonFmt, Params&&... xParams) {
-		if (ReasonFmt) STR_ERRMSGFMT(const_cast<TString*>(&Reason), ReasonFmt, std::forward<Params>(xParams)...);
+	static TString PopulateReason(PCTCHAR ReasonFmt, Params&&... xParams) {
+		TString Ret;
+		if (ReasonFmt) STR_ERRMSGFMT(&Ret, ReasonFmt, std::forward<Params>(xParams)...);
+		return Ret;
 	}
 
 	template<typename... Params>
-	Exception(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(xSource) {
-		PopulateReason(ReasonFmt, std::forward<Params>(xParams)...);
+	Exception(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
+		Exception(TString(xSource), ReasonFmt, std::forward<Params>(xParams)...) {
 	}
 
 	template<typename... Params>
-	Exception(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) : Source(std::move(xSource)) {
-		PopulateReason(ReasonFmt, std::forward<Params>(xParams)...);
+	Exception(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
+		Source(std::move(xSource)), Reason(PopulateReason(ReasonFmt, std::forward<Params>(xParams)...)) {
 	}
 
 	virtual ~Exception(void) {}
 
 public:
 	TString const Source;
-	TString const Reason = EmptyWText;
+	TString const Reason;
 
 	/**
 	 * Returns a description of the exception

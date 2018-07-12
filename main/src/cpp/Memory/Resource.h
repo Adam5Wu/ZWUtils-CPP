@@ -55,11 +55,11 @@ class TResource : public Reference<X> {
 	typedef TResource _this;
 
 protected:
-	X * _ObjPointer(void) const override {
+	X* _ObjPointer(void) const override {
 		return &const_cast<_this*>(this)->Refer();
 	}
 
-	X* _ObjExchange(X *) override {
+	X* _ObjExchange(X*) override {
 		FAIL(_T("Function not available"));
 	}
 

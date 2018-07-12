@@ -43,7 +43,7 @@ TString const& Exception::Why(void) const {
 	if (rWhy.empty()) {
 		PCTCHAR dSource = Source.empty() ? ExceptSourceNone : Source.c_str();
 		PCTCHAR dReason = Reason.empty() ? ExceptReasonNone : Reason.c_str();
-		STR_ERRMSGFMT(const_cast<TString*>(&rWhy), FExceptionMessage, dSource, dReason);
+		STR_ERRMSGFMT(&rWhy, FExceptionMessage, dSource, dReason);
 	}
 	return rWhy;
 }

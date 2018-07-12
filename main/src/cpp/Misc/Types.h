@@ -265,8 +265,6 @@ UINT32 CountBits64(UINT64 Mask);
 #define CountBits CountBits32
 #endif
 
-//#define __INTERLOCK_VALUEQUERY
-
 template<typename TOrdinal32>
 class TInterlockedOrdinal32 {
 	typedef TInterlockedOrdinal32 _this;
@@ -312,11 +310,7 @@ public:
 		return Exchange(Value), Value;
 	}
 	TOrdinal32 operator~(void) const {
-#ifdef __INTERLOCK_VALUEQUERY
-		return const_cast<_this*>(this)->Add((TOrdinal32)0);
-#else
 		return (TOrdinal32)rOrdinal;
-#endif
 	}
 };
 
@@ -365,11 +359,7 @@ public:
 		return Exchange(Value), Value;
 	}
 	TOrdinal64 operator~(void) const {
-#ifdef __INTERLOCK_VALUEQUERY
-		return const_cast<_this*>(this)->Add((TOrdinal64)0);
-#else
 		return (TOrdinal64)rOrdinal;
-#endif
 	}
 };
 

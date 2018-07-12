@@ -345,10 +345,9 @@ THandle TWorkerThread::WaitHandle(void) {
 }
 
 TString const& TWorkerThreadException::Why(void) const {
-	if (rWhy.length() == 0) {
-		PCTCHAR dWhy = Exception::Why().c_str();
-		HEAPSTR_ERRMSGFMT(WTLogHeader _T("%s"), WorkerThreadName.c_str(), dWhy);
-		const_cast<TString*>(&rWhy)->assign(std::move(__ErrorMsg));
+	if (rWhy.empty()) {
+		HEAPSTR_ERRMSGFMT(WTLogHeader _T("%s"), WorkerThreadName.c_str(), Exception::Why().c_str());
+		rWhy.assign(std::move(__ErrorMsg));
 	}
 	return rWhy;
 }

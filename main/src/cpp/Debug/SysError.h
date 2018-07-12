@@ -196,14 +196,14 @@ class SystemError : public Exception {
 	friend class IObjAllocator<_this>;
 
 protected:
-	TString const rErrorMsg = EmptyWText;
+	TString mutable rErrorMsg;
 
 	template<typename... Params>
 	SystemError(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ErrorCode(xErrorCode) {}
 
 public:
-	unsigned int const ErrorCode = 0;
+	unsigned int const ErrorCode;
 
 	virtual TString const& ErrorMessage(void) const;
 	TString const& Why(void) const override;
