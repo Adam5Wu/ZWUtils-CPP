@@ -48,7 +48,7 @@ TString Cardinal32::toString(void) const {
 TString Cardinal32::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
 		StrBuf << std::setw(2) << U8[idx];
 	}
 	return StrBuf.str();
@@ -76,7 +76,7 @@ TString Cardinal64::toString(void) const {
 TString Cardinal64::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
 		StrBuf << std::setw(2) << U8[idx];
 	}
 	return StrBuf.str();
@@ -112,7 +112,7 @@ TString Cardinal128::toString(void) const {
 TString Cardinal128::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
 		StrBuf << std::setw(2) << U8[idx];
 	}
 	return StrBuf.str();
@@ -159,7 +159,7 @@ TString Cardinal256::toString(void) const {
 TString Cardinal256::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < min(bcnt, sizeof(U8)); idx++) {
+	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
 		StrBuf << std::setw(2) << U8[idx];
 	}
 	return StrBuf.str();

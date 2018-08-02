@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  // Project global control 
 #include "Misc/Global.h"
 
-#include <xstddef>
+#include <memory>
 
 /**
  * @ingroup Utilities

@@ -141,7 +141,7 @@ public:
 
 	template<
 		typename X, typename... Params,
-		typename = std::enable_if<!std::is_assignable<X, TAlloc&>::value>::type
+		typename = typename std::enable_if<!std::is_assignable<X, TAlloc&>::value>::type
 	>
 		static TObject* Create(X &&xParam, Params&&... xParams) {
 		return Create(DefaultObjAllocator<_this>(), xParam, std::forward<Params>(xParams)...);

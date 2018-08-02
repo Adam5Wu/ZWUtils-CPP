@@ -320,7 +320,7 @@ public:
 		try {
 			while (Ret->Remainder > TimeSpan::Null && !Interrupted) {
 				// Prevent too large duration value hit INTINIE
-				INT64 Timeout = min(Ret->Remainder.GetValue(TimeUnit::MSEC), 0x7FFFFFFF);
+				INT64 Timeout = std::min(Ret->Remainder.GetValue(TimeUnit::MSEC), 0x7FFFFFFFLL);
 				WaitResult WRet = WEvent.WaitFor((DWORD)Timeout);
 
 				Ret->ExitTS = TimeStamp::Now();

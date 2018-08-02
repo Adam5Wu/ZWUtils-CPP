@@ -46,6 +46,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Types.h"
 #include "Units.h"
 
+#include <algorithm>
+
 // Value = Second offset
 enum class TimeSystem : unsigned long long {
 	GREGORIAN = 0,
@@ -92,7 +94,7 @@ public:
 	}
 
 	bool Same(_this const &TS) const {
-		return Same(TS, min(Unit, TS.Unit));
+		return Same(TS, std::min(Unit, TS.Unit));
 	}
 
 	bool Same(_this const &TS, TimeUnit const &Resolution) const {
@@ -100,7 +102,7 @@ public:
 	}
 
 	bool MoreThan(_this const &TS) const {
-		return MoreThan(TS, min(Unit, TS.Unit));
+		return MoreThan(TS, std::min(Unit, TS.Unit));
 	}
 
 	bool MoreThan(_this const &TS, TimeUnit const &Resolution) const {
@@ -108,7 +110,7 @@ public:
 	}
 
 	bool LessThan(_this const &TS) const {
-		return LessThan(TS, min(Unit, TS.Unit));
+		return LessThan(TS, std::min(Unit, TS.Unit));
 	}
 
 	bool LessThan(_this const &TS, TimeUnit const &Resolution) const {

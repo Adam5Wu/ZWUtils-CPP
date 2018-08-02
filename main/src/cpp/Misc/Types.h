@@ -251,10 +251,13 @@ TString HexInspect(void* Buf, size_t Len);
 
 UINT32 CountBits32(UINT32 Mask);
 UINT32 CountBits64(UINT64 Mask);
-#ifdef _WIN64
-#define CountBits CountBits64
-#else
+
+#ifdef ARCH_32
 #define CountBits CountBits32
+#endif
+
+#ifdef ARCH_64
+#define CountBits CountBits64
 #endif
 
 template<typename TOrdinal32>
@@ -488,38 +491,38 @@ class TCastable {
 
 public:
 	template<class T,
-		typename = std::enable_if<std::is_base_of<X, T>::value>::type
+		typename = typename std::enable_if<std::is_base_of<X, T>::value>::type
 	>
 		static X* Cast(T *Obj) {
 		return Obj;
 	}
 
 	template<class T,
-		typename = std::enable_if<std::is_base_of<X, T>::value>::type
+		typename = typename std::enable_if<std::is_base_of<X, T>::value>::type
 	>
 		static X const* Cast(T const *Obj) {
 		return Obj;
 	}
 
 	template<class T,
-		typename = std::enable_if<!std::is_base_of<X, T>::value>::type,
-		typename = std::enable_if<std::is_polymorphic<T>::value>::type
+		typename = typename std::enable_if<!std::is_base_of<X, T>::value>::type,
+		typename = typename std::enable_if<std::is_polymorphic<T>::value>::type
 	>
 		static X* Cast(T *Obj) {
 		return dynamic_cast<X *>(Obj);
 	}
 
 	template<class T,
-		typename = std::enable_if<!std::is_base_of<X, T>::value>::type,
-		typename = std::enable_if<std::is_polymorphic<T>::value>::type
+		typename = typename std::enable_if<!std::is_base_of<X, T>::value>::type,
+		typename = typename std::enable_if<std::is_polymorphic<T>::value>::type
 	>
 		static X const* Cast(T const *Obj) {
 		return dynamic_cast<X const*>(Obj);
 	}
 
 	template<class T,
-		typename = std::enable_if<!std::is_base_of<X, T>::value>::type,
-		typename = std::enable_if<!std::is_polymorphic<T>::value>::type,
+		typename = typename std::enable_if<!std::is_base_of<X, T>::value>::type,
+		typename = typename std::enable_if<!std::is_polymorphic<T>::value>::type,
 		typename = void
 	>
 		static X* Cast(T*) {
@@ -527,8 +530,8 @@ public:
 	}
 
 	template<class T,
-		typename = std::enable_if<!std::is_base_of<X, T>::value>::type,
-		typename = std::enable_if<!std::is_polymorphic<T>::value>::type,
+		typename = typename std::enable_if<!std::is_base_of<X, T>::value>::type,
+		typename = typename std::enable_if<!std::is_polymorphic<T>::value>::type,
 		typename = void
 	>
 		static X const* Cast(T const*) {

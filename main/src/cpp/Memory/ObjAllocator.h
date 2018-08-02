@@ -64,11 +64,13 @@ protected:
 
 	MEMBERFUNC_PROBE(__Pre_Destroy);
 
-	template<typename = std::enable_if<!Has___Pre_Destroy<T>::value>::type>
-	static void _DefDestroy(T *Obj) { if (Obj) Obj->~T(); }
+	template<class Q = T>
+	static typename std::enable_if<!Has___Pre_Destroy<Q>::value>::type
+		_DefDestroy(Q *Obj) { if (Obj) Obj->~Q(); }
 
-	template<typename = void, typename X = std::enable_if<Has___Pre_Destroy<T>::value>::type>
-	static void _DefDestroy(T *Obj) { if (Obj) Obj->__Pre_Destroy(), Obj->~T(); }
+	template<class Q = T>
+	static typename std::enable_if<Has___Pre_Destroy<Q>::value>::type
+		_DefDestroy(Q *Obj) { if (Obj) Obj->__Pre_Destroy(), Obj->~Q(); }
 
 public:
 	typedef std::function<T*(void*)> TNew;
@@ -101,7 +103,8 @@ bool operator !=(IObjAllocator<T> const &A, IObjAllocator<T> const &B) {
 }
 
 #include "Allocator.h"
-#include "Resource.h"
+
+template<class T> class TTypedBuffer;
 
 template<class T>
 /**
@@ -139,6 +142,8 @@ IObjAllocator<T>& DefaultObjAllocator(void) {
 	static CascadeObjAllocator<T> __IoFU;
 	return __IoFU;
 }
+
+#include "Resource.h"
 
 template<class T>
 /**

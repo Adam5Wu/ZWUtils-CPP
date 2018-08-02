@@ -42,7 +42,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  // Project global control 
 #include "Misc/Global.h"
 
-#include "Allocator.h"
 #include "Reference.h"
 
 // Order is important here!
@@ -55,7 +54,7 @@ class TResource : public Reference<X> {
 	typedef TResource _this;
 
 protected:
-	X* _ObjPointer(void) const override {
+	X * _ObjPointer(void) const override {
 		return &const_cast<_this*>(this)->Refer();
 	}
 
@@ -227,8 +226,10 @@ public:
 //---------------------
 // Fixed size buffers
 
+#include "Allocator.h"
+
 template<typename T>
-class _TTypedBuffer : public TAllocResource < T* > {
+class _TTypedBuffer : public TAllocResource<T*> {
 	typedef _TTypedBuffer _this;
 
 protected:
@@ -245,17 +246,17 @@ protected:
 
 	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
 	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
+		TAllocResource<T*>([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
 			[=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 
 	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 	_TTypedBuffer(T *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
+		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
 			[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
 	// Move construction
-	_TTypedBuffer(_this &&xResource) : TAllocResource(std::move(xResource)) {}
+	_TTypedBuffer(_this &&xResource) : TAllocResource<T*>(std::move(xResource)) {}
 
 public:
 	T * operator&(void) const {
@@ -268,20 +269,20 @@ class TTypedBuffer : public _TTypedBuffer<T> {
 	typedef TTypedBuffer _this;
 
 public:
-	TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
+	TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer<T>(sizeof(T), xAllocator) {}
 	TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedBuffer(xSize, xAllocator) {}
+		_TTypedBuffer<T>(xSize, xAllocator) {}
 	TTypedBuffer(T &xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedBuffer(&xBuffer, xAllocator) {}
+		_TTypedBuffer<T>(&xBuffer, xAllocator) {}
 	TTypedBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedBuffer(&xBuffer, xSize, xAllocator) {}
+		_TTypedBuffer<T>(&xBuffer, xSize, xAllocator) {}
 
 	// Move construction
-	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
+	TTypedBuffer(_this &&xResource) : _TTypedBuffer<T>(std::move(xResource)) {}
 
 	// Move assignment
 	_this& operator=(_this &&xResource) {
-		TAllocResource::operator=(std::move(xResource));
+		TAllocResource<T*>::operator=(std::move(xResource));
 		return *this;
 	}
 
@@ -357,7 +358,7 @@ protected:
 				}
 			}
 		}
-		_Size = (xSize > _Size) ? min(xSize, _PVSize) : xSize;
+		_Size = (xSize > _Size) ? std::min(xSize, _PVSize) : xSize;
 		return xBuf;
 	}
 

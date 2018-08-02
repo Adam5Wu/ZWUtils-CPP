@@ -39,12 +39,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_Reference_H
 #define ZWUtils_Reference_H
 
- // Project global control 
+ // Project global control
 #include "Misc/Global.h"
 
 #include "Debug/Exception.h"
-
-#include "ObjAllocator.h"
 
 template<class T>
 class Reference {
