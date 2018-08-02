@@ -78,14 +78,6 @@ struct Has_ ## Func {											\
 	static const bool value = sizeof(_Probe<T>(nullptr)) > 1;	\
 }
 
-#define MEMBERFUNC_PROBE(Func)									\
-template<class T>												\
-struct Has_ ## Func {											\
-	template<class C> static int  _Probe(decltype(&C::Func));	\
-	template<class C> static char _Probe(...);					\
-	static const bool value = sizeof(_Probe<T>(nullptr)) > 1;	\
-}
-
 #ifdef ARCH_32
 typedef long			__ARC_INT;
 typedef unsigned long	__ARC_UINT;
