@@ -47,8 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 
 #ifdef UNICODE
-#define _T(x)	L 
-x
+#define _T(x)	L ## x
 #define TCHAR	wchar_t
 #else
 #define _T(x)	x
