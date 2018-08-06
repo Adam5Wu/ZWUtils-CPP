@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _IMPL_AbortableLock(spin_trylock,single_trylock,objname)										\
 	TAllocResource<__ARC_INT> WaitCounter([&] { return WaitCnt++; }, [&](__ARC_INT &) { --WaitCnt; });	\
 	TimeStamp EntryTS;																					\
-	while (! ##spin_trylock## ) {																		\
+	while (!spin_trylock) {																				\
 		/* Allocate wait counter */																		\
 		if (!WaitCounter.Allocated()) {																	\
 			if (*WaitCounter) {																			\
@@ -43,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 				while (!WaitEvent.Allocated()) SwitchToThread();										\
 			}																							\
 			/* Check again before wait */																\
-			if ( ##single_trylock## ) break;															\
+			if (single_trylock) break;																	\
 		}																								\
 		/* Calculate remaining wait time */																\
 		if (Timeout != FOREVER) {																		\
@@ -62,12 +62,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 			WaitEvent.WaitFor(Timeout);																	\
 		/* Analyze the result */																		\
 		switch (WRet) {																					\
-			case WaitResult::Error: SYSFAIL(_T("Failed to lock " ##objname## ));						\
+			case WaitResult::Error: SYSFAIL(_T("Failed to lock " objname));								\
 			case WaitResult::Signaled:																	\
 			case WaitResult::Signaled_0: break;															\
 			case WaitResult::Signaled_1:																\
 			case WaitResult::TimedOut: return false;													\
-			default: SYSFAIL(_T("Unable to lock" ##objname## ));										\
+			default: SYSFAIL(_T("Unable to lock" objname));												\
 		}																								\
 	}																									\
 	return true;

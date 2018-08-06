@@ -72,7 +72,7 @@ typedef unsigned long long UINT64;
 
 #define MEMBERFUNC_PROBE(Func)									\
 template<class T>												\
-struct Has_ ## Func {											\
+struct Has_##Func {												\
 	template<class C> static int  _Probe(decltype(&C::Func));	\
 	template<class C> static char _Probe(...);					\
 	static const bool value = sizeof(_Probe<T>(nullptr)) > 1;	\

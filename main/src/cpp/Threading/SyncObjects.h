@@ -327,7 +327,7 @@ protected:
 	}
 
 #define __Impl_Unlock(relfunc)							\
-	relfunc ## ();										\
+	relfunc();											\
 	if (~WWaitCnt) __Signal_Event(WWaitEvent);			\
 	else if (~RWaitCnt) __Signal_Event(RWaitEvent)
 
@@ -479,7 +479,7 @@ public:
 
 	template<
 		typename X, typename... Params,
-		typename = std::enable_if<!std::is_assignable<X, L&&>::value>::type
+		typename = typename std::enable_if<!std::is_assignable<X, L&&>::value>::type
 	>
 		TSyncObj(X &&xParam, Params&&... xParams) :
 		_Instance(std::forward<X>(xParam), std::forward<Params>(xParams)...) {}
@@ -616,8 +616,8 @@ public:
 
 	template<
 		typename X, typename... Params,
-		typename = std::enable_if<!std::is_assignable<X, TLAlloc&>::value>::type,
-		typename = std::enable_if<!std::is_assignable<X, MRLockable&>::value>::type
+		typename = typename std::enable_if<!std::is_assignable<X, TLAlloc&>::value>::type,
+		typename = typename std::enable_if<!std::is_assignable<X, MRLockable&>::value>::type
 	>
 		TSyncObj(X &&xParam, Params&&... xParams) :
 		TSyncObj(DefaultObjAllocator<L>(), xParam, std::forward<Params>(xParams)...) {}
@@ -699,11 +699,13 @@ public:
 	};
 
 	TLock Lock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) override {
-		return std::move(__Adopt(_Lockable->Lock(Timeout, AbortEvent)));
+		auto iRet = _Lockable->Lock(Timeout, AbortEvent);
+		return std::move(__Adopt(iRet));
 	}
 
 	TLock TryLock(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) override {
-		return std::move(__Adopt(_Lockable->TryLock(SpinCount)));
+		auto iRet = _Lockable->TryLock(SpinCount);
+		return std::move(__Adopt(iRet));
 	}
 
 	/**
@@ -711,7 +713,8 @@ public:
 	 **/
 	Accessor Pickup(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
 		// Clone Lock function to avoid virtual function call cost
-		return { std::move(__Adopt(_Lockable->Lock(Timeout, AbortEvent))) };
+		auto iRet = _Lockable->Lock(Timeout, AbortEvent);
+		return { std::move(__Adopt(iRet)) };
 	}
 
 	/**
@@ -719,7 +722,8 @@ public:
 	 **/
 	Accessor TryPickup(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
 		// Clone TryLock function to avoid virtual function call cost
-		return { std::move(__Adopt(_Lockable->TryLock(SpinCount))) };
+		auto iRet = _Lockable->TryLock(SpinCount);
+		return { std::move(__Adopt(iRet)) };
 	}
 
 	/**

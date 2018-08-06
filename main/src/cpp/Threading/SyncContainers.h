@@ -297,7 +297,7 @@ protected:
 
 #define __Impl__Push(method)								\
 	if (Accessor->empty() && PopWaiters) ContentWait.Set();	\
-	Accessor-> ##method## ;									\
+	Accessor->method;										\
 	return Accessor->size();
 
 	size_type __Push_Front(TQueueAccessor &Accessor, T const &entry) {
@@ -317,8 +317,8 @@ protected:
 	}
 
 #define __Impl__Pop(dir)									\
-	entry = std::move(Accessor-> ##dir## ());				\
-	Accessor->pop_ ##dir## ();								\
+	entry = std::move(Accessor->dir());						\
+	Accessor->pop_##dir();									\
 	if (Accessor->empty() && EmptyWaiters) EmptyWait.Set();
 
 	void __Pop_Front(TQueueAccessor &Accessor, T &entry) {
@@ -601,7 +601,7 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 			free_olock;																							\
 			{																									\
 				regain_olock_raii;																				\
-				if (##spin_nlock##) {																			\
+				if (spin_nlock) {																				\
 					replace_olock;																				\
 					break;																						\
 				}																								\
@@ -612,7 +612,7 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 						while (!IterWaitEvent.Allocated()) SwitchToThread();									\
 					}																							\
 					/* Check again before wait */																\
-					if (##single_nlock##) {																		\
+					if (single_nlock) {																			\
 						replace_olock;																			\
 						break;																					\
 					}																							\
@@ -636,12 +636,12 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 			IterWaitEvent.WaitFor(Timeout);																		\
 		/* Analyze the result */																				\
 		switch (WRet) {																							\
-			case WaitResult::Error: SYSFAIL(_T("Failed to " ##opname## ));										\
+			case WaitResult::Error: SYSFAIL(_T("Failed to " opname));											\
 			case WaitResult::Signaled:																			\
 			case WaitResult::Signaled_0: continue;																\
 			case WaitResult::Signaled_1:																		\
 			case WaitResult::TimedOut: break;																	\
-			default: SYSFAIL(_T("Unable to " ##opname## ));														\
+			default: SYSFAIL(_T("Unable to " opname));															\
 		}																										\
 		break;																									\
 	}
@@ -1053,7 +1053,7 @@ typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::cr
 	if (!Accessor) return -1;																	\
 	{																							\
 		__SyncLock_RAII;																		\
-		return __Push_ ##dir## (Accessor, ##data##);											\
+		return __Push_##dir(Accessor, data);													\
 	}
 
 template<class T>
@@ -1089,7 +1089,7 @@ typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
 			if (!Accessor) return false;																		\
 			{																									\
 				__SyncLock_RAII;																				\
-				if (!Accessor->empty()) return __Pop_ ##dir## (Accessor, entry), true;							\
+				if (!Accessor->empty()) return __Pop_##dir(Accessor, entry), true;								\
 				if (!*WaitCounter) ContentWait.Reset();															\
 			}																									\
 		}																										\
