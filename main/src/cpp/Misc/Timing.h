@@ -177,7 +177,8 @@ public:
 	virtual ~TimeStamp(void) {}
 
 	// Copy assignment operation is supported
-	_this& operator=(_this const &xTimeStamp);
+	_this& operator=(_this const &xTimeStamp)
+	{ return Value = xTimeStamp.Value, *this; }
 
 	long long UNIXMS(void) const;
 	long long MSWINTS(void) const;

@@ -111,6 +111,9 @@ struct Cardinal32 : public Cardinal {
 	Cardinal32(unsigned long const & _Value) : U32(_Value) {}
 	Cardinal32(long const & _Value) : S32(_Value) {}
 
+	Cardinal32& operator=(Cardinal32 const &_C)
+	{ return U32 = _C.U32, *this; }
+
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
 	virtual TString toString(unsigned int bcnt) const override;
@@ -153,6 +156,9 @@ struct Cardinal64 : public Cardinal {
 	Cardinal64(Cardinal64 const &_C) : U64(_C.U64) {}
 	Cardinal64(unsigned long long const & _Value) : U64(_Value) {}
 	Cardinal64(long long const & _Value) : S64(_Value) {}
+
+	Cardinal64& operator=(Cardinal64 const &_C)
+	{ return U64 = _C.U64, *this; }
 
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
@@ -198,6 +204,9 @@ struct Cardinal128 : public Cardinal {
 	Cardinal128(unsigned long long const & _VA, unsigned long long const & _VB) : U64A(_VA), U64B(_VB) {}
 	Cardinal128(long long const & _VA, long long const & _VB) : S64A(_VA), S64B(_VB) {}
 	Cardinal128(GUID const &_V) { loadGUID(_V); }
+
+	Cardinal128& operator=(Cardinal128 const &_C)
+	{ return U64A = _C.U64A, U64B = _C.U64B, *this; }
 
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
@@ -259,6 +268,9 @@ struct Cardinal256 : public Cardinal {
 		S64[0] = _V0; S64[1] = _V1; S64[2] = _V2; S64[3] = _V3;
 	}
 #endif
+
+	Cardinal256& operator=(Cardinal256 const &_C)
+	{ return C128A = _C.C128A, C128B = _C.C128B, *this; }
 
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;

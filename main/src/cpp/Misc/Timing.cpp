@@ -75,11 +75,6 @@ TimeSystem const TimeStamp::__SYSTEM = TimeSystem::GREGORIAN;
 
 TimeStamp const TimeStamp::Null;
 
-TimeStamp& TimeStamp::operator=(_this const &xTimeStamp) {
-	Value.U64 = xTimeStamp.Value.U64;
-	return *this;
-}
-
 long long TimeStamp::Normalize(long long const &xValue, TimeUnit const &xUnit, TimeSystem const &xSystem) {
 	unsigned long long RValue = xValue;
 	Convert(RValue, xUnit, __UNIT);
@@ -147,6 +142,6 @@ TimeStamp TimeStamp::Now(TimeSpan const &Offset) {
 	FILETIME FileTime;
 	GetSystemTimeAsFileTime(&FileTime);
 	TimeStamp Ret(FileTime);
-	return Offset? Ret.Offset(Offset) : Ret;
+	return Offset ? Ret.Offset(Offset) : Ret;
 #endif
 }
