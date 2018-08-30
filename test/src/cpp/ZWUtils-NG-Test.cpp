@@ -162,7 +162,7 @@ void TestException(void) {
 }
 
 void TestErrCode(void) {
-	LOGS(_T("*** Test Error code decoding"));
+	LOG(_T("*** Test Error code decoding"));
 	TCHAR Msg[2048];
 	size_t BufLen = 2048;
 	DecodeSysError(6, Msg, BufLen);
@@ -180,6 +180,16 @@ void TestErrCode(void) {
 	DecodeSysError(ModuleHandle, STATUS_INVALID_HANDLE, MsgStr);
 	LOGS(_T("{ntdll.dll} Error %0.8x: %s (%d, %d)"), STATUS_INVALID_HANDLE, MsgStr.c_str(), _tcslen(MsgStr.c_str()), MsgStr.size());
 #endif
+
+	ERRLOG(6, _T("Test system error logging"));
+
+	try {
+		SetLastError(6);
+		SYSFAIL(_T("Test system error logging"));
+	} catch (Exception *e) {
+		e->Show();
+		DefaultObjAllocator<Exception>().Destroy(e);
+	}
 }
 
 void TestStringConv(void) {

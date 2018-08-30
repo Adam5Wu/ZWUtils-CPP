@@ -127,32 +127,32 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
 
 //! @ingroup Utilities
 //! Log a failure with a system error and context
-#define ERRLOG(errcode, ctx, ...) {													\
-	SYSERRMSG_STACK(errcode);														\
-	LOG(_T("Error %0.8X: %s (") ctx _T(")"), errcode, __SysErrMsg, __VA_ARGS__);	\
+#define ERRLOG(errcode, ctx, ...) {																\
+	SYSERRMSG_STACK(errcode);																	\
+	LOG(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
 }
 
-#define ERRLOGS(errcode, ctx, ...) {												\
-	SYSERRMSG_STACK(errcode);														\
-	LOGS(_T("Error %0.8X: %s (") ctx _T(")"), errcode, __SysErrMsg, __VA_ARGS__);	\
+#define ERRLOGS(errcode, ctx, ...) {															\
+	SYSERRMSG_STACK(errcode);																	\
+	LOGS(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
 }
 
 //! @ingroup Utilities
 //! Log a failure with an argumented system error and context
-#define ERRLOGA(errcode, ctx, ...) {										\
-	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];										\
-	TCHAR __SysErrMsg[ERRMSG_BUFLEN];										\
-	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx,		\
-							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);		\
-	LOG(_T("Error %0.8X: %s (%s)"), errcode, __SysErrMsg, __CtxErrMsg);		\
+#define ERRLOGA(errcode, ctx, ...) {												\
+	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];												\
+	TCHAR __SysErrMsg[ERRMSG_BUFLEN];												\
+	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx,				\
+							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);				\
+	LOG(_T("System Error: %s (%0.8X: %s)"), __CtxErrMsg, errcode, __SysErrMsg);		\
 }
 
-#define ERRLOGSA(errcode, ctx, ...) {										\
-	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];										\
-	TCHAR __SysErrMsg[ERRMSG_BUFLEN];										\
-	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx,		\
-							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);		\
-	LOGS(_T("Error %0.8X: %s (%s)"), errcode, __SysErrMsg, __CtxErrMsg);	\
+#define ERRLOGSA(errcode, ctx, ...) {												\
+	TCHAR __CtxErrMsg[ERRMSG_BUFLEN];												\
+	TCHAR __SysErrMsg[ERRMSG_BUFLEN];												\
+	__FormatCtxAndDecodeError(errcode, __CtxErrMsg, ERRMSG_BUFLEN, ctx,				\
+							  __SysErrMsg, ERRMSG_BUFLEN, __VA_ARGS__);				\
+	LOGS(_T("System Error: %s (%0.8X: %s)"), __CtxErrMsg, errcode, __SysErrMsg);	\
 }
 
 #ifdef WINDOWS
