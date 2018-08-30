@@ -1407,7 +1407,7 @@ void TestSyncQueue(bool Profiling) {
 				TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 					TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 #ifdef _DEBUG
-					int COUNT = 500000;
+					int COUNT = 5000000;
 #else
 					int COUNT = 50000000;
 #endif
@@ -1426,7 +1426,7 @@ void TestSyncQueue(bool Profiling) {
 				TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 					TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 #ifdef _DEBUG
-					int COUNT = 500000;
+					int COUNT = 5000000;
 #else
 					int COUNT = 50000000;
 #endif
@@ -1463,7 +1463,7 @@ void TestSyncQueue(bool Profiling) {
 				TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 					TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 #ifdef _DEBUG
-					int COUNT = 500000;
+					int COUNT = 5000000;
 #else
 					int COUNT = 50000000;
 #endif
@@ -1482,7 +1482,7 @@ void TestSyncQueue(bool Profiling) {
 				TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &pSyncIntQueue) override {
 					TSyncIntQueue& Q = *static_cast<TSyncIntQueue*>(*pSyncIntQueue);
 #ifdef _DEBUG
-					int COUNT = 500000;
+					int COUNT = 5000000;
 #else
 					int COUNT = 50000000;
 #endif
@@ -1534,8 +1534,8 @@ void TestSyncQueue(bool Profiling) {
 				auto IterEnd = Queue.cend(PPLock);
 				for (; Iter != IterEnd; Iter++) {
 					_CNT++;
-					_MIN = min(*Iter, _MIN);
-					_MAX = max(*Iter, _MAX);
+					_MIN = std::min(*Iter, _MIN);
+					_MAX = std::max(*Iter, _MAX);
 				}
 				_LOG(_T("Went through %d items, min %d, max %d (diff %d)"), _CNT, _MIN, _MAX, _MAX - _MIN);
 				_LOG(_T("Current queue length: %d"), Queue.Length());
@@ -1570,8 +1570,8 @@ void TestSyncQueue(bool Profiling) {
 				auto IterEnd = Queue.cend(PPLock);
 				for (; Iter != IterEnd; Iter++) {
 					_CNT++;
-					_MIN = min(*Iter, _MIN);
-					_MAX = max(*Iter, _MAX);
+					_MIN = std::min(*Iter, _MIN);
+					_MAX = std::max(*Iter, _MAX);
 				}
 				_LOG(_T("Went through %d items, min %d, max %d (diff %d)"), _CNT, _MIN, _MAX, _MAX - _MIN);
 				_LOG(_T("Current queue length: %d"), Queue.Length());

@@ -105,9 +105,7 @@ long long TimeStamp::MSWINTS(void) const {
 TString TimeStamp::toString(TimeUnit const &Resolution) const {
 #ifdef WINDOWS
 	SYSTEMTIME SystemTime;
-	FILETIME FileTime;
-	((Cardinal64&)FileTime).U64 = MSWINTS();
-	FileTimeToSystemTime(&FileTime, &SystemTime);
+	FileTimeToSystemTime((FILETIME*)&Value.U64, &SystemTime);
 
 	TStringStream StrBuf;
 	StrBuf << std::setw(4) << SystemTime.wYear
@@ -142,11 +140,13 @@ bool TimeStamp::OnTime(_this const &TS, TimeSpan const &TEarly, TimeSpan const &
 	return (EInc ? TS >= BLine : TS > BLine) && (LInc ? TS <= DLine : TS < DLine);
 }
 
+#include "Debug/Logging.h"
+
 TimeStamp TimeStamp::Now(TimeSpan const &Offset) {
 #ifdef WINDOWS
-	Cardinal64 FileTime;
-	GetSystemTimeAsFileTime((FILETIME*)&FileTime);
-	// NOTE: Windows FileTime is already in the native time unit and system
-	return { FileTime.U64 + Offset.GetValue(__UNIT), __UNIT, __SYSTEM };
+	FILETIME FileTime;
+	GetSystemTimeAsFileTime(&FileTime);
+	TimeStamp Ret(FileTime);
+	return Offset? Ret.Offset(Offset) : Ret;
 #endif
 }

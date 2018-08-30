@@ -399,7 +399,7 @@ class TLockableHandleWaitable : public TLockableSyncPerms<W> {
 protected:
 	bool __Lock(WAITTIME Timeout, THandleWaitable *AbortEvent) override {
 		WaitResult WRet = AbortEvent ?
-			WaitMultiple({ *this, *AbortEvent }, false, Timeout) :
+			WaitMultiple({ *(THandleWaitable*)this, *AbortEvent }, false, Timeout) :
 			WaitFor(Timeout);
 		switch (WRet) {
 			case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));

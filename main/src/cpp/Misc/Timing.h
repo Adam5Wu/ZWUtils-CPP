@@ -82,7 +82,7 @@ public:
 	_this operator+(_this const &xTimeSpan) const;
 
 	_this operator-(_this const &xTimeSpan) const {
-		return *this + -xTimeSpan;
+		return this->operator+(-xTimeSpan);
 	}
 
 	_this& operator+=(_this const &xTimeSpan) {
@@ -168,6 +168,12 @@ public:
 			TimeSystem const &xSystem = TimeSystem::UNIX) :
 #endif
 		Value(Normalize(xValue, xUnit, xSystem)) {}
+
+#ifdef WINDOWS
+	TimeStamp(FILETIME const &xValue) :
+		TimeStamp((unsigned long long)xValue.dwHighDateTime << 32 | xValue.dwLowDateTime) {}
+#endif
+
 	virtual ~TimeStamp(void) {}
 
 	// Copy assignment operation is supported
@@ -177,7 +183,7 @@ public:
 	long long MSWINTS(void) const;
 
 	bool At(_this const &TS) const {
-		return TS.Value.U64 == Value.U64;
+		return Value.equalto(TS.Value);
 	}
 
 	bool Before(_this const &TS) const {

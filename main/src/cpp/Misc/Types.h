@@ -88,21 +88,35 @@ typedef long long			__ARC_INT;
 typedef unsigned long long	__ARC_UINT;
 #endif
 
-union Cardinal32 {
-	unsigned long U32;
-	struct { unsigned short U16A, U16B; };
-	struct { unsigned char U8[4]; };
-	long S32;
-	struct { short S16A, S16B; };
-	struct { char S8[4]; };
+struct Cardinal {
+	virtual size_t hashcode(void) const = 0;
+	virtual TString toString(void) const = 0;
+	virtual TString toString(unsigned int bcnt) const = 0;
+	virtual bool equalto(Cardinal const &T) const = 0;
+	virtual bool isZero(void) const = 0;
+};
+
+struct Cardinal32 : public Cardinal {
+	union {
+		unsigned long U32;
+		struct { unsigned short U16A, U16B; };
+		struct { unsigned char U8[4]; };
+		long S32;
+		struct { short S16A, S16B; };
+		struct { char S8[4]; };
+	};
 
 	Cardinal32(void) {}
+	Cardinal32(Cardinal32 const &_C) : U32(_C.U32) {}
 	Cardinal32(unsigned long const & _Value) : U32(_Value) {}
 	Cardinal32(long const & _Value) : S32(_Value) {}
 
-	size_t hashcode(void) const;
-	TString toString(void) const;
-	TString toString(unsigned int bcnt) const;
+	virtual size_t hashcode(void) const override;
+	virtual TString toString(void) const override;
+	virtual TString toString(unsigned int bcnt) const override;
+	virtual bool equalto(Cardinal const &T) const override;
+	virtual bool isZero(void) const override;
+
 	bool equalto(Cardinal32 const &T) const;
 
 	static Cardinal32 const& ZERO(void);
@@ -122,23 +136,30 @@ inline bool operator !=(Cardinal32 const &A, Cardinal32 const &B) {
 	return !(A == B);
 }
 
-union Cardinal64 {
-	unsigned long long U64;
-	struct { unsigned long U32A, U32B; };
-	struct { unsigned short U16[4]; };
-	struct { unsigned char U8[8]; };
-	long long S64;
-	struct { long S32A, S32B; };
-	struct { short S16[4]; };
-	struct { char S8[8]; };
+struct Cardinal64 : public Cardinal {
+	union {
+		struct { Cardinal32 C32A, C32B; };
+		unsigned long long U64;
+		struct { unsigned long U32A, U32B; };
+		struct { unsigned short U16[4]; };
+		struct { unsigned char U8[8]; };
+		long long S64;
+		struct { long S32A, S32B; };
+		struct { short S16[4]; };
+		struct { char S8[8]; };
+	};
 
 	Cardinal64(void) {}
+	Cardinal64(Cardinal64 const &_C) : U64(_C.U64) {}
 	Cardinal64(unsigned long long const & _Value) : U64(_Value) {}
 	Cardinal64(long long const & _Value) : S64(_Value) {}
 
-	size_t hashcode(void) const;
-	TString toString(void) const;
-	TString toString(unsigned int bcnt) const;
+	virtual size_t hashcode(void) const override;
+	virtual TString toString(void) const override;
+	virtual TString toString(unsigned int bcnt) const override;
+	virtual bool equalto(Cardinal const &T) const override;
+	virtual bool isZero(void) const override;
+
 	bool equalto(Cardinal64 const &T) const;
 
 	static Cardinal64 const& ZERO(void);
@@ -158,24 +179,32 @@ inline bool operator !=(Cardinal64 const &A, Cardinal64 const &B) {
 	return !(A == B);
 }
 
-union Cardinal128 {
-	struct { unsigned long long U64A, U64B; };
-	struct { unsigned long U32[4]; };
-	struct { unsigned short U16[8]; };
-	struct { unsigned char U8[16]; };
-	struct { long long S64A, S64B; };
-	struct { long S32[4]; };
-	struct { short S16[8]; };
-	struct { char S8[16]; };
+struct Cardinal128 : public Cardinal {
+	union {
+		struct { Cardinal64 C64A, C64B; };
+		struct { Cardinal32 C32[4]; };
+		struct { unsigned long long U64A, U64B; };
+		struct { unsigned long U32[4]; };
+		struct { unsigned short U16[8]; };
+		struct { unsigned char U8[16]; };
+		struct { long long S64A, S64B; };
+		struct { long S32[4]; };
+		struct { short S16[8]; };
+		struct { char S8[16]; };
+	};
 
 	Cardinal128(void) {}
+	Cardinal128(Cardinal128 const &_C) : C64A(_C.C64A), C64B(_C.C64B) {}
 	Cardinal128(unsigned long long const & _VA, unsigned long long const & _VB) : U64A(_VA), U64B(_VB) {}
 	Cardinal128(long long const & _VA, long long const & _VB) : S64A(_VA), S64B(_VB) {}
 	Cardinal128(GUID const &_V) { loadGUID(_V); }
 
-	size_t hashcode(void) const;
-	TString toString(void) const;
-	TString toString(unsigned int bcnt) const;
+	virtual size_t hashcode(void) const override;
+	virtual TString toString(void) const override;
+	virtual TString toString(unsigned int bcnt) const override;
+	virtual bool equalto(Cardinal const &T) const override;
+	virtual bool isZero(void) const override;
+
 	bool equalto(Cardinal128 const &T) const;
 
 	GUID toGUID(void);
@@ -198,27 +227,45 @@ inline bool operator !=(Cardinal128 const &A, Cardinal128 const &B) {
 	return !(A == B);
 }
 
-union Cardinal256 {
-	struct { unsigned long long U64[4]; };
-	struct { unsigned long U32[8]; };
-	struct { unsigned short U16[16]; };
-	struct { unsigned char U8[32]; };
-	struct { long long S64[4]; };
-	struct { long S32[8]; };
-	struct { short S16[16]; };
-	struct { char S8[32]; };
+struct Cardinal256 : public Cardinal {
+	union {
+		struct { Cardinal128 C128A, C128B; };
+		struct { Cardinal64 C64[4]; };
+		struct { Cardinal32 C32[8]; };
+		struct { unsigned long long U64[4]; };
+		struct { unsigned long U32[8]; };
+		struct { unsigned short U16[16]; };
+		struct { unsigned char U8[32]; };
+		struct { long long S64[4]; };
+		struct { long S32[8]; };
+		struct { short S16[16]; };
+		struct { char S8[32]; };
+	};
 
-#if _MSC_VER >= 1900
 	Cardinal256(void) {}
+	Cardinal256(Cardinal256 const &_C) : C128A(_C.C128A), C128B(_C.C128B) {}
+#if _MSC_VER >= 1900
 	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
 		unsigned long long const _V2, unsigned long long const _V3) : U64{ _V0, _V1, _V2, _V3 } {}
 	Cardinal256(long long const _V0, long long const _V1,
 		long long const _V2, long long const _V3) : S64{ _V0, _V1, _V2, _V3 } {}
+#else
+	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
+		unsigned long long const _V2, unsigned long long const _V3) {
+		U64[0] = _V0; U64[1] = _V1; U64[2] = _V2; U64[3] = _V3;
+	}
+	Cardinal256(long long const _V0, long long const _V1,
+		long long const _V2, long long const _V3) {
+		S64[0] = _V0; S64[1] = _V1; S64[2] = _V2; S64[3] = _V3;
+	}
 #endif
 
-	size_t hashcode(void) const;
-	TString toString(void) const;
-	TString toString(unsigned int bcnt) const;
+	virtual size_t hashcode(void) const override;
+	virtual TString toString(void) const override;
+	virtual TString toString(unsigned int bcnt) const override;
+	virtual bool equalto(Cardinal const &T) const override;
+	virtual bool isZero(void) const override;
+
 	bool equalto(Cardinal256 const &T) const;
 
 	static Cardinal256 const& ZERO(void);

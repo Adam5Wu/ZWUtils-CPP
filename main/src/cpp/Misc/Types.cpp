@@ -54,8 +54,44 @@ TString Cardinal32::toString(unsigned int bcnt) const {
 	return StrBuf.str();
 }
 
+bool Cardinal32::equalto(Cardinal const &T) const {
+	if (typeid(T) == typeid(Cardinal32)) {
+		auto & xT = (Cardinal32 const &)T;
+		return equalto(xT);
+	}
+	if (typeid(T) == typeid(Cardinal64)) {
+		auto & xT = (Cardinal64 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C32B.isZero() && equalto(xT.C32A);
+#else
+		return xT.C32A.isZero() && equalto(xT.C32B);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal128)) {
+		auto & xT = (Cardinal128 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C64B.isZero() && xT.C32[1].isZero() && equalto(xT.C32[0]);
+#else
+		return xT.C64A.isZero() && xT.C32[2].isZero() && equalto(xT.C32[3]);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal256)) {
+		auto & xT = (Cardinal256 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C128B.isZero() && xT.C64[1].isZero() && xT.C32[1].isZero() && equalto(xT.C32[0]);
+#else
+		return xT.C128A.isZero() && xT.C64[2].isZero() && xT.C32[6].isZero() && equalto(xT.C32[7]);
+#endif
+	}
+	FAIL(_T("Unsupported cardinal type"));
+}
+
 bool Cardinal32::equalto(Cardinal32 const &T) const {
 	return U32 == T.U32;
+}
+
+bool Cardinal32::isZero(void) const {
+	return U32 == 0;
 }
 
 Cardinal32 const& Cardinal32::ZERO(void) {
@@ -82,8 +118,44 @@ TString Cardinal64::toString(unsigned int bcnt) const {
 	return StrBuf.str();
 }
 
+bool Cardinal64::equalto(Cardinal const &T) const {
+	if (typeid(T) == typeid(Cardinal32)) {
+		auto & xT = (Cardinal32 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C32B.isZero() && xT.equalto(C32A);
+#else
+		return C32A.isZero() && xT.equalto(C32B);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal64)) {
+		auto & xT = (Cardinal64 const &)T;
+		return equalto(xT);
+	}
+	if (typeid(T) == typeid(Cardinal128)) {
+		auto & xT = (Cardinal128 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C64B.isZero() && equalto(xT.C64A);
+#else
+		return xT.C64A.isZero() && equalto(xT.C64B);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal256)) {
+		auto & xT = (Cardinal256 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C128B.isZero() && xT.C64[1].isZero() && equalto(xT.C64[0]);
+#else
+		return xT.C128A.isZero() && xT.C64[2].isZero() && equalto(xT.C64[3]);
+#endif
+	}
+	FAIL(_T("Unsupported cardinal type"));
+}
+
 bool Cardinal64::equalto(Cardinal64 const &T) const {
 	return U64 == T.U64;
+}
+
+bool Cardinal64::isZero(void) const {
+	return U64 == 0;
 }
 
 Cardinal64 const& Cardinal64::ZERO(void) {
@@ -118,6 +190,38 @@ TString Cardinal128::toString(unsigned int bcnt) const {
 	return StrBuf.str();
 }
 
+bool Cardinal128::equalto(Cardinal const &T) const {
+	if (typeid(T) == typeid(Cardinal32)) {
+		auto & xT = (Cardinal32 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C64B.isZero() && C32[1].isZero() && xT.equalto(C32[0]);
+#else
+		return C64A.isZero() && C32[2].isZero() && xT.equalto(C32[3]);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal64)) {
+		auto & xT = (Cardinal64 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C64B.isZero() && xT.equalto(C64A);
+#else
+		return C64A.isZero() && xT.equalto(C64B);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal128)) {
+		auto & xT = (Cardinal128 const &)T;
+		return equalto(xT);
+	}
+	if (typeid(T) == typeid(Cardinal256)) {
+		auto & xT = (Cardinal256 const &)T;
+#ifdef LITTLE_ENDIAN
+		return xT.C128B.isZero() && equalto(xT.C128A);
+#else
+		return xT.C128A.isZero() && equalto(xT.C128B);
+#endif
+	}
+	FAIL(_T("Unsupported cardinal type"));
+}
+
 bool Cardinal128::equalto(Cardinal128 const &T) const {
 	return ((U64A ^ T.U64A) | (U64B ^ T.U64B)) == 0;
 }
@@ -128,6 +232,10 @@ GUID Cardinal128::toGUID(void) {
 
 void Cardinal128::loadGUID(GUID const &V) {
 	memcpy(U8, &V, sizeof(GUID));
+}
+
+bool Cardinal128::isZero(void) const {
+	return (U64A | U64B) == 0;
 }
 
 Cardinal128 const& Cardinal128::ZERO(void) {
@@ -165,17 +273,48 @@ TString Cardinal256::toString(unsigned int bcnt) const {
 	return StrBuf.str();
 }
 
+bool Cardinal256::equalto(Cardinal const &T) const {
+	if (typeid(T) == typeid(Cardinal32)) {
+		auto & xT = (Cardinal32 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C128B.isZero() && C64[1].isZero() && C32[1].isZero() && xT.equalto(C32[0]);
+#else
+		return C128A.isZero() && C64[2].isZero() && C32[6].isZero() && xT.equalto(C32[7]);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal64)) {
+		auto & xT = (Cardinal64 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C128B.isZero() && C64[1].isZero() && xT.equalto(C64[0]);
+#else
+		return C128A.isZero() && C64[2].isZero() && xT.equalto(C64[3]);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal128)) {
+		auto & xT = (Cardinal128 const &)T;
+#ifdef LITTLE_ENDIAN
+		return C128B.isZero() && xT.equalto(C128A);
+#else
+		return C128A.isZero() && xT.equalto(C128B);
+#endif
+	}
+	if (typeid(T) == typeid(Cardinal256)) {
+		auto & xT = (Cardinal256 const &)T;
+		return equalto(xT);
+	}
+	FAIL(_T("Unsupported cardinal type"));
+}
+
 bool Cardinal256::equalto(Cardinal256 const &T) const {
 	return ((U64[0] ^ T.U64[0]) | (U64[1] ^ T.U64[1]) | (U64[2] ^ T.U64[2]) | (U64[3] ^ T.U64[3])) == 0;
 }
 
-Cardinal256 const& Cardinal256::ZERO(void) {
-#if _MSC_VER >= 1900
-	static Cardinal256 __IoFU(0ULL, 0ULL, 0ULL, 0ULL);
-#else
-	static Cardinal256 __IoFU = { 0, 0, 0, 0 };
-#endif
+bool Cardinal256::isZero(void) const {
+	return (U64[0] | U64[1] | U64[2] | U64[3]) == 0;
+}
 
+Cardinal256 const& Cardinal256::ZERO(void) {
+	static Cardinal256 __IoFU(0ULL, 0ULL, 0ULL, 0ULL);
 	return __IoFU;
 }
 
