@@ -264,5 +264,8 @@ _Pvt_Extensions
 # FAKE - F# Make
 .fake/
 
+# Auto recovery file
+~AutoRecover.*
+
 .svn/
 build/
