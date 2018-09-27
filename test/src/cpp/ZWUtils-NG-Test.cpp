@@ -111,7 +111,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	} catch (Exception *e) {
 		e->Show();
-		DefaultObjAllocator<Exception>().Destroy(e);
+		DEFAULT_DESTROY(Exception, e);
 	}
 
 #ifdef WINDOWS
@@ -139,7 +139,7 @@ void TestException(void) {
 		FAIL(_T("XD"));
 	} catch (Exception *e) {
 		e->Show();
-		DefaultObjAllocator<Exception>().Destroy(e);
+		DEFAULT_DESTROY(Exception, e);
 	}
 
 	_LOG(_T("*** Test SEH Exception translation"));
@@ -149,7 +149,7 @@ void TestException(void) {
 		_LOG(_T("XD %d"), *P); // Read access violation
 	} catch (SEHException *e) {
 		e->Show();
-		DefaultObjAllocator<SEHException>().Destroy(e);
+		DEFAULT_DESTROY(SEHException, e);
 	}
 
 	_LOG(_T("*** Test Stack-traced Exception"));
@@ -157,7 +157,7 @@ void TestException(void) {
 		FAILST(_T("XD"));
 	} catch (STException *e) {
 		e->Show();
-		DefaultObjAllocator<STException>().Destroy(e);
+		DEFAULT_DESTROY(STException, e);
 	}
 }
 
@@ -188,7 +188,7 @@ void TestErrCode(void) {
 		SYSFAIL(_T("Test system error logging"));
 	} catch (Exception *e) {
 		e->Show();
-		DefaultObjAllocator<Exception>().Destroy(e);
+		DEFAULT_DESTROY(Exception, e);
 	}
 }
 
@@ -293,9 +293,9 @@ void TestManagedObj() {
 		TestMObj(TString const &xName) : Name(xName) { _LOG(_T("MObj '%s' Created"), Name.c_str()); }
 		virtual ~TestMObj(void) { _LOG(_T("MObj '%s' Destroyed"), Name.c_str()); }
 	};
-	auto A = DefaultObjAllocator<TestMObj>().Create(RLAMBDANEW(TestMObj, _T("A")));
+	auto A = DEFAULT_NEW(TestMObj, _T("A"));
 	_LOG(_T("A: %s"), A->toString().c_str());
-	DefaultObjAllocator<TestMObj>().Destroy(A);
+	DEFAULT_DESTROY(TestMObj, A);
 
 	class TestMXObj : public ManagedObj {
 	protected:
@@ -306,7 +306,7 @@ void TestManagedObj() {
 	};
 	_LOG(_T("Creating MXObj (Expect exception)"));
 	try {
-		auto AX = DefaultObjAllocator<TestMXObj>().Create(RLAMBDANEW(TestMXObj, _T("AX")));
+		auto AX = DEFAULT_NEW(TestMXObj, _T("AX"));
 		FAIL(_T("Should not reach"));
 	} catch (Exception *e) {
 		ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
@@ -324,7 +324,7 @@ void TestManagedObj() {
 	};
 	auto B = ManagedObjAdapter<TestPObj>::Create(_T("B"));
 	_LOG(_T("B: %s"), B->toString().c_str());
-	DefaultObjAllocator<TestPObj>().Destroy(B);
+	DEFAULT_DESTROY(TestPObj, B);
 
 	class TestPXObj {
 	protected:
@@ -335,7 +335,7 @@ void TestManagedObj() {
 	};
 	auto BX = ManagedObjAdapter<TestPXObj>::Create(_T("BX"));
 	_LOG(_T("BX: %s"), dynamic_cast<ManagedObjAdapter<TestPXObj>*>(BX)->toString().c_str());
-	DefaultObjAllocator<TestPXObj>().Destroy(BX);
+	DEFAULT_DESTROY(TestPXObj, BX);
 
 	_LOG(_T("--- Clonable Object"));
 	class TestCObj : public Cloneable {
@@ -352,12 +352,12 @@ void TestManagedObj() {
 		virtual ~TestCObj(void) { _LOG(_T("CObj '%s' Destroyed"), Name.c_str()); }
 		virtual TString toString(void) const { return { _T("TestCObj") }; }
 	};
-	auto C1 = DefaultObjAllocator<TestCObj>().Create(RLAMBDANEW(TestCObj, _T("C")));
+	auto C1 = DEFAULT_NEW(TestCObj, _T("C"));
 	_LOG(_T("C1: %s"), C1->toString().c_str());
 	auto C2 = dynamic_cast<TestCObj*>(TestCObj::Clone(C1));
 	_LOG(_T("C2: %s"), C2->toString().c_str());
-	DefaultObjAllocator<TestCObj>().Destroy(C1);
-	DefaultObjAllocator<TestCObj>().Destroy(C2);
+	DEFAULT_DESTROY(TestCObj, C1);
+	DEFAULT_DESTROY(TestCObj, C2);
 
 	_LOG(_T("--- Managed References"));
 	{
@@ -630,7 +630,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Normal)"));
 	{
-		MRWorkerThread A(TWorkerThread::Create(_T("TestA"), DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
+		MRWorkerThread A(TWorkerThread::Create(_T("TestA"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
 		A->Start();
 		A->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(A->ReturnData()).c_str());
@@ -641,7 +641,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Exception during run)"));
 	{
-		MRWorkerThread B(TWorkerThread::Create(_T("TestB"), DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
+		MRWorkerThread B(TWorkerThread::Create(_T("TestB"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
 		B->Start(TFixedBuffer(DefaultAllocator().Alloc(100)));
 		B->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(B->ReturnData()).c_str());
@@ -654,7 +654,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Normal, Self-free)"));
 	{
-		TWorkerThread::Create(_T("TestC"), DefaultObjAllocator<TestRunnable>().Create(), true)->Start();
+		TWorkerThread::Create(_T("TestC"), DEFAULT_NEW(TestRunnable), true)->Start();
 		TDelayWaitable WaitASec(500);
 		WaitASec.WaitFor(FOREVER);
 		_LOG(_T("Expect the worker thread has terminated and destroyed by now..."));
@@ -662,7 +662,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Exception, Self-free)"));
 	{
-		TWorkerThread::Create(_T("TestD"), DefaultObjAllocator<TestRunnable>().Create(), true)->Start(DefaultAllocator().Alloc(100));
+		TWorkerThread::Create(_T("TestD"), DEFAULT_NEW(TestRunnable), true)->Start(DefaultAllocator().Alloc(100));
 		TDelayWaitable WaitASec(500);
 		WaitASec.WaitFor(FOREVER);
 		_LOG(_T("Expect the worker thread has terminated and destroyed by now..."));
@@ -672,14 +672,14 @@ void TestWorkerThread() {
 	protected:
 		TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 			_LOG(_T("Yee Hah!"));
-			DefaultObjAllocator<TWorkerThread>().Destroy(std::addressof(WorkerThread));
+			DEFAULT_DESTROY(TWorkerThread, std::addressof(WorkerThread));
 			return { nullptr };
 		}
 	};
 
 	_LOG(_T("*** Test WorkerThread (Self-destroy)"));
 	{
-		MRWorkerThread E(TWorkerThread::Create(_T("TestE"), DefaultObjAllocator<TestSelfDestroyRunnable>().Create()), CONSTRUCTION::HANDOFF);
+		MRWorkerThread E(TWorkerThread::Create(_T("TestE"), DEFAULT_NEW(TestSelfDestroyRunnable)), CONSTRUCTION::HANDOFF);
 		E->Start();
 		E->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(E->ReturnData()).c_str());
@@ -692,7 +692,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Terminate before run)"));
 	{
-		MRWorkerThread F(TWorkerThread::Create(_T("TestF"), DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
+		MRWorkerThread F(TWorkerThread::Create(_T("TestF"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
 		F->SignalTerminate();
 		F->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(F->ReturnData()).c_str());
@@ -724,7 +724,7 @@ void TestWorkerThread() {
 				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 				});
-			MRWorkerThread G(TWorkerThread::Create(_T("TestG"), DefaultObjAllocator<TestRunnable>().Create()), CONSTRUCTION::HANDOFF);
+			MRWorkerThread G(TWorkerThread::Create(_T("TestG"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
 			G->SignalTerminate();
 			G->WaitFor();
 			_LOG(_T("Return data: %s"), TStringCast(G->ReturnData()).c_str());
@@ -741,7 +741,7 @@ void TestWorkerThread() {
 			}
 		};
 		{
-			MRWorkerThread H(TWorkerThread::Create(_T("TestH"), DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
+			MRWorkerThread H(TWorkerThread::Create(_T("TestH"), DEFAULT_NEW(TestDelayRunnable)), CONSTRUCTION::HANDOFF);
 			auto InitializingEvent = H->StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
 				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
@@ -768,7 +768,7 @@ void TestWorkerThread() {
 				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
 				});
-			MRWorkerThread I(TWorkerThread::Create(_T("TestI"), DefaultObjAllocator<TestDelayRunnable>().Create()), CONSTRUCTION::HANDOFF);
+			MRWorkerThread I(TWorkerThread::Create(_T("TestI"), DEFAULT_NEW(TestDelayRunnable)), CONSTRUCTION::HANDOFF);
 			auto TerminatedEvent = I->StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
 				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
 					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
@@ -800,38 +800,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DefaultObjAllocator<TestCount>().Create());
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -875,38 +875,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DefaultObjAllocator<TestCount>().Create());
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -950,38 +950,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DefaultObjAllocator<TestCount>().Create());
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -1027,7 +1027,7 @@ void TestSyncObj_2(bool Robust) {
 
 		_LOG(_T("--- Pickup (Failure with timeout & abort)"));
 		{
-			MRWorkerThread X(TWorkerThread::Create(_T("TestSyncLock"), DefaultObjAllocator<TestSyncLock>().Create()), CONSTRUCTION::HANDOFF);
+			MRWorkerThread X(TWorkerThread::Create(_T("TestSyncLock"), DEFAULT_NEW(TestSyncLock)), CONSTRUCTION::HANDOFF);
 			X->Start({ &A, DummyAllocator() });
 			// Wait for the thread to claim the lock
 			_LOG(_T("Waiting for locking thread to start..."));
@@ -1079,22 +1079,22 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount0(CONSTRUCTION::EMPLACE, _T("CounterThread0"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount1(CONSTRUCTION::EMPLACE, _T("CounterThread1"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount2(CONSTRUCTION::EMPLACE, _T("CounterThread2"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount3(CONSTRUCTION::EMPLACE, _T("CounterThread3"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount4(CONSTRUCTION::EMPLACE, _T("CounterThread4"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount5(CONSTRUCTION::EMPLACE, _T("CounterThread5"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount6(CONSTRUCTION::EMPLACE, _T("CounterThread6"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount7(CONSTRUCTION::EMPLACE, _T("CounterThread7"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount8(CONSTRUCTION::EMPLACE, _T("CounterThread8"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCount9(CONSTRUCTION::EMPLACE, _T("CounterThread9"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountA(CONSTRUCTION::EMPLACE, _T("CounterThreadA"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountB(CONSTRUCTION::EMPLACE, _T("CounterThreadB"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountC(CONSTRUCTION::EMPLACE, _T("CounterThreadC"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountD(CONSTRUCTION::EMPLACE, _T("CounterThreadD"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountE(CONSTRUCTION::EMPLACE, _T("CounterThreadE"), DefaultObjAllocator<TestCount>().Create());
-			MRWorkerThread TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), DefaultObjAllocator<TestCount>().Create());
+			MRWorkerThread TestCount0(CONSTRUCTION::EMPLACE, _T("CounterThread0"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount1(CONSTRUCTION::EMPLACE, _T("CounterThread1"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount2(CONSTRUCTION::EMPLACE, _T("CounterThread2"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount3(CONSTRUCTION::EMPLACE, _T("CounterThread3"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount4(CONSTRUCTION::EMPLACE, _T("CounterThread4"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount5(CONSTRUCTION::EMPLACE, _T("CounterThread5"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount6(CONSTRUCTION::EMPLACE, _T("CounterThread6"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount7(CONSTRUCTION::EMPLACE, _T("CounterThread7"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount8(CONSTRUCTION::EMPLACE, _T("CounterThread8"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount9(CONSTRUCTION::EMPLACE, _T("CounterThread9"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountA(CONSTRUCTION::EMPLACE, _T("CounterThreadA"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountB(CONSTRUCTION::EMPLACE, _T("CounterThreadB"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountC(CONSTRUCTION::EMPLACE, _T("CounterThreadC"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountD(CONSTRUCTION::EMPLACE, _T("CounterThreadD"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountE(CONSTRUCTION::EMPLACE, _T("CounterThreadE"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), DEFAULT_NEW(TestCount));
 
 			_LOG(_T("--- Start Counting..."));
 			TestCount0->Start({ &X, NullAlloc }); TestCount1->Start({ &X, NullAlloc }); TestCount2->Start({ &X, NullAlloc }); TestCount3->Start({ &X, NullAlloc });
@@ -1183,8 +1183,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1229,8 +1229,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1275,8 +1275,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1321,8 +1321,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1367,8 +1367,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1456,8 +1456,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue;
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Benchmarking Comparison Queue (Upper-bound)..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1512,8 +1512,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1521,8 +1521,8 @@ void TestSyncQueue(bool Profiling) {
 			_LOG(_T("--- Finished All Queue Operation..."));
 			Queue.Deflate();
 
-			MRWorkerThread PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DefaultObjAllocator<TestQueuePut>().Create());
-			MRWorkerThread GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DefaultObjAllocator<TestQueueGet>().Create());
+			MRWorkerThread PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
+			MRWorkerThread GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread2->Start({ &Queue, NullAlloc });
 			GetThread2->Start({ &Queue, NullAlloc });
@@ -1651,7 +1651,7 @@ void TestSyncQueue(bool Profiling) {
 							}
 						};
 
-						MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DefaultObjAllocator<TestQueueIter>().Create());
+						MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DEFAULT_NEW(TestQueueIter));
 						IterThread->Start({ &Queue, NullAlloc });
 						IterThread->WaitFor();
 						auto IterExcept = IterThread->FatalException(true);
@@ -1686,7 +1686,7 @@ void TestSyncQueue(bool Profiling) {
 						}
 					};
 
-					MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DefaultObjAllocator<TestQueueIter>().Create());
+					MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DEFAULT_NEW(TestQueueIter));
 					IterThread->Start({ &Queue, NullAlloc });
 					Sleep(1000);
 

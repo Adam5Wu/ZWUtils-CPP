@@ -197,27 +197,27 @@ bool ControlSEHTranslation(bool Enable);
 
 template<typename... Params>
 static Exception* Exception::Create(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, xSource, ReasonFmt, std::forward<Params>(xParams)...));
+	return DEFAULT_NEW(Exception, xSource, ReasonFmt, std::forward<Params>(xParams)...);
 }
 
 template<typename... Params>
 static Exception* Exception::Create(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<Exception>().Create(RLAMBDANEW(Exception, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
+	return DEFAULT_NEW(Exception, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
 }
 
 template<typename... Params>
 static STException* STException::Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, xSource, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
+	return DEFAULT_NEW(STException, xSource, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
 }
 
 template<typename... Params>
 static STException* STException::Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
+	return DEFAULT_NEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
 }
 
 template<typename... Params>
 static STException* STException::Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DefaultObjAllocator<STException>().Create(RLAMBDANEW(STException, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...));
+	return DEFAULT_NEW(STException, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
 }
 
 #endif

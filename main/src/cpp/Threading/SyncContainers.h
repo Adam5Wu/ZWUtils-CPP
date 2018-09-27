@@ -349,7 +349,7 @@ public:
 		if (!PushHold++) PushWait.Reset();
 		if (!PopHold++) PopWait.Reset();
 #if defined(__SDQ_ITERATORS) && defined(__SDQ_MUTABLE_ITERATORS) && defined(__SDQ_CONCURRENT_CONST_ITERATORS)
-		return __New_Lock(DefaultObjAllocator<TSDQPushPopLockInfo>().Create(RLAMBDANEW(TSDQPushPopLockInfo)));
+		return __New_Lock(DEFAULT_NEW(TSDQPushPopLockInfo));
 #else
 		return __New_Lock(&__PushPopLockInfo);
 #endif // __SDQ_ITERATORS && __SDQ_MUTABLE_ITERATORS && __SDQ_CONCURRENT_CONST_ITERATORS
@@ -479,8 +479,7 @@ public:
 	template <class CSyncQueue, typename... Params>
 	static _this* Create(CSyncQueue const &xSyncQueue, TString &&xSource,
 		LPCTSTR ReasonFmt, Params&&... xParams) {
-		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this,
-			xSyncQueue.Name, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
+		return DEFAULT_NEW(_this, xSyncQueue.Name, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
 	}
 
 	TString const& Why(void) const override {
@@ -646,13 +645,11 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 		break;																									\
 	}
 
-#define __IMPL_LinkLock(exlock, lockbase, container)							\
-	container = &(																\
-		*Ret = const_cast<_this*>(this)->__New_Lock(							\
-			DefaultObjAllocator<TSDQIterLockInfo>().Create(						\
-				RLAMBDANEW(TSDQIterLockInfo, std::move(exlock), lockbase)		\
-			)																	\
-		)																		\
+#define __IMPL_LinkLock(exlock, lockbase, container)						\
+	container = &(															\
+		*Ret = const_cast<_this*>(this)->__New_Lock(						\
+			DEFAULT_NEW(TSDQIterLockInfo, std::move(exlock), lockbase)		\
+		)																	\
 	)
 
 template<class T>
@@ -755,9 +752,7 @@ void TSyncBlockingDeque<T>::__PushPopLock_Check(TLock const &Lock) const {
 	auto IterLock = (const_cast<_this*>(this)->ExclusiveSync).Lock(Timeout, AbortEvent);				\
 	if (IterLock) {																						\
 		MRLock DynamicLock(CONSTRUCTION::EMPLACE, const_cast<_this*>(this)->__New_Lock(					\
-			DefaultObjAllocator<TSDQDynamicLockInfo>().Create(											\
-				RLAMBDANEW(TSDQDynamicLockInfo, std::move(IterLock), LockRef)							\
-			)																							\
+			DEFAULT_NEW(TSDQDynamicLockInfo, std::move(IterLock), LockRef)								\
 		));																								\
 		auto Queue = const_cast<_this*>(this)->__Accessor_Pickup_Safe();								\
 		__SyncLock_RAII_C;																				\
@@ -832,7 +827,7 @@ void TSyncBlockingDeque<T>::__Unlock(TLockInfo *LockInfo) {
 #ifdef __SDQ_CONCURRENT_CONST_ITERATORS
 		__AdvInfo->__Release(*this);
 #endif
-		DefaultObjAllocator<TSDQDynamicLockInfo>().Destroy(__AdvInfo);
+		DEFAULT_DESTROY(TSDQDynamicLockInfo, __AdvInfo);
 	}
 #endif // __SDQ_ITERATORS && __SDQ_MUTABLE_ITERATORS
 }

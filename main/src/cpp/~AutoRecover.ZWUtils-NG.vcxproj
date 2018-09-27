@@ -46,7 +46,7 @@
     <ProjectGuid>{DB79A950-A9B8-4C18-96C2-6AED866A73EC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ZWUtilsNG</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

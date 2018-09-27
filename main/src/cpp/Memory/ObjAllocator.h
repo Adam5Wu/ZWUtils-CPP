@@ -143,6 +143,9 @@ IObjAllocator<T>& DefaultObjAllocator(void) {
 	return __IoFU;
 }
 
+#define DEFAULT_NEW(cls, ...) DefaultObjAllocator<cls>().Create(RLAMBDANEW(cls, __VA_ARGS__))
+#define DEFAULT_DESTROY(cls, obj) DefaultObjAllocator<cls>().Destroy(obj)
+
 #include "Resource.h"
 
 template<class T>

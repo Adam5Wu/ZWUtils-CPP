@@ -55,6 +55,10 @@
     <ClCompile Include="Threading\SyncObjects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SvcGuest\ServiceCtrl.cpp" />
+    <ClCompile Include="SvcGuest\ServiceMain.cpp" />
+    <ClCompile Include="SvcGuest\ServiceStubs.cpp" />
+    <ClCompile Include="JVMHost\JVMLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">
@@ -117,5 +121,10 @@
     <ClInclude Include="Debug\StackWalker.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="SvcGuest\ServiceMain.h" />
+    <ClInclude Include="JVMHost\JVMLoader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SvcGuest\ServiceExport.def" />
   </ItemGroup>
 </Project>

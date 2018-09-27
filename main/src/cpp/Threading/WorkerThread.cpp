@@ -47,7 +47,7 @@ protected:
 public:
 	TThreadRecord(TWorkerThread* const &xWorkerThread, WTThreadMain const &xThreadMain, bool const &xSelfFree) :
 		WorkerThread(xWorkerThread), ThreadMain(xThreadMain), SelfFree(xSelfFree) {}
-	~TThreadRecord(void) { if (SelfFree) DefaultObjAllocator<TWorkerThread>().Destroy(WorkerThread); }
+	~TThreadRecord(void) { if (SelfFree) DEFAULT_DESTROY(TWorkerThread, WorkerThread); }
 
 	DWORD operator()(void) {
 		return (WorkerThread->*ThreadMain)();

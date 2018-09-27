@@ -162,13 +162,14 @@ public:
 		}
 
 		operator bool() const {
-			return __Info;
+			return __Info != nullptr;
 		}
 
 		bool For(TLockable const &rInstance) const {
 			return rInstance.Of(*this);
 		}
 	};
+	typedef ManagedRef<TLock> MRLock;
 
 protected:
 	TLock __New_Lock(TLockInfo *LockInfo) {

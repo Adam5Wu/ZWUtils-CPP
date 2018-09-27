@@ -118,18 +118,18 @@ bool TStackWalker::LogError(LPCTSTR FuncHint, DWORD errCode, PVOID addr) {
 TString TStackWalker::FormatEntry(CallstackEntry const &Entry) {
 	return Entry.FileName.empty() ?
 		TStringCast(_T('!')
-			<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
-			<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
-				<< _T("<+") << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase << _T('>')) :
-				TStringCast(Entry.Address)) << _T(':')
-			<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-			<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
+					<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
+					<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
+													   << _T("<+") << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase << _T('>')) :
+						TStringCast(Entry.Address)) << _T(':')
+					<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
+					<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
 		:
 		TStringCast(Entry.FileName << _T('(') << Entry.LineNumber
-			//<< (Entry.LineOffset ? TStringCast(_T("<+") << Entry.LineOffset << _T('>')) : _T("")) << _T("):")
-			<< (Entry.LineOffset ? _T("+") : _T("")) << _T("):")
-			<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-			//<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T(""))
+					//<< (Entry.LineOffset ? TStringCast(_T("<+") << Entry.LineOffset << _T('>')) : _T("")) << _T("):")
+					<< (Entry.LineOffset ? _T("+") : _T("")) << _T("):")
+					<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
+					//<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T(""))
 		);
 }
 
@@ -357,9 +357,7 @@ public:
 typedef ManagedRef<TStackWalker> MRStackWalker;
 
 TSyncObj<MRStackWalker>& _LocalStackWalker(bool xOnlineSymServer, TString const &xOptSymPath) {
-	static TSyncObj<MRStackWalker> __IoFU(
-		DefaultObjAllocator<StackWalker_Impl>().Create(RLAMBDANEW(StackWalker_Impl, xOnlineSymServer, xOptSymPath)),
-		CONSTRUCTION::HANDOFF);
+	static TSyncObj<MRStackWalker> __IoFU(DEFAULT_NEW(StackWalker_Impl, xOnlineSymServer, xOptSymPath), CONSTRUCTION::HANDOFF);
 	return __IoFU;
 }
 
@@ -372,15 +370,13 @@ void LocalStackWalker_Init(bool xOnlineSymServer, TString const &xOptSymPath) {
 		} else {
 			LOGV(_T("Reconfiguring local stack walker..."));
 		}
-		*AMRSW = MRStackWalker(DefaultObjAllocator<StackWalker_Impl>().Create(
-			RLAMBDANEW(StackWalker_Impl, xOnlineSymServer, xOptSymPath)
-		), CONSTRUCTION::HANDOFF);
+		*AMRSW = MRStackWalker(DEFAULT_NEW(StackWalker_Impl, xOnlineSymServer, xOptSymPath), CONSTRUCTION::HANDOFF);
 	}
 }
 
 bool LocalStackTrace(THandle const &Thread, CONTEXT &Context,
-	TStackWalker::OnStackEntry const &EntryCallback,
-	TStackWalker::OnTraceError const &ErrorCallback) {
+					 TStackWalker::OnStackEntry const &EntryCallback,
+					 TStackWalker::OnTraceError const &ErrorCallback) {
 	auto AMRSW = _LocalStackWalker(true, EMPTY_TSTRING()).Pickup(); // Hold the Lock
 	return (*AMRSW)->Trace(Thread, std::move(Context), EntryCallback, ErrorCallback);
 }

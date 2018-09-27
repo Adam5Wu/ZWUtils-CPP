@@ -210,8 +210,7 @@ public:
 
 	template<typename... Params>
 	static SystemError* Create(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-		return DefaultObjAllocator<SystemError>().Create(
-			RLAMBDANEW(SystemError, xErrorCode, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...));
+		return DEFAULT_NEW(SystemError, xErrorCode, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
 	}
 };
 

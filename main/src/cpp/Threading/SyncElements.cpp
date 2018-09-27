@@ -62,7 +62,7 @@ TString WaitResultToString(WaitResult const &WRet) {
 }
 
 HANDLE DupWaitHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
-	HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
+					 HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
 	HANDLE Ret;
 	if (DuplicateHandle(sProcess, sHandle, tProcess, &Ret, SYNCHRONIZE, Inheritable, 0) == 0)
 		SYSFAIL(_T("Failed to duplicate wait handle"));
@@ -163,7 +163,7 @@ THandle THandleWaitable::WaitHandle(void) {
 
 // TSemaphore
 HANDLE DupSemSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
-	HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
+						  HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
 	HANDLE Ret;
 	if (DuplicateHandle(sProcess, sHandle, tProcess, &Ret, SEMAPHORE_MODIFY_STATE, Inheritable, 0) == 0)
 		SYSFAIL(_T("Failed to duplicate semaphore signal handle"));
@@ -215,7 +215,7 @@ void TMutex::Release(void) {
 
 // TEvent
 HANDLE DupEventSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
-	HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
+							HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
 	HANDLE Ret;
 	if (DuplicateHandle(sProcess, sHandle, tProcess, &Ret, EVENT_MODIFY_STATE, Inheritable, 0) == 0)
 		SYSFAIL(_T("Failed to duplicate event signal handle"));
@@ -314,7 +314,7 @@ public:
 		DEBUGV_DO({
 			LOG("Alarm clock armed @ %s", Ret->ExitTS.toString().c_str());
 			LOG("- Scheduled wake up in: %s", Ret->Remainder.toString(TimeUnit::MSEC).c_str());
-			});
+				  });
 
 		Ret->Result = WaitResult::Signaled;
 		try {
@@ -350,7 +350,7 @@ public:
 					LOG("- Wake up time compared with deadline: %s",
 						Ret->Remainder.toString(TimeUnit::MSEC).c_str());
 				}
-				});
+					  });
 		} catch (Exception *e) {
 			ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
 			E->Show();
@@ -375,8 +375,8 @@ public:
 
 void TAlarmClock::Arm(TimeStamp const &Clock) {
 	if (Armed()) FAIL(_T("Clock already armed!"));
-	TWorkerThread::Create(_T("ClockThread"), DefaultObjAllocator<__ClockRunner>().Create(
-		RLAMBDANEW(__ClockRunner, Clock, _WEvent, _HEvent)), true)->Start({ &_ClockRet, DummyAllocator() });
+	TWorkerThread::Create(_T("ClockThread"), DEFAULT_NEW(__ClockRunner, Clock, _WEvent, _HEvent),
+						  true)->Start({ &_ClockRet, DummyAllocator() });
 }
 
 bool TAlarmClock::Armed(void) const {

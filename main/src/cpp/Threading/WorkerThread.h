@@ -205,7 +205,7 @@ public:
 
 	template<class IRunnable>
 	static TWorkerThread* Create(TString const &xName, IRunnable *xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
-		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this, xName, xRunnable, xSelfFree, xStackSize));
+		return DEFAULT_NEW(_this, xName, xRunnable, xSelfFree, xStackSize);
 	}
 
 protected:
@@ -233,9 +233,7 @@ public:
 
 	template<typename... Params>
 	static _this* Create(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(
-			_this, xWorkerThread, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...
-		));
+		return DEFAULT_NEW(_this, xWorkerThread, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
 	}
 
 	TString const& Why(void) const override;
@@ -252,7 +250,7 @@ protected:
 
 public:
 	static _this* Create(TWorkerThread const &xWorkerThread, TString &&xSource) {
-		return DefaultObjAllocator<_this>().Create(RLAMBDANEW(_this, xWorkerThread, std::move(xSource)));
+		return DEFAULT_NEW(_this, xWorkerThread, std::move(xSource));
 	}
 };
 
