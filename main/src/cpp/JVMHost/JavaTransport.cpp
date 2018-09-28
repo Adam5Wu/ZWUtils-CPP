@@ -117,7 +117,7 @@ void TJavaTransportV1::Forward(TNativeChunk* Chunk) {
 	if (ChunkWrap == nullptr) FAIL(_T("Unable to allocate buffer wrapper"));
 
 	Env->CallStaticVoidMethod(TransportClass, ForwardMethodID, ChunkWrap);
-	LOGVV(_T("Forwarded chunk #%p"), ForwardChunk);
+	LOGVV(_T("Forwarded chunk #%p"), ChunkV1);
 }
 
 void TJavaTransportV1::Return(TNativeChunk* Chunk) {

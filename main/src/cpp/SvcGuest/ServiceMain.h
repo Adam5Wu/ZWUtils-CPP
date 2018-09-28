@@ -47,6 +47,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WINDOWS
 
+#if defined(_M_IX86)
+#pragma comment(linker, "/alternatename:_SERVICE_NAME=__DEF_SERVICE_NAME")
+#pragma comment(linker, "/alternatename:_SERVICE_DISPNAME=__DEF_SERVICE_DISPNAME")
+#pragma comment(linker, "/alternatename:_SERVICE_DESC=__DEF_SERVICE_DESC")
+#pragma comment(linker, "/alternatename:_SERVICE_GROUP=__DEF_SERVICE_GROUP")
+#pragma comment(linker, "/alternatename:_SERVICE_DEPENDS=__DEF_SERVICE_DEPENDS")
+#pragma comment(linker, "/alternatename:_SERVICE_USER=__DEF_SERVICE_USER")
+#pragma comment(linker, "/alternatename:_SERVICE_PRIVILEGES=__DEF_SERVICE_PRIVILEGES")
+#pragma comment(linker, "/alternatename:_CONFIG_ServiceStatusQueryInterval=__DEF_CONFIG_ServiceStatusQueryInterval")
+#pragma comment(linker, "/alternatename:_CONFIG_ServiceTerminationGraceTime=__DEF_CONFIG_ServiceTerminationGraceTime")
+#pragma comment(linker, "/alternatename:_ServiceMain_LoadModules=__DEF_ServiceMain_LoadModules")
+#pragma comment(linker, "/alternatename:_ServiceMain_UnloadModules=__DEF_ServiceMain_UnloadModules")
+#endif
+
+#if defined(_M_AMD64)
 #pragma comment(linker, "/alternatename:SERVICE_NAME=_DEF_SERVICE_NAME")
 #pragma comment(linker, "/alternatename:SERVICE_DISPNAME=_DEF_SERVICE_DISPNAME")
 #pragma comment(linker, "/alternatename:SERVICE_DESC=_DEF_SERVICE_DESC")
@@ -58,6 +73,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(linker, "/alternatename:CONFIG_ServiceTerminationGraceTime=_DEF_CONFIG_ServiceTerminationGraceTime")
 #pragma comment(linker, "/alternatename:ServiceMain_LoadModules=_DEF_ServiceMain_LoadModules")
 #pragma comment(linker, "/alternatename:ServiceMain_UnloadModules=_DEF_ServiceMain_UnloadModules")
+#endif
 
 #endif
 
