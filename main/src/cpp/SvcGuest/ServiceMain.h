@@ -96,7 +96,10 @@ extern "C" {
 }
 
 typedef std::function<void()> ServiceEvent;
-void Module_ServiceMain_AddModule(PCTCHAR Name, ServiceEvent const &Start, ServiceEvent const &Stop, ServiceEvent const &Status);
+void Module_ServiceMain_AddModule(PCTCHAR Name,
+								  ServiceEvent const &Start,
+								  ServiceEvent const &Stop,
+								  ServiceEvent const &Status);
 
 UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv);
 

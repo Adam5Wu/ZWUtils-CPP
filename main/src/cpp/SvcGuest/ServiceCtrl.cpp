@@ -20,14 +20,20 @@
 
 #pragma comment(lib, "KtmW32.lib")
 
+#define SERVICECTRL_INSTALL		"Install"
+#define SERVICECTRL_UNINSTALL	"Uninstall"
+#define SERVICECTRL_START		"Start"
+#define SERVICECTRL_STOP		"Stop"
+#define SERVICECTRL_STATUS		"Status"
+#define SERVICECTRL_DEBUGRUN	"DebugRun"
+
 //---------------------------------------
 // ServiceCtrl General Maintenance Code
 
 static HMODULE GetCurrentModuleHandle() {
 	HMODULE hMod = NULL;
 	if (!GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-		reinterpret_cast<LPCWSTR>(&GetCurrentModuleHandle),
-		&hMod)) {
+						   reinterpret_cast<LPCWSTR>(&GetCurrentModuleHandle), &hMod)) {
 		SYSFAIL(_T("Failed to query current module handle"));
 	}
 	return hMod;
@@ -39,10 +45,10 @@ typedef TInitResource<SC_HANDLE> TSCHandle;
 typedef TInitResource<HKEY> THKEY;
 
 static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTSTR ServiceDesc, LPCTSTR ServiceGrp,
-					  bool AutoStart, LPCTSTR DependOn = nullptr, LPCTSTR ServiceDLL = nullptr,
-					  int CrashRestart = 0, LPCTSTR RunAccount = nullptr, LPCTSTR RunPassword = nullptr,
-					  LPCTSTR Privileges = nullptr, DWORD ServiceSecurity = SERVICE_SID_TYPE_NONE,
-					  DWORD RestartDelay = Convert(1, TimeUnit::MIN, TimeUnit::MSEC)) {
+							 bool AutoStart, LPCTSTR DependOn = nullptr, LPCTSTR ServiceDLL = nullptr,
+							 int CrashRestart = 0, LPCTSTR RunAccount = nullptr, LPCTSTR RunPassword = nullptr,
+							 LPCTSTR Privileges = nullptr, DWORD ServiceSecurity = SERVICE_SID_TYPE_NONE,
+							 DWORD RestartDelay = Convert(1, TimeUnit::MIN, TimeUnit::MSEC)) {
 	SC_HANDLE _HANDLE = OpenSCManager(nullptr, nullptr, GENERIC_WRITE);
 	if (_HANDLE == nullptr)
 		SYSFAIL(_T("Unable to open service control manager"));
@@ -94,13 +100,13 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 					THKEY ServiceParamKey(_KEY, [](HKEY &X) {CloseHandle(X); });
 
 					Result = RegSetValueEx(*ServiceParamKey, _T("ServiceDll"), 0, REG_EXPAND_SZ,
-										   (LPBYTE)ServiceDLL, (DWORD)(wcslen(ServiceDLL) + 1)*sizeof(TCHAR));
+						(LPBYTE)ServiceDLL, (DWORD)(wcslen(ServiceDLL) + 1) * sizeof(TCHAR));
 					if (Result != ERROR_SUCCESS)
 						SYSERRFAIL(Result, _T("Unable to set service library path"));
 
 					DWORD UnloadOnStop = 1;
 					Result = RegSetValueEx(*ServiceParamKey, _T("ServiceDllUnloadOnStop"), 0, REG_DWORD,
-										   (LPBYTE)&UnloadOnStop, sizeof(DWORD));
+						(LPBYTE)&UnloadOnStop, sizeof(DWORD));
 					if (Result != ERROR_SUCCESS)
 						SYSERRFAIL(Result, _T("Unable to set service library unload flag"));
 				}
@@ -114,7 +120,7 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 			{
 				THKEY SvchostBaseKey(_KEY, [](HKEY &X) {CloseHandle(X); });
 
-				DWORD DataSize = MAX_PATH*sizeof(TCHAR);
+				DWORD DataSize = MAX_PATH * sizeof(TCHAR);
 				TString GroupMembers;
 				Result = ERROR_MORE_DATA;
 
@@ -142,7 +148,7 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 					GroupMembers.append(ServiceName).append(1, '\0');
 
 					Result = RegSetValueEx(*SvchostBaseKey, ServiceGrp, 0, REG_MULTI_SZ,
-										   (LPBYTE)GroupMembers.data(), (DWORD)(GroupMembers.length() + 1)*sizeof(TCHAR));
+						(LPBYTE)GroupMembers.data(), (DWORD)(GroupMembers.length() + 1) * sizeof(TCHAR));
 					if (Result != ERROR_SUCCESS)
 						SYSERRFAIL(Result, _T("Unable to set member of service group '%s'"), ServiceGrp);
 				}
@@ -170,7 +176,7 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 					  CrashRestart > 0 ? TStringCast(CrashRestart).c_str() : _T("INFINITE"),
 					  TimeSpan(RestartDelay, TimeUnit::MSEC).toString(TimeUnit::MIN).c_str());
 
-				SERVICE_FAILURE_ACTIONS FailureActions{0};
+				SERVICE_FAILURE_ACTIONS FailureActions{ 0 };
 				FailureActions.dwResetPeriod = (int)Convert(1, TimeUnit::DAY, TimeUnit::SEC);
 				FailureActions.cActions = std::max(CrashRestart, 0) + 1;
 
@@ -227,7 +233,7 @@ static void UninstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceGrp) {
 				{
 					THKEY SvchostBaseKey(_KEY, [](HKEY &X) {CloseHandle(X); });
 
-					DWORD DataSize = MAX_PATH*sizeof(TCHAR);
+					DWORD DataSize = MAX_PATH * sizeof(TCHAR);
 					TString GroupMembers;
 					Result = ERROR_MORE_DATA;
 
@@ -263,7 +269,7 @@ static void UninstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceGrp) {
 							}
 						} else {
 							Result = RegSetValueEx(*SvchostBaseKey, ServiceGrp, 0, REG_MULTI_SZ,
-												   (LPBYTE)NewGroupMembers.data(), (DWORD)(NewGroupMembers.length() + 1)*sizeof(TCHAR));
+								(LPBYTE)NewGroupMembers.data(), (DWORD)(NewGroupMembers.length() + 1) * sizeof(TCHAR));
 							if (Result != ERROR_SUCCESS)
 								SYSERRFAIL(Result, _T("Unable to set member of service group '%s'"), ServiceGrp);
 						}
@@ -454,7 +460,7 @@ static void CloneServiceGroup(LPCTSTR ServiceSrcGrp, LPCTSTR ServiceDstGrp) {
 			SYSERRFAIL(Result, _T("Unable to query value #%d on source service group '%s'"), idx, ServiceSrcGrp);
 		}
 		Result = RegSetValueEx(*DstGroupKey, Item, 0, ValueType,
-							   (LPBYTE)Value.data(), DataSize);
+			(LPBYTE)Value.data(), DataSize);
 		if (Result != ERROR_SUCCESS)
 			SYSERRFAIL(Result, _T("Unable to set value '%s' on target service group '%s'"), Item, ServiceDstGrp);
 
@@ -480,7 +486,7 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 			THKEY SvchostBaseKey(_KEY, [](HKEY &X) {CloseHandle(X); });
 
 			// Remove from source group
-			DWORD DataSize = MAX_PATH*sizeof(TCHAR);
+			DWORD DataSize = MAX_PATH * sizeof(TCHAR);
 			TString GroupMembers;
 			Result = ERROR_MORE_DATA;
 
@@ -511,13 +517,13 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 
 			// Note: We do NOT perform empty value clean up here
 			Result = RegSetValueEx(*SvchostBaseKey, ServiceSrcGrp, 0, REG_MULTI_SZ,
-								   (LPBYTE)NewGroupMembers.data(), (DWORD)(NewGroupMembers.length() + 1)*sizeof(TCHAR));
+				(LPBYTE)NewGroupMembers.data(), (DWORD)(NewGroupMembers.length() + 1) * sizeof(TCHAR));
 			if (Result != ERROR_SUCCESS)
 				SYSERRFAIL(Result, _T("Unable to set member of service group '%s'"), ServiceSrcGrp);
 
 			// Add to target group
 			GroupMembers.clear();
-			DataSize = (int)GroupMembers.size()*sizeof(TCHAR);
+			DataSize = (int)GroupMembers.size() * sizeof(TCHAR);
 
 			do {
 				GroupMembers.resize((DataSize + 1) / sizeof(TCHAR));
@@ -543,7 +549,7 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 				GroupMembers.append(ServiceName).append(1, '\0');
 
 				Result = RegSetValueEx(*SvchostBaseKey, ServiceDstGrp, 0, REG_MULTI_SZ,
-									   (LPBYTE)GroupMembers.data(), (DWORD)(GroupMembers.length() + 1)*sizeof(TCHAR));
+					(LPBYTE)GroupMembers.data(), (DWORD)(GroupMembers.length() + 1) * sizeof(TCHAR));
 				if (Result != ERROR_SUCCESS)
 					SYSERRFAIL(Result, _T("Unable to set member of service group '%s'"), ServiceDstGrp);
 			}
@@ -557,7 +563,7 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 		{
 			THKEY ServiceBaseKey(_KEY, [](HKEY &X) {CloseHandle(X); });
 
-			DWORD DataSize = MAX_PATH*sizeof(TCHAR);
+			DWORD DataSize = MAX_PATH * sizeof(TCHAR);
 			TString ImagePath;
 			Result = ERROR_MORE_DATA;
 
@@ -577,7 +583,7 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 			ImagePath.replace(Match - ImagePath.data() + 4, _tcslen(ServiceSrcGrp), ServiceDstGrp);
 
 			Result = RegSetValueEx(*ServiceBaseKey, _T("ImagePath"), 0, REG_EXPAND_SZ,
-								   (LPBYTE)ImagePath.data(), (DWORD)(ImagePath.length() + 1)*sizeof(TCHAR));
+				(LPBYTE)ImagePath.data(), (DWORD)(ImagePath.length() + 1) * sizeof(TCHAR));
 			if (Result != ERROR_SUCCESS)
 				SYSERRFAIL(Result, _T("Unable to set image path for service '% '%s'"), ServiceName);
 		}
@@ -609,21 +615,21 @@ void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int 
 	LOG(_T("Process request '%s'..."), lpszCmdLine);
 	try {
 		TString Cmdline = lpszCmdLine;
-		if (Cmdline.compare(_T("Install")) == 0) {
+		if (Cmdline.compare(_T(SERVICECTRL_INSTALL)) == 0) {
 			InstallAsService(SERVICE_NAME, SERVICE_DISPNAME, SERVICE_DESC, SERVICE_GROUP,
 							 true, SERVICE_DEPENDS, nullptr, 2, SERVICE_USER, nullptr, SERVICE_PRIVILEGES);
-		} else if (Cmdline.compare(_T("Uninstall")) == 0) {
+		} else if (Cmdline.compare(_T(SERVICECTRL_UNINSTALL)) == 0) {
 			if (ControlQueryService(SERVICE_NAME) != SERVICE_STOPPED)
 				FAIL(_T("Please stop service before uninstall"));
 			UninstallAsService(SERVICE_NAME, SERVICE_GROUP);
-		} else if (Cmdline.compare(_T("Start")) == 0) {
+		} else if (Cmdline.compare(_T(SERVICECTRL_START)) == 0) {
 			ControlStartService(SERVICE_NAME, true);
-		} else if (Cmdline.compare(_T("Stop")) == 0) {
+		} else if (Cmdline.compare(_T(SERVICECTRL_STOP)) == 0) {
 			ControlStopService(SERVICE_NAME, true);
-		} else if (Cmdline.compare(_T("Status")) == 0) {
+		} else if (Cmdline.compare(_T(SERVICECTRL_STATUS)) == 0) {
 			ControlQueryService(SERVICE_NAME);
-		} else if (Cmdline.compare(_T("DebugRun")) == 0) {
-			LPCTSTR MainArgs[] = { _T("ConsoleDebugSvc") };
+		} else if (Cmdline.compare(_T(SERVICECTRL_DEBUGRUN)) == 0) {
+			LPCTSTR MainArgs[] = { _T(SERVICECTRL_DEBUGRUN) };
 			ServiceMain_DebugRun(1, MainArgs);
 		} else {
 			LOG(_T("Unrecognized service operation '%s'"), lpszCmdLine);
