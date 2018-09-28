@@ -67,7 +67,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define STRINGIZE_HELPER(x) #x
 #define STRINGIZE(x) STRINGIZE_HELPER(x)
-#define WARNING(desc) message(__FILE__ "(" STRINGIZE(__LINE__) "): " desc)
+#define WARNING(desc) message(__FILE__ "(" STRINGIZE(__LINE__) ") WARNING: " desc)
 
 #endif
 

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
+Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,36 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// [Utilities] Basic debug support
+// [AdvUtils] Data chunk object for Java transport
 
-#include "Debug.h"
+#include "NativeChunk.h"
 
-#ifndef SOLUTION_PATH
-#pragma WARNING("Please define the project path before compiling this file!")
-#if _MSC_VER
-#pragma WARNING("Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','/'))\\\"\"")
-#endif
-#define SOLUTION_PATH ""
-#else
-#pragma message("SOLUTION_PATH = " SOLUTION_PATH)
-#endif //SOLUTION_PATH
+UINT8 const TNativeChunkV1::DATATYPE_RAW = 0;
+NativeChunkBuf::TSIG const TNativeChunkV1::SIG{{'C', 'X', 'J', '1'}};
 
-// Aquire the skip length of source code (so we can properly print relative source file paths)
-#ifdef WINDOWS
-
-PCTCHAR __RelPath(PCTCHAR Path) {
-	static size_t __RelPathLen = wcslen(_T(SOLUTION_PATH));
-	return Path + __RelPathLen;
+void TNativeChunkV1::Init(PNativeChunkBuf Buffer) {
+	Buffer->SIG = SIG;
+	PNativeChunkBufV1 BufferV1 = (PNativeChunkBufV1)Buffer;
+	BufferV1->RetTicket.Value[0] = this;
+	Reset();
 }
 
-PCTCHAR __PTID(void) {
-	__declspec(thread) static TCHAR PTID[12]{ NullWChar };
-	if (PTID[0] == NullWChar)
-		BUFFMT(&PTID[0], 12, _T("%5d:%-5d"), GetCurrentProcessId(), GetCurrentThreadId());
-	return PTID;
+bool TNativeChunkV1::Reset(void) {
+	if (_ResValid) {
+		PNativeChunkBufV1 BufferV1 = (PNativeChunkBufV1)_ResRef;
+		BufferV1->Type = DataType;
+		BufferV1->Flags = 0;
+		BufferV1->Counts = 0;
+	}
+	FreePos = 0;
+	return _ResValid;
 }
 
-#endif
+void* TNativeChunkV1::AllocBuffer(size_t xSize) {
+	if (!ProbeData(xSize)) return nullptr;
+
+	PNativeChunkBufV1 BufferV1 = (PNativeChunkBufV1)Refer();
+	void* Ret = &BufferV1->Data + FreePos;
+	FreePos += xSize;
+	return Ret;
+}

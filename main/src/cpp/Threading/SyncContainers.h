@@ -91,9 +91,6 @@ class TSyncBlockingDeque : public TLockable, public TWaitable {
 	typedef std::deque<T> Container;
 
 #ifdef __SDQ_ITERATORS
-public:
-	typedef ManagedRef<TLock> MRLock;
-
 protected:
 	template<class Iter>
 	class __Locked_Iterator : public Iter {
@@ -653,7 +650,7 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 	)
 
 template<class T>
-typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& BaseLock,
+typename TLockable::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& BaseLock,
 	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we have already promoted
 	if (LockInfo->_ExclusiveLock) return { LockInfo->_ExclusiveLock };
@@ -690,7 +687,7 @@ typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetExclusiveIter
 }
 
 template<class T>
-typename TSyncBlockingDeque<T>::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock& BaseLock,
+typename TLockable::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock& BaseLock,
 	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we already have a shared iterator lock
 	if (LockInfo->_SharedLock) return { LockInfo->_SharedLock };

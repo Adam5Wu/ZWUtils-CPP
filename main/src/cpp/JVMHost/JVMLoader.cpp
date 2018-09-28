@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
+Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -36,11 +36,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Debug/SysError.h"
 #include "Debug/Logging.h"
 
+#include <jni.h>
+
+#ifndef JRE_PLATFORM_PATHFRAG
+#pragma WARNING("Please define the JRE platform path before compiling this file!")
+#if _MSC_VER
+#pragma WARNING("Hint - /D \"JRE_PLATFORM_PATHFRAG=\\\"$(TargetPlatformIdentifier)\\\\$(PlatformTarget)\\\"\"")
+#endif
+#define JRE_PLATFORM_PATHFRAG ""
+#else
+#pragma message("JRE_PLATFORM_PATHFRAG = " JRE_PLATFORM_PATHFRAG)
+#endif //SOLUTION_PATH
+
 #ifdef WINDOWS
 
 #pragma comment(lib, "jvm.lib")
 
-// For app-local JVM embedding, need to delay-load the jvm library
+// For app-local JRE embedding, need to delay-load the jvm library
 
 static void AddSearchPath(TString Value) {
 	static LPCTSTR const ENV_PATH = _T("PATH");
@@ -92,18 +104,9 @@ void TJVM::FreeJVM(JavaVM* &Inst) {
 		FAIL(_T("Unable to unload JVM (%d)"), res);
 }
 
-TJVM::InitArgs TJVM::PrepareArgs(TString const &ClassPath, TString const &LocalJVMPath, int DebugPort, int RemotePort) {
-	if (!LocalJVMPath.empty()) {
-#ifdef WINDOWS
-
-#ifdef ARCH_64
-		AddSearchPath(TStringCast(LocalJVMPath << _T("\\x64\\jre\\bin\\server")));
-#endif
-#ifdef ARCH_32
-		AddSearchPath(TStringCast(LocalJVMPath << _T("\\x86\\jre\\bin\\server")));
-#endif
-
-#endif
+TJVM::InitArgs TJVM::PrepareArgs(TString const &ClassPath, TString const &LocalJREPath, int DebugPort, int RemotePort) {
+	if (!LocalJREPath.empty()) {
+		AddSearchPath(TStringCast(LocalJREPath << _T(JRE_PLATFORM_PATHFRAG "\\bin\\server")));
 	}
 
 	TJVMOptions Opts;

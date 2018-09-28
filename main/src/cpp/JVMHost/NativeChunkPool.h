@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
+Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,48 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// [Utilities] Basic debug support
+/**
+ * @addtogroup AdvUtils Advanced Supporting Utilities
+ * @file
+ * @brief Data chunk pool for Java transport
+ * @author Zhenyu Wu
+ * @date Sep 27, 2018: Refactored business logic independent code from AgentLib-NG
+ **/
 
-#include "Debug.h"
+#ifndef ZWUtils_NativeChunkPool_H
+#define ZWUtils_NativeChunkPool_H
 
-#ifndef SOLUTION_PATH
-#pragma WARNING("Please define the project path before compiling this file!")
-#if _MSC_VER
-#pragma WARNING("Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','/'))\\\"\"")
-#endif
-#define SOLUTION_PATH ""
-#else
-#pragma message("SOLUTION_PATH = " SOLUTION_PATH)
-#endif //SOLUTION_PATH
+#include "Misc/Global.h"
 
-// Aquire the skip length of source code (so we can properly print relative source file paths)
-#ifdef WINDOWS
+#include "NativeChunk.h"
+#include "Threading/SyncContainers.h"
 
-PCTCHAR __RelPath(PCTCHAR Path) {
-	static size_t __RelPathLen = wcslen(_T(SOLUTION_PATH));
-	return Path + __RelPathLen;
-}
+#include <functional>
 
-PCTCHAR __PTID(void) {
-	__declspec(thread) static TCHAR PTID[12]{ NullWChar };
-	if (PTID[0] == NullWChar)
-		BUFFMT(&PTID[0], 12, _T("%5d:%-5d"), GetCurrentProcessId(), GetCurrentThreadId());
-	return PTID;
-}
+class TNativeChunkPool {
+protected:
+	typedef TSyncBlockingDeque<MRNativeChunk> TChunkStore;
+	TChunkStore Store;
 
-#endif
+	size_t PoolLimit;
+	size_t WaterMark;
+
+	TNativeChunkPool(size_t xSlackLimit);
+
+	typedef std::function<TNativeChunk*(void)> TChunkCreator;
+	// The setup function is suppose to be called before using the pool, in single-thread context
+	void Charge(size_t Count, TChunkCreator const &Creator);
+
+public:
+	size_t const SlackLimit;
+
+	virtual ~TNativeChunkPool(void);
+
+	// This function can be called safely in multi-thread context
+	bool Acquire(MRNativeChunk &Chunk, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+
+	// This function must be called in single-thread context
+	void Return(TNativeChunk *Chunk);
+};
+
+#endif //ZWUtils_NativeChunkPool_H

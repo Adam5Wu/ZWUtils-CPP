@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
+Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Memory/Resource.h"
 
 #include <vector>
-#include <jni.h>
+
+//#include <jni.h>
+// Forward declare so we do not depend on jni.h here
+struct JavaVM_;
+typedef JavaVM_ JavaVM;
+struct JNIEnv_;
+typedef JNIEnv_ JNIEnv;
+struct JavaVMInitArgs;
+struct JavaVMOption;
 
 class TJVM : public TInitResource<JavaVM*> {
 protected:
@@ -75,12 +83,12 @@ protected:
 	static JavaVM* AllocJVM(InitArgs const &Args, JNIEnv* &Env);
 	static void FreeJVM(JavaVM*& Inst);
 
-	static InitArgs PrepareArgs(TString const &ClassPath, TString const &LocalJVMPath, int DebugPort, int RemotePort);
+	static InitArgs PrepareArgs(TString const &ClassPath, TString const &LocalJREPath, int DebugPort, int RemotePort);
 
 public:
 	// Note that currently only a single JVM instance can be created per process, due to limitation of JVM implementation
-	TJVM(TString const &ClassPath, TString const &LocalJVMPath = EMPTY_TSTRING(), int DebugPort = 0, int RemotePort = 0) :
-		TInitResource(AllocJVM(PrepareArgs(ClassPath, LocalJVMPath, DebugPort, RemotePort), Env), FreeJVM) {}
+	TJVM(TString const &ClassPath, TString const &LocalJREPath = EMPTY_TSTRING(), int DebugPort = 0, int RemotePort = 0) :
+		TInitResource(AllocJVM(PrepareArgs(ClassPath, LocalJREPath, DebugPort, RemotePort), Env), FreeJVM) {}
 
 	// Do not use this environment to make calls, use TJVMThreadEnv instead
 	JNIEnv* Environment(void)

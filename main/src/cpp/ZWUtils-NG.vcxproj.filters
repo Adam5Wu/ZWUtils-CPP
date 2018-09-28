@@ -59,6 +59,9 @@
     <ClCompile Include="SvcGuest\ServiceMain.cpp" />
     <ClCompile Include="SvcGuest\ServiceStubs.cpp" />
     <ClCompile Include="JVMHost\JVMLoader.cpp" />
+    <ClCompile Include="JVMHost\JavaTransport.cpp" />
+    <ClCompile Include="JVMHost\NativeChunk.cpp" />
+    <ClCompile Include="JVMHost\NativeChunkPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">
@@ -123,6 +126,9 @@
     </ClInclude>
     <ClInclude Include="SvcGuest\ServiceMain.h" />
     <ClInclude Include="JVMHost\JVMLoader.h" />
+    <ClInclude Include="JVMHost\JavaTransport.h" />
+    <ClInclude Include="JVMHost\NativeChunk.h" />
+    <ClInclude Include="JVMHost\NativeChunkPool.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SvcGuest\ServiceExport.def" />
