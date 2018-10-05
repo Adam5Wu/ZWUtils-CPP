@@ -178,14 +178,21 @@ struct TServiceModuleRec {
 	ServiceEvent Stop;
 	ServiceEvent Status;
 
-	TServiceModuleRec(LPCTSTR xName, ServiceEvent const &xStart, ServiceEvent const &xStop, ServiceEvent const &xStatus) :
+	TServiceModuleRec(TString const &xName, ServiceEvent const &xStart, ServiceEvent const &xStop, ServiceEvent const &xStatus) :
 		Name(xName), Start(xStart), Stop(xStop), Status(xStatus) { }
 };
 
 static std::vector<TServiceModuleRec>* ServiceModules = new std::vector<TServiceModuleRec>();
 
-static TEvent ServiceStop(true);
-static TEvent ServiceAck(true);
+static TEvent &ServiceStop(void) {
+	static TEvent __IoFU(true);
+	return __IoFU;
+}
+static TEvent &ServiceAck(void) {
+	static TEvent __IoFU(true);
+	return __IoFU;
+}
+
 static TInterlockedOrdinal32<BOOL> ServiceRunLock(FALSE);
 static TimeStamp ServiceStartTS;
 
@@ -311,8 +318,8 @@ static DWORD ServiceInit(ServiceMode Mode) {
 
 	ServiceStartTS = TimeStamp::Now();
 
-	ServiceStop.Reset();
-	ServiceAck.Reset();
+	ServiceStop().Reset();
+	ServiceAck().Reset();
 
 	TString CurrentDir(MAX_PATH, '\0');
 	GetCurrentDirectory(MAX_PATH, (LPTSTR)CurrentDir.data());
@@ -343,7 +350,7 @@ static DWORD ServiceInit(ServiceMode Mode) {
 }
 
 static DWORD ServiceCheckStatus(void) {
-	if (ServiceStop.WaitFor(0) != WaitResult::Signaled) {
+	if (ServiceStop().WaitFor(0) != WaitResult::Signaled) {
 		LOGV(_T("* Service status checkpoint..."));
 
 		// Check each service module
@@ -419,11 +426,11 @@ static DWORD __SvcMain(void) {
 				return ExitCode;
 
 			ServiceReport(SERVICE_RUNNING);
-			while (ServiceStop.WaitFor(CONFIG_ServiceStatusQueryInterval) != WaitResult::Signaled) {
+			while (ServiceStop().WaitFor(CONFIG_ServiceStatusQueryInterval) != WaitResult::Signaled) {
 				if (DWORD ExitCode = ServiceCheckStatus())
 					return ExitCode;
 			}
-			ServiceAck.Set();
+			ServiceAck().Set();
 		} __finally {
 			ServiceReport(SERVICE_STOP_PENDING, CONFIG_ServiceTerminationGraceTime);
 			ServiceFInit(ServiceMode::Normal);
@@ -454,11 +461,11 @@ static DWORD __DbgSvcMain(void) {
 				return ExitCode;
 
 			//ServiceReport(SERVICE_RUNNING);
-			while (ServiceStop.WaitFor(CONFIG_ServiceStatusQueryInterval) != WaitResult::Signaled) {
+			while (ServiceStop().WaitFor(CONFIG_ServiceStatusQueryInterval) != WaitResult::Signaled) {
 				if (DWORD ExitCode = ServiceCheckStatus())
 					return ExitCode;
 			}
-			ServiceAck.Set();
+			ServiceAck().Set();
 		} __finally {
 			//ServiceReport(SERVICE_STOP_PENDING, CONFIG_ServiceTerminationGraceTime);
 			ServiceFInit(ServiceMode::Debug);
@@ -471,6 +478,11 @@ static DWORD __DbgSvcMain(void) {
 
 UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv) {
 	LOGV(_T("* Debug service main function for '%s'"), lpszArgv[0]);
+#ifdef _DEBUG
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF);
+#endif
 
 	if (dwArgc > 1) {
 		TString DispToken(lpszArgv[1]);
@@ -483,13 +495,19 @@ UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv) {
 
 void ServiceMain_ServiceStopNotify(void) {
 	LOGV(_T("Signaling service to stop..."));
-	ServiceStop.Set();
-	if (ServiceAck.WaitFor(CONFIG_ServiceTerminationGraceTime) == WaitResult::Signaled) {
+	ServiceStop().Set();
+	if (ServiceAck().WaitFor(CONFIG_ServiceTerminationGraceTime) == WaitResult::Signaled) {
 		LOGV(_T("Stop request is being acknowledged..."));
 	} else {
 		LOGV(_T("WARNING: Stop request acknowledgement timeout"));
 	}
 }
+
+THandleWaitable &ServiceMain_TermSignal(void) {
+	static THandleWaitable __IoFU = ServiceStop().DupWaitable();
+	return __IoFU;
+}
+
 
 DWORD WINAPI ServiceMain(DWORD dwArgc, LPCWSTR *lpszArgv) {
 	ControlSEHTranslation(true);
@@ -503,7 +521,7 @@ DWORD WINAPI ServiceMain(DWORD dwArgc, LPCWSTR *lpszArgv) {
 	return 0;
 }
 
-void Module_ServiceMain_AddModule(PCTCHAR Name, ServiceEvent const &Start, ServiceEvent const &Stop, ServiceEvent const &Status) {
+void Module_ServiceMain_AddModule(TString const &Name, ServiceEvent const &Start, ServiceEvent const &Stop, ServiceEvent const &Status) {
 	if (~ServiceRunLock)
 		FAIL(_T("Service already running!"));
 

@@ -55,13 +55,27 @@
     <ClCompile Include="Threading\SyncObjects.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SvcGuest\ServiceCtrl.cpp" />
-    <ClCompile Include="SvcGuest\ServiceMain.cpp" />
-    <ClCompile Include="SvcGuest\ServiceStubs.cpp" />
-    <ClCompile Include="JVMHost\JVMLoader.cpp" />
-    <ClCompile Include="JVMHost\JavaTransport.cpp" />
-    <ClCompile Include="JVMHost\NativeChunk.cpp" />
-    <ClCompile Include="JVMHost\NativeChunkPool.cpp" />
+    <ClCompile Include="JVMHost\JavaTransport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="JVMHost\JVMLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="JVMHost\NativeChunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="JVMHost\NativeChunkPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SvcGuest\ServiceCtrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SvcGuest\ServiceMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SvcGuest\ServiceStubs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">
@@ -124,13 +138,25 @@
     <ClInclude Include="Debug\StackWalker.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="SvcGuest\ServiceMain.h" />
-    <ClInclude Include="JVMHost\JVMLoader.h" />
-    <ClInclude Include="JVMHost\JavaTransport.h" />
-    <ClInclude Include="JVMHost\NativeChunk.h" />
-    <ClInclude Include="JVMHost\NativeChunkPool.h" />
+    <ClInclude Include="JVMHost\JavaTransport.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="JVMHost\JVMLoader.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="JVMHost\NativeChunk.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="JVMHost\NativeChunkPool.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SvcGuest\ServiceMain.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="SvcGuest\ServiceExport.def" />
+    <None Include="SvcGuest\ServiceExport.def">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

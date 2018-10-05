@@ -214,6 +214,8 @@ DWORD TWorkerThread::__CallForwarder(void) {
 				rException = ManagedRef<Exception>(e, CONSTRUCTION::HANDOFF);
 				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(e) == nullptr) {
 					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
+					auto *STE = dynamic_cast<STException*>(e);
+					if (STE != nullptr) STE->ShowStack();
 				});
 			}
 			// Fall through...

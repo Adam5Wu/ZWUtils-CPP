@@ -65,6 +65,10 @@ TString STException::ExtractTopFrame(std::deque<TString> &xStackTrace) {
 
 void STException::Show(void) const {
 	Exception::Show();
+	ShowStack();
+}
+
+void STException::ShowStack(void) const {
 	_LOG(_T("-------- Stack Trace --------"));
 	for (auto &entry : rStackTrace)
 		_LOG(_T("%s"), entry.c_str());

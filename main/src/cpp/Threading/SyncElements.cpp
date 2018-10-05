@@ -161,6 +161,10 @@ THandle THandleWaitable::WaitHandle(void) {
 	return { [&] { return DupWaitHandle(Refer()); } };
 }
 
+THandleWaitable THandleWaitable::DupWaitable(void) {
+	return { [&] { return *WaitHandle().Validate().Drop(); } };
+}
+
 // TSemaphore
 HANDLE DupSemSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
 						  HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {

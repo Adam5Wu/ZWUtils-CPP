@@ -42,6 +42,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Misc/Global.h"
 
 #include "Misc/Types.h"
+#include "Misc/TString.h"
+#include "Threading/SyncElements.h"
 
 #include <functional>
 
@@ -95,8 +97,8 @@ extern "C" {
 
 }
 
-typedef std::function<void()> ServiceEvent;
-void Module_ServiceMain_AddModule(PCTCHAR Name,
+typedef std::function<void(void)> ServiceEvent;
+void Module_ServiceMain_AddModule(TString const &Name,
 								  ServiceEvent const &Start,
 								  ServiceEvent const &Stop,
 								  ServiceEvent const &Status);
@@ -104,5 +106,6 @@ void Module_ServiceMain_AddModule(PCTCHAR Name,
 UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv);
 
 void ServiceMain_ServiceStopNotify(void);
+THandleWaitable &ServiceMain_TermSignal(void);
 
 #endif //ZWUtils_ServiceMain_H

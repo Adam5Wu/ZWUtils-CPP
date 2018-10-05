@@ -216,7 +216,7 @@ struct Cardinal128 : public Cardinal {
 
 	bool equalto(Cardinal128 const &T) const;
 
-	GUID toGUID(void);
+	GUID toGUID(void) const;
 	void loadGUID(GUID const &V);
 
 	static Cardinal128 const& ZERO(void);

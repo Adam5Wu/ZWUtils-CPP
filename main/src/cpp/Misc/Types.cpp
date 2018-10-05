@@ -226,7 +226,7 @@ bool Cardinal128::equalto(Cardinal128 const &T) const {
 	return ((U64A ^ T.U64A) | (U64B ^ T.U64B)) == 0;
 }
 
-GUID Cardinal128::toGUID(void) {
+GUID Cardinal128::toGUID(void) const {
 	return *(LPGUID)U8;
 }
 

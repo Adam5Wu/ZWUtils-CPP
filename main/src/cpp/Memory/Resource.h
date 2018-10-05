@@ -165,6 +165,10 @@ public:
 		return _ResValid;
 	}
 
+	_this &Validate(void) {
+		return Refer(), *this;
+	}
+
 	virtual bool Invalidate(void) {
 		return _ResValid ? _ResValid = false, true : false;
 	}

@@ -155,6 +155,7 @@ public:
 	std::deque<TString> const rStackTrace;
 
 	void Show(void) const override;
+	void ShowStack(void) const;
 
 	static std::deque<TString> TraceStack(int PopFrame = 1);
 
@@ -174,6 +175,11 @@ public:
 };
 
 #define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt, __VA_ARGS__);
+
+#ifdef DBGVV
+#undef FAIL
+#define FAIL FAILST
+#endif
 
 #ifdef WINDOWS
 

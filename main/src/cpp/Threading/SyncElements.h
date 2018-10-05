@@ -172,6 +172,11 @@ public:
 	 **/
 	virtual THandle WaitHandle(void);
 
+	/**
+	 * Get a duplicated THandleWaitable instance 
+	 **/
+	THandleWaitable DupWaitable(void);
+
 	//! Expose handle allocation query API
 	using THandle::Allocated;
 
