@@ -143,7 +143,7 @@ public:
 	// Copy consutrction does not make sense
 	TAllocResource(_this const &) = delete;
 	// Move construction
-	TAllocResource(_this &&xResource) :
+	TAllocResource(_this &&xResource) noexcept :
 		_ResRef(std::move(xResource._ResRef)), _ResValid(xResource._ResValid),
 		_Alloc(std::move(xResource._Alloc)), _Dealloc(std::move(xResource._Dealloc)) {
 		xResource.Invalidate();
@@ -259,9 +259,6 @@ protected:
 		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
 			[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
-	// Move construction
-	_TTypedBuffer(_this &&xResource) : TAllocResource<T*>(std::move(xResource)) {}
-
 public:
 	T * operator&(void) const {
 		return *_ObjPointer();
@@ -280,15 +277,6 @@ public:
 		_TTypedBuffer<T>(&xBuffer, xAllocator) {}
 	TTypedBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer<T>(&xBuffer, xSize, xAllocator) {}
-
-	// Move construction
-	TTypedBuffer(_this &&xResource) : _TTypedBuffer<T>(std::move(xResource)) {}
-
-	// Move assignment
-	_this& operator=(_this &&xResource) {
-		TAllocResource<T*>::operator=(std::move(xResource));
-		return *this;
-	}
 
 	T& operator*(void) const {
 		return **_ObjPointer();
@@ -309,15 +297,6 @@ public:
 		_TTypedBuffer(xBuffer, xAllocator) {}
 	TTypedBuffer(void *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
-
-	// Move construction
-	TTypedBuffer(_this &&xResource) : _TTypedBuffer(std::move(xResource)) {}
-
-	// Move assignment
-	_this& operator=(_this &&xResource) {
-		TAllocResource::operator=(std::move(xResource));
-		return *this;
-	}
 };
 
 typedef TTypedBuffer<void> TFixedBuffer;
@@ -381,7 +360,7 @@ protected:
 		_PVSize(xSize), _Allocator(xAllocator), _Size(xSize) {}
 
 	// Move construction
-	_TTypedDynBuffer(_this &&xResource) :
+	_TTypedDynBuffer(_this &&xResource) noexcept :
 		TAllocResource(xResource._ResRef, [&](T* &X) { Dealloc(X); }, [&] { return Realloc(nullptr, _Size); }),
 		_PVSize(xResource._PVSize), _Allocator(xResource._Allocator), _Size(xResource._Size) {
 		_ResValid = xResource._ResValid;
@@ -443,15 +422,6 @@ public:
 	TTypedDynBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedDynBuffer(&xBuffer, xSize, xAllocator) {}
 
-	// Move construction
-	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
-
-	// Move assignment
-	_this& operator=(_this &&xResource) {
-		_TTypedDynBuffer::operator=(std::move(xResource));
-		return *this;
-	}
-
 	T& operator*(void) const {
 		return **_ObjPointer();
 	}
@@ -470,15 +440,6 @@ public:
 		_TTypedDynBuffer(xSize, xAllocator) {}
 	TTypedDynBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
-
-	// Move construction
-	TTypedDynBuffer(_this &&xResource) : _TTypedDynBuffer(std::move(xResource)) {}
-
-	// Move assignment
-	_this& operator=(_this &&xResource) {
-		_TTypedDynBuffer::operator=(std::move(xResource));
-		return *this;
-	}
 };
 
 typedef TTypedDynBuffer<void> TDynBuffer;

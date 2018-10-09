@@ -98,7 +98,7 @@ public:
 	// Copy constructor
 	ManagedRef(_this const &xMR) : _Obj(_DupObj(&xMR, false, xMR._Alloc)), _Alloc(xMR._Alloc) {}
 	// Move constructor
-	ManagedRef(_this &&xMR) : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) {}
+	ManagedRef(_this &&xMR) noexcept : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) {}
 
 	// Note: For performance reasons, we do not have a virtual destructor
 	// Hence we seal this class and do not allow further derivation

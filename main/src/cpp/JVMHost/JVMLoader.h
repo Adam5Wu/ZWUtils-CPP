@@ -74,7 +74,7 @@ protected:
 	public:
 		InitArgs(void);
 
-		InitArgs(_this &&xArgs) :
+		InitArgs(_this &&xArgs) noexcept :
 			TTypedBuffer(std::move(xArgs)), Opts(std::move(xArgs.Opts)), ConvOpts(std::move(xArgs.ConvOpts)) {}
 
 		void SetOpt(TJVMOptions && xOpts);

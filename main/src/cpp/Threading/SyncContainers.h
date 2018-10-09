@@ -109,7 +109,7 @@ protected:
 			_LockRef(std::move(xIterator._LockRef)) {}
 
 	public:
-		__Locked_Iterator(_this &&xIterator) :
+		__Locked_Iterator(_this &&xIterator) noexcept :
 			Iter(std::move(xIterator)),
 			_LockRef(std::move(xIterator._LockRef)) {}
 

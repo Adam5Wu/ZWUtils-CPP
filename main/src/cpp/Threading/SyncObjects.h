@@ -143,7 +143,7 @@ public:
 		// Copy construction does not make sense, because the lock maybe non-reentrant
 		TLock(_this const &) = delete;
 
-		TLock(_this &&xLock) : InstRef(xLock.InstRef), __Info(xLock.__Info) {
+		TLock(_this &&xLock) noexcept : InstRef(xLock.InstRef), __Info(xLock.__Info) {
 			xLock.__Info = nullptr;
 		}
 
@@ -528,7 +528,7 @@ public:
 
 	public:
 		// Move construction for returning accessors
-		Accessor(_this &&xAccessor) : _Lock(std::move(xAccessor._Lock)) {}
+		Accessor(_this &&xAccessor) noexcept : _Lock(std::move(xAccessor._Lock)) {}
 
 		TString toString(void) const {
 			return _toString();

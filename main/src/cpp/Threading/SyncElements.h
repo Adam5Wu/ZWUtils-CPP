@@ -165,7 +165,7 @@ public:
 		THandle(xHandle, xDealloc, xAlloc) {}
 
 	// Move construction
-	THandleWaitable(_this &&xHandleWaitable) :
+	THandleWaitable(_this &&xHandleWaitable) noexcept :
 		THandle(std::move(xHandleWaitable)), WaitOnly(xHandleWaitable.WaitOnly) {}
 
 	// Move assignment

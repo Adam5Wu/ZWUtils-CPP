@@ -120,7 +120,9 @@ TString TStackWalker::FormatEntry(CallstackEntry const &Entry) {
 		TStringCast(_T('!')
 					<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
 					<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
-													   << _T("<+") << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase << _T('>')) :
+													   << _T("<+")
+													   << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase
+													   << _T('>')) :
 						TStringCast(Entry.Address)) << _T(':')
 					<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
 					<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
