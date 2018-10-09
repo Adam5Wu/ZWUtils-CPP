@@ -176,7 +176,7 @@ public:
 
 #define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt, __VA_ARGS__);
 
-#ifdef DBGVV
+#if defined(DBGVV) || defined(DEFAULT_EXCEPTION_WITH_STACK)
 #undef FAIL
 #define FAIL FAILST
 #endif

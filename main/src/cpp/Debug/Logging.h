@@ -71,10 +71,12 @@ LOG_DO({																				\
 	__LOG(_T("[%s] %s | ") fmt TNewLine, __PTID(), __TS.c_str() VAWRAP(__VA_ARGS__));	\
 })
 
-#define _LOGS(fmt, ...)												\
-LOG_DO({															\
-	SOURCEMARK														\
-	_LOG(_T("@<%s> ") fmt, __SrcMark.c_str() VAWRAP(__VA_ARGS__));	\
+#define _LOGS(fmt, ...)																	\
+LOG_DO({																				\
+	SOURCEMARK																			\
+	TString __TS = __TimeStamp();														\
+	__LOG(_T("@<%s>") TNewLine _T("[%s] %s | ") fmt TNewLine, __SrcMark.c_str(),		\
+		__PTID(), __TS.c_str() VAWRAP(__VA_ARGS__));									\
 })
 
 #ifndef __LOGPFX__
@@ -89,5 +91,14 @@ LOG_DO({															\
 #define LOGSV(s, ...)	DEBUGV_DO(_LOGS(__LOGPFX__ s, __VA_ARGS__))
 #define LOGVV(s, ...)	DEBUGVV_DO(_LOG(__LOGPFX__ s, __VA_ARGS__))
 #define LOGSVV(s, ...)	DEBUGVV_DO(_LOGS(__LOGPFX__ s, __VA_ARGS__))
+
+#ifdef DEFAULT_LOG_WITH_SOURCE
+#undef LOG
+#define LOG LOGS
+#undef LOGV
+#define LOGV LOGSV
+#undef LOGVV
+#define LOGVV LOGSVV
+#endif
 
 #endif

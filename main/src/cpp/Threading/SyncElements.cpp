@@ -123,19 +123,20 @@ WaitResult WaitMultiple(std::vector<HANDLE> const &WaitHandles, bool WaitAll, WA
 	}
 }
 
-WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const&Waitables, bool WaitAll, WAITTIME Timeout, bool WaitAPC, bool WaitMsg) {
-	class TWaitHandles : public std::vector<HANDLE> {
-	public:
-		~TWaitHandles(void) {
-			for (size_type i = 0; i < size(); i++)
-				SafeCloseHandle(at(i));
+WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const &Waitables, bool WaitAll, WAITTIME Timeout, bool WaitAPC, bool WaitMsg) {
+	class TRawWaitHandles : public std::vector<HANDLE> {
+	protected:
+		std::vector<THandle> Handles;
+		void AddHandle(THandle &&Handle) {
+			emplace_back(*Handle);
+			Handles.emplace_back(std::move(Handle));
 		}
-	} WaitHandles;
-	for (THandleWaitable &Waitable : Waitables) {
-		THandle WaitHandle = Waitable.WaitHandle();
-		WaitHandles.push_back(*WaitHandle);
-		WaitHandle.Invalidate();
-	}
+	public:
+		TRawWaitHandles(std::vector<std::reference_wrapper<THandleWaitable>> const &RefWaitables) {
+			for (THandleWaitable &Waitable : RefWaitables)
+				AddHandle(Waitable.WaitHandle());
+		}
+	} WaitHandles(Waitables);
 	return WaitMultiple(WaitHandles, WaitAll, Timeout, WaitAPC, WaitMsg);
 }
 
@@ -158,11 +159,13 @@ WaitResult THandleWaitable::WaitFor(WAITTIME Timeout) const {
 }
 
 THandle THandleWaitable::WaitHandle(void) {
-	return { [&] { return DupWaitHandle(Refer()); } };
+	return WaitOnly ? THandle(Refer(), NullDealloc) : DupWaitable();
 }
 
 THandleWaitable THandleWaitable::DupWaitable(void) {
-	return { [&] { return *WaitHandle().Validate().Drop(); } };
+	THandleWaitable Ret([&] { return DupWaitHandle(Refer()); });
+	Ret.WaitOnly = true;
+	return Ret;
 }
 
 // TSemaphore

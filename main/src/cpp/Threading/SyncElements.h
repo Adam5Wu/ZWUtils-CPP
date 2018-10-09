@@ -156,11 +156,24 @@ public:
  **/
 class THandleWaitable : protected THandle, public TWaitable {
 	typedef THandleWaitable _this;
+protected:
+	bool WaitOnly = false;
 public:
 	THandleWaitable(TResAlloc const &xAlloc, TResDealloc const &xDealloc = THandle::HandleDealloc_Standard) :
 		THandle(xAlloc, xDealloc) {}
 	THandleWaitable(HANDLE const &xHandle, TResDealloc const &xDealloc = THandle::HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		THandle(xHandle, xDealloc, xAlloc) {}
+
+	// Move construction
+	THandleWaitable(_this &&xHandleWaitable) :
+		THandle(std::move(xHandleWaitable)), WaitOnly(xHandleWaitable.WaitOnly) {}
+
+	// Move assignment
+	_this& operator=(_this &&xHandleWaitable) {
+		THandle::operator=(std::move(xHandleWaitable));
+		WaitOnly = xHandleWaitable.WaitOnly;
+		return *this;
+	}
 
 	/**
 	 * Wait for a given amount of time or until signaled
@@ -191,8 +204,14 @@ public:
 
 };
 
-WaitResult WaitSingle(THandleWaitable &Waitable, WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
-WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const &Waitables, bool WaitAll, WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
+WaitResult WaitSingle(THandleWaitable &Waitable,
+					  WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
+WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const &Waitables, bool WaitAll,
+						WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
+
+// Raw API, make sure all handles are waitable!
+WaitResult WaitMultiple(std::vector<HANDLE> const &WaitHandles, bool WaitAll,
+						WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
 
 /**
  * @ingroup Threading

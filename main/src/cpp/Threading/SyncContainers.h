@@ -372,6 +372,14 @@ public:
 		return SpinCount ? std::move(Ret) : Lock(0);
 	}
 
+	THandleWaitable EmptyWaitable(void) {
+		return EmptyWait.DupWaitable();
+	}
+
+	THandleWaitable ContentWaitable(void) {
+		return ContentWait.DupWaitable();
+	}
+
 #ifdef __SDQ_ITERATORS
 
 #ifdef __SDQ_MUTABLE_ITERATORS
