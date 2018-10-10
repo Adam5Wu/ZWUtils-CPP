@@ -42,39 +42,49 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unordered_map>
 
-TString const& LOGTARGET_CONSOLE(void) {
-	static TString const __IoFU(_T("Console"));
-	return __IoFU;
-}
+TString const LOGTARGET_CONSOLE(_T("Console"));
 
 typedef std::vector<std::pair<TString, FILE*>> TLogTargets;
 
 TSyncObj<TLogTargets>& LOGTARGETS(void) {
-	static TSyncObj<TLogTargets> __IoFU(TLogTargets({ {LOGTARGET_CONSOLE(), stderr} }));
+	static TSyncObj<TLogTargets> __IoFU(TLogTargets({ {LOGTARGET_CONSOLE, stderr} }));
 	return __IoFU;
 }
 
-void SETLOGTARGET(TString const &Name, FILE *xTarget, PCTCHAR Message) {
+#define MESSAGE_LOGTARGET_START	"Start of log"
+#define MESSAGE_LOGTARGET_END	"End of log"
+
+void __LOG_WRITE(FILE *Target, PCTCHAR Fmt, va_list params);
+
+void LOG_WRITE(FILE *Target, PCTCHAR Fmt, ...) {
+	va_list params;
+	va_start(params, Fmt);
+	TInitResource<va_list> Params(params, [](va_list &X) {va_end(X); });
+	__LOG_WRITE(Target, Fmt, params);
+}
+
+void SETLOGTARGET(TString const &Name, FILE *xTarget) {
 	auto LogTargets(LOGTARGETS().Pickup());
 	if (xTarget) {
 		if (setvbuf(xTarget, nullptr, _IOLBF, 4096) != 0) {
 			LOG(_T("WARNING: Unable to turn off file buffering for log target '%s'"), Name);
 		}
+		LOG_WRITE(xTarget, _T(MESSAGE_LOGTARGET_START));
 
 		for (auto entry : *LogTargets) {
 			if (entry.first.compare(Name) == 0) {
+				LOG_WRITE(entry.second, _T(MESSAGE_LOGTARGET_END));
 				entry.second = xTarget;
 				xTarget = nullptr;
 				break;
 			}
 		}
 		if (xTarget) LogTargets->emplace_back(Name, xTarget);
-		if (Message) { LOG(_T("===== %s ====="), Message); }
 	} else {
 		auto Iter = LogTargets->begin();
 		while (Iter != LogTargets->end()) {
 			if (Iter->first.compare(Name) == 0) {
-				if (Message) { LOG(_T("===== %s ====="), Message); }
+				LOG_WRITE(Iter->second, _T(MESSAGE_LOGTARGET_END));
 				LogTargets->erase(Iter);
 				break;
 			} else Iter++;
@@ -116,10 +126,14 @@ void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...) {
 	for (size_t i = 0; i < LogTargets->size(); i++) {
 		auto &entry = LogTargets->at(i);
 		if ((!Target && entry.first.at(0) != _T('.')) || (Target && entry.first == *Target)) {
-			_vftprintf(entry.second, Fmt, params);
-			DEBUG_DO(fflush(entry.second));
+			__LOG_WRITE(entry.second, Fmt, params);
 		}
 	}
+}
+
+void __LOG_WRITE(FILE *Target, PCTCHAR Fmt, va_list params) {
+	_vftprintf(Target, Fmt, params);
+	DEBUG_DO(fflush(Target));
 }
 
 #endif

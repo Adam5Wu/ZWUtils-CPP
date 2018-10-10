@@ -294,9 +294,11 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType) {
 	return TRUE;
 }
 
+static TString const LOGTARGET_SERVICE(_T("Service"));
+
 static DWORD ServiceInit(ServiceMode Mode) {
 	if (Mode != ServiceMode::Debug) {
-		SETLOGTARGET(LOGTARGET_CONSOLE(), nullptr);
+		SETLOGTARGET(LOGTARGET_CONSOLE, nullptr);
 	}
 
 	LOGV(_T("* Service initializing..."));
@@ -310,7 +312,7 @@ static DWORD ServiceInit(ServiceMode Mode) {
 		LOG(_T("WARNING: Unable to open service log file (runtime error %d)"), errno);
 		return 2;
 	}
-	SETLOGTARGET(_T("Service"), LOGFILE, _T("Start of Service"));
+	SETLOGTARGET(LOGTARGET_SERVICE, LOGFILE);
 
 	ServiceStartTS = TimeStamp::Now();
 
@@ -407,7 +409,7 @@ static void ServiceFInit(ServiceMode Mode) {
 			LOG(_T("WARNING: Unrecognized service mode"));
 	}
 
-	SETLOGTARGET(_T("Service"), nullptr, _T("End of Service"));
+	SETLOGTARGET(LOGTARGET_SERVICE, nullptr);
 	if (LOGFILE != nullptr) fclose(LOGFILE);
 
 	ServiceRunning.Clear();
