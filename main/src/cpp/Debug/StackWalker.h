@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Exception.h"
 
 #include "Misc/Types.h"
+#include "Memory/Resource.h"
 
 #include <functional>
 
@@ -64,7 +65,7 @@ public:
 		DWORD LineNumber;
 		DWORD LineOffset;
 		enum class TSymbolType {
-			None, COFF, CV, PDB, Exported, Deferred, SYM, DIA, Virtual, Unknown
+			None, COFF, CV, PDB, Exported, Deferred, SYM, DIA, Virtual
 		} SymbolType;
 	} CallstackEntry;
 

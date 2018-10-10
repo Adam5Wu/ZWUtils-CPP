@@ -56,6 +56,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ARCH_64
 #endif
 
+#define NOEXCEPT throw()
+
 // Visual Studio parser bug work-around
 #define VAWRAP(...) ,##__VA_ARGS__
 

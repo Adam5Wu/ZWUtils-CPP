@@ -57,6 +57,7 @@ typedef struct _jmethodID *jmethodID;
 
 class TJavaTransport : protected TJVMThreadEnv {
 	typedef TJavaTransport _this;
+
 protected:
 	TJavaTransport(TJVM &xJVM) : TJVMThreadEnv(xJVM) {}
 	virtual ~TJavaTransport(void){}

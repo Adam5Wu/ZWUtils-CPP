@@ -109,9 +109,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (_tcsicmp(argv[1], _T("SyncObjRobust")) == 0) {
 			TestSyncObj_2(true);
 		}
-	} catch (Exception *e) {
-		e->Show();
-		DEFAULT_DESTROY(Exception, e);
+	} catch (_ECR_ e) {
+		e.Show();
 	}
 
 #ifdef WINDOWS
@@ -137,9 +136,8 @@ void TestException(void) {
 	_LOG(_T("*** Test Exception throwing and catching"));
 	try {
 		FAIL(_T("XD"));
-	} catch (Exception *e) {
-		e->Show();
-		DEFAULT_DESTROY(Exception, e);
+	} catch (_ECR_ e) {
+		e.Show();
 	}
 
 	_LOG(_T("*** Test SEH Exception translation"));
@@ -147,17 +145,15 @@ void TestException(void) {
 		int* P = nullptr;
 		*P = 1; // Write access violation
 		_LOG(_T("XD %d"), *P); // Read access violation
-	} catch (SEHException *e) {
-		e->Show();
-		DEFAULT_DESTROY(SEHException, e);
+	} catch (SEHException const &e) {
+		e.Show();
 	}
 
 	_LOG(_T("*** Test Stack-traced Exception"));
 	try {
 		FAILST(_T("XD"));
-	} catch (STException *e) {
-		e->Show();
-		DEFAULT_DESTROY(STException, e);
+	} catch (STException const &e) {
+		e.Show();
 	}
 }
 
@@ -186,9 +182,8 @@ void TestErrCode(void) {
 	try {
 		SetLastError(6);
 		SYSFAIL(_T("Test system error logging"));
-	} catch (Exception *e) {
-		e->Show();
-		DEFAULT_DESTROY(Exception, e);
+	} catch (_ECR_ e) {
+		e.Show();
 	}
 }
 
@@ -308,9 +303,8 @@ void TestManagedObj() {
 	try {
 		auto AX = DEFAULT_NEW(TestMXObj, _T("AX"));
 		FAIL(_T("Should not reach"));
-	} catch (Exception *e) {
-		ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
-		E->Show();
+	} catch (_ECR_ e) {
+		e.Show();
 	}
 
 	_LOG(_T("--- Manage Object Adapter"));
@@ -390,9 +384,8 @@ void TestManagedObj() {
 		try {
 			ManagedRef<TestPObj> MR6 = MR5;
 			FAIL(_T("Should not reach"));
-		} catch (Exception *e) {
-			ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
-			E->Show();
+		} catch (_ECR_ e) {
+			e.Show();
 		}
 		_LOG(_T("* Releasing MR5 (Expect object deletions)"));
 	}
@@ -581,9 +574,8 @@ void TestSyncObj_1(void) {
 		try {
 			_LOG(_T("A : %d"), SA->value);
 			FAIL(_T("Should not reach"));
-		} catch (Exception *e) {
-			ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
-			E->Show();
+		} catch (_ECR_ e) {
+			e.Show();
 		}
 	}
 
@@ -1049,9 +1041,8 @@ void TestSyncObj_2(bool Robust) {
 					auto SA(A.Pickup(FOREVER, &FakeAbort));
 					// Should aboort
 					_LOG(_T("Pickup : %s"), SA.toString().c_str());
-				} catch (Exception *e) {
-					ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
-					E->Show();
+				} catch (_ECR_ e) {
+					e.Show();
 				}
 			}
 

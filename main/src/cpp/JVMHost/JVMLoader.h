@@ -68,13 +68,14 @@ protected:
 	typedef std::vector<TJVMOption> TJVMOptions;
 	class InitArgs : public TTypedBuffer<JavaVMInitArgs> {
 		typedef InitArgs _this;
+
 	protected:
 		TJVMOptions Opts;
 		TTypedBuffer<JavaVMOption> ConvOpts;
 	public:
 		InitArgs(void);
 
-		InitArgs(_this &&xArgs) noexcept :
+		InitArgs(_this &&xArgs) NOEXCEPT :
 			TTypedBuffer(std::move(xArgs)), Opts(std::move(xArgs.Opts)), ConvOpts(std::move(xArgs.ConvOpts)) {}
 
 		void SetOpt(TJVMOptions && xOpts);

@@ -38,28 +38,31 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Debug/SysError.h"
 
 #include "Memory/ManagedRef.h"
-#include "Memory/Resource.h"
 
 #include "Threading/SyncObjects.h"
 
-#pragma comment(lib, "DbgHelp.lib")
+#pragma comment(lib, "dbghelp.lib")
 
-#include <DbgHelp.h>
+// We used extended support functions
+// See: https://docs.microsoft.com/en-us/windows/desktop/debug/updated-platform-support
+#define _IMAGEHLP64
+#include <dbghelp.h>
 
 #ifdef UNICODE
-#define IMAGEHLP_MODULET IMAGEHLP_MODULEW64
-#define PIMAGEHLP_MODULET PIMAGEHLP_MODULEW64
-#define IMAGEHLP_SYMBOLT_PACKAGE IMAGEHLP_SYMBOLW64_PACKAGE 
-#define IMAGEHLP_SYMBOLT IMAGEHLP_SYMBOLW64 
-#define PIMAGEHLP_SYMBOLT PIMAGEHLP_SYMBOLW64
-#define IMAGEHLP_LINET IMAGEHLP_LINEW64
+#define IMAGEHLP_LINEW IMAGEHLP_LINEW64
+
+#define IMAGEHLP_MODULE_T IMAGEHLP_MODULEW
+#define IMAGEHLP_LINE_T IMAGEHLP_LINEW
+#define SYMBOL_INFO_PACKAGE_T SYMBOL_INFO_PACKAGEW
+#define SYMBOL_INFO_T SYMBOL_INFOW
 #define SymInitializeT SymInitializeW
-#define SymGetLineFromAddrT SymGetLineFromAddrW64
-#define SymGetModuleInfoT SymGetModuleInfoW64
+#define SymGetLineFromAddrT SymGetLineFromAddrW
+#define SymGetModuleInfoT SymGetModuleInfoW
+#define SymFromAddrT SymFromAddrW
 #define UnDecorateSymbolNameT UnDecorateSymbolNameW
 
 // Ensure backward compatibility with early versions
-typedef struct IMAGEHLP_MODULE64_V2 {
+typedef struct {
 	DWORD    SizeOfStruct;           // set to sizeof(IMAGEHLP_MODULE64)
 	DWORD64  BaseOfImage;            // base load address of module
 	DWORD    ImageSize;              // virtual size of the loaded module
@@ -69,17 +72,16 @@ typedef struct IMAGEHLP_MODULE64_V2 {
 	SYM_TYPE SymType;                // type of symbols loaded
 	WCHAR    ModuleName[32];         // module name
 	WCHAR    ImageName[256];         // image name
-} _IMAGEHLP_MODULET;
+} IMAGEHLP_MODULE_V2_T;
 #else
-#define IMAGEHLP_MODULET IMAGEHLP_MODULE64
-#define PIMAGEHLP_MODULET PIMAGEHLP_MODULE64
-#define IMAGEHLP_SYMBOLT_PACKAGE IMAGEHLP_SYMBOL64_PACKAGE 
-#define IMAGEHLP_SYMBOLT IMAGEHLP_SYMBOL64 
-#define PIMAGEHLP_SYMBOLT PIMAGEHLP_SYMBOL64 
-#define IMAGEHLP_LINET IMAGEHLP_LINE64
+#define IMAGEHLP_MODULE_T IMAGEHLP_MODULE
+#define IMAGEHLP_LINE_T IMAGEHLP_LINE
+#define SYMBOL_INFO_PACKAGE_T SYMBOL_INFO_PACKAGE
+#define SYMBOL_INFO_T SYMBOL_INFO
 #define SymInitializeT SymInitialize
-#define SymGetLineFromAddrT SymGetLineFromAddr64
-#define SymGetModuleInfoT SymGetModuleInfo64
+#define SymGetLineFromAddrT SymGetLineFromAddr
+#define SymGetModuleInfoT SymGetModuleInfo
+#define SymFromAddrT SymFromAddr
 #define UnDecorateSymbolNameT UnDecorateSymbolName
 
 // Ensure backward compatibility with early versions
@@ -93,14 +95,19 @@ typedef struct IMAGEHLP_MODULE64_V2 {
 	SYM_TYPE SymType;                // type of symbols loaded
 	CHAR    ModuleName[32];          // module name
 	CHAR    ImageName[256];          // image name
-} IMAGEHLP_MODULET;
+} IMAGEHLP_MODULE_V2_T;
 #endif
 
-// Missing Unicode support from DbgHelp.dll
-#define SymGetSymFromAddrX SymGetSymFromAddr64
-#define PIMAGEHLP_SYMBOLX PIMAGEHLP_SYMBOL64
-
 #include <unordered_set>
+
+TString TStackWalker::STR_SymbolType(CallstackEntry::TSymbolType SymbolType) {
+	static PCTCHAR _STR_SymbolType[] = {
+		_T("None"), _T("COFF"), _T("CV"), _T("PDB"),
+		_T("Exported"), _T("Deferred"), _T("SYM"), _T("DIA"),
+		_T("Virtual")
+	};
+	return (int)SymbolType < NumSymTypes ? _STR_SymbolType[(int)SymbolType] : _T("Unrecognized");
+}
 
 #define STR_NoSymbolName _T("(Unknown-Symbol)")
 #define STR_NoModuleName _T("(Unknown-Module)")
@@ -117,27 +124,28 @@ bool TStackWalker::LogError(LPCTSTR FuncHint, DWORD errCode, PVOID addr) {
 
 TString TStackWalker::FormatEntry(CallstackEntry const &Entry) {
 	return Entry.FileName.empty() ?
-		TStringCast(_T('!')
-					<< (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str()) << _T('@')
-					<< (Entry.ModuleBase ? TStringCast(Entry.ModuleBase
-													   << _T("<+")
-													   << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase
-													   << _T('>')) :
-						TStringCast(Entry.Address)) << _T(':')
+		TStringCast(_T('!') << (Entry.ModuleName.empty() ? STR_NoModuleName : Entry.ModuleName.c_str())
+					<< _T('@') << (Entry.ModuleBase ?
+								   TStringCast(Entry.ModuleBase
+											   << _T('+') << std::hex
+											   << (__ARC_INT)Entry.Address - (__ARC_INT)Entry.ModuleBase) :
+								   TStringCast(Entry.Address))
+					<< _T(':')
 					<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-					<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T("")))
-		:
-		TStringCast(Entry.FileName << _T('(') << Entry.LineNumber
-					//<< (Entry.LineOffset ? TStringCast(_T("<+") << Entry.LineOffset << _T('>')) : _T("")) << _T("):")
-					<< (Entry.LineOffset ? _T("+") : _T("")) << _T("):")
+					<< (Entry.SmybolOffset ? TStringCast(_T('+') << Entry.SmybolOffset) : _T(""))
+		) :
+		TStringCast(Entry.FileName << _T('#') << Entry.LineNumber
+					// << (Entry.LineOffset ? _T("+") : _T(""))
+					<< _T(':')
 					<< (Entry.SymbolName.empty() ? STR_NoSymbolName : Entry.SymbolName.c_str())
-					//<< (Entry.SmybolOffset ? TStringCast(_T("<+") << Entry.SmybolOffset << _T('>')) : _T(""))
 		);
 }
 
 TString TStackWalker::FormatError(LPCTSTR FuncHint, DWORD errCode, PVOID addr) {
-	TString ErrMsg;	DecodeSysError(errCode, ErrMsg);
-	return TStringCast(_T('!') << FuncHint << _T('@') << addr << _T(':') << ErrMsg);
+	TString ErrMsg;
+	if (DecodeSysError(errCode, ErrMsg) != nullptr)
+		return TStringCast(_T('!') << FuncHint << _T('@') << addr << _T(':') << ErrMsg);
+	return TStringCast(_T('!') << FuncHint << _T('@') << addr << _T(":0x") << std::hex << errCode);
 }
 
 class StackWalker_Impl : public TStackWalker {
@@ -203,7 +211,7 @@ public:
 	TString const OptSymPath;
 
 	StackWalker_Impl(bool xOnlineSymServer, TString const &xOptSymPath) :
-		StackWalker_Impl(THandle(CONSTRUCTION::VALIDATED, GetCurrentProcess(), THandle::NullDealloc), xOnlineSymServer, xOptSymPath) {}
+		StackWalker_Impl(THandle::Dummy(GetCurrentProcess()), xOnlineSymServer, xOptSymPath) {}
 
 	StackWalker_Impl(THandle &&xProcess, bool xOnlineSymServer, TString const &xOptSymPath) :
 		Process(std::move(xProcess)), OnlineSymServer(xOnlineSymServer), OptSymPath(xOptSymPath) {
@@ -212,7 +220,7 @@ public:
 
 		// Initialize symbols
 		if (!SymInitializeT(*Process, TraceSymPath.c_str(), TRUE))
-			SYSFAIL(_T("Unable to initialize symbol"));
+			SYSFAIL(_T("Unable to initialize symbol resolver"));
 
 		// Configure symbol lookup
 		DWORD symOptions = SymGetOptions();
@@ -220,6 +228,7 @@ public:
 		symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS;
 		symOptions |= SYMOPT_DEFERRED_LOADS;
 		symOptions |= SYMOPT_NO_PROMPTS;
+		//symOptions |= SYMOPT_DEBUG;
 		symOptions = SymSetOptions(symOptions);
 	}
 
@@ -248,7 +257,7 @@ public:
 		imageType = IMAGE_FILE_MACHINE_AMD64;
 		stackFrame.AddrPC.Offset = Context.Rip;
 		stackFrame.AddrPC.Mode = AddrModeFlat;
-		stackFrame.AddrFrame.Offset = Context.Rsp;
+		stackFrame.AddrFrame.Offset = Context.Rbp;
 		stackFrame.AddrFrame.Mode = AddrModeFlat;
 		stackFrame.AddrStack.Offset = Context.Rsp;
 		stackFrame.AddrStack.Mode = AddrModeFlat;
@@ -266,20 +275,20 @@ public:
 #error "Platform not supported!"
 #endif
 
-		IMAGEHLP_SYMBOLT_PACKAGE SymbolBuffer;
-		PIMAGEHLP_SYMBOLT Symbol = &SymbolBuffer.sym;
+		SYMBOL_INFO_PACKAGE_T SymbolBuffer;
+		SYMBOL_INFO_T &Symbol = SymbolBuffer.si;
 		memset(&SymbolBuffer, 0, sizeof(SymbolBuffer));
-		Symbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOLT);
-		Symbol->MaxNameLength = MAX_SYM_NAME;
+		Symbol.SizeOfStruct = sizeof(SYMBOL_INFO_T);
+		Symbol.MaxNameLen = MAX_SYM_NAME;
 
-		IMAGEHLP_LINET Line;
+		IMAGEHLP_LINE_T Line;
 		memset(&Line, 0, sizeof(Line));
 		Line.SizeOfStruct = sizeof(Line);
 
 		// We prepare enough buffer, but only ask for smaller structure
-		IMAGEHLP_MODULET Module;
-		memset(&Module, 0, sizeof(Module));
-		Module.SizeOfStruct = sizeof(_IMAGEHLP_MODULET);
+		TTypedBuffer<IMAGEHLP_MODULE_T> Module;
+		memset(&Module, 0, sizeof(IMAGEHLP_MODULE_T));
+		Module->SizeOfStruct = sizeof(IMAGEHLP_MODULE_V2_T);
 
 		bool Continue = true;
 		while (Continue) {
@@ -312,18 +321,15 @@ public:
 
 			// Do we have a valid PC?
 			if (stackFrame.AddrPC.Offset != 0) {
-				// Gather procedure info
-				if (SymGetSymFromAddrX(*Process, stackFrame.AddrPC.Offset, &csEntry.SmybolOffset, (PIMAGEHLP_SYMBOLX)Symbol)) {
-					//csEntry.SymbolName.assign(STACKWALK_MAX_NAMELEN, _T('\0'));
-					//csEntry.SymbolName.resize(UnDecorateSymbolName(Symbol->Name, (LPTSTR)csEntry.SymbolName.data(), STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY));
-					TString UDSymbolName(TStringCast((PCHAR)Symbol->Name));
-					csEntry.SymbolName.assign(STACKWALK_MAX_NAMELEN, _T('\0'));
-					csEntry.SymbolName.resize(UnDecorateSymbolNameT(UDSymbolName.c_str(), (LPTSTR)csEntry.SymbolName.data(), STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY));
-					if (csEntry.SymbolName.empty())
-						Continue = ErrorCallback(_T("UnDecorateSymbolName"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
-				} else
-					Continue = ErrorCallback(_T("SymGetSymFromAddr"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
-				if (!Continue) break;
+				// Gather module info
+				if (SymGetModuleInfoT(*Process, stackFrame.AddrPC.Offset, &Module)) {
+					csEntry.SymbolType = (CallstackEntry::TSymbolType)Module->SymType;
+					csEntry.ModuleName = Module->ModuleName;
+					csEntry.ModuleBase = (PVOID)Module->BaseOfImage;
+				} else {
+					Continue = ErrorCallback(_T("SymGetModuleInfo"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
+					if (!Continue) break;
+				}
 
 				// Gather line info
 				if (SymGetLineFromAddrT(*Process, stackFrame.AddrPC.Offset, &csEntry.LineOffset, &Line)) {
@@ -334,15 +340,15 @@ public:
 					if (!Continue) break;
 				}
 
-				// Gather module info
-				if (SymGetModuleInfoT(*Process, stackFrame.AddrPC.Offset, (PIMAGEHLP_MODULET)&Module)) {
-					csEntry.SymbolType = (CallstackEntry::TSymbolType)Module.SymType;
-					csEntry.ModuleName.assign(Module.ModuleName);
-					csEntry.ModuleBase = (PVOID)Module.BaseOfImage;
-				} else {
-					Continue = ErrorCallback(_T("SymGetModuleInfo"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
-					if (!Continue) break;
-				}
+				// Gather procedure info
+				if (SymFromAddrT(*Process, stackFrame.AddrPC.Offset, &csEntry.SmybolOffset, &Symbol)) {
+					csEntry.SymbolName.assign(STACKWALK_MAX_NAMELEN, _T('\0'));
+					csEntry.SymbolName.resize(UnDecorateSymbolNameT(Symbol.Name, (LPTSTR)csEntry.SymbolName.data(), STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY));
+					if (csEntry.SymbolName.empty())
+						Continue = ErrorCallback(_T("UnDecorateSymbolName"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
+				} else
+					Continue = ErrorCallback(_T("SymGetSymFromAddr"), GetLastError(), (PVOID)stackFrame.AddrPC.Offset);
+				if (!Continue) break;
 
 				Continue = EntryCallback(csEntry);
 				SetLastError(ERROR_SUCCESS);

@@ -96,6 +96,7 @@ protected:
 	class __Locked_Iterator : public Iter {
 		typedef __Locked_Iterator<Iter> _this;
 		friend class TSyncBlockingDeque<T>;
+
 	protected:
 		MRLock _LockRef;
 
@@ -109,7 +110,7 @@ protected:
 			_LockRef(std::move(xIterator._LockRef)) {}
 
 	public:
-		__Locked_Iterator(_this &&xIterator) noexcept :
+		__Locked_Iterator(_this &&xIterator) NOEXCEPT :
 			Iter(std::move(xIterator)),
 			_LockRef(std::move(xIterator._LockRef)) {}
 
@@ -258,11 +259,11 @@ protected:
 
 	template<class Iter>
 	__Locked_Iterator<Iter> __Create_Iterator(FCIterGetter<Iter> const &IterGetter, MRLock &LockRef,
-		WAITTIME Timeout, THandleWaitable *AbortEvent) const;
+											  WAITTIME Timeout, THandleWaitable *AbortEvent) const;
 
 	template<class Iter>
 	__Locked_Iterator<Iter> __Create_Iterator(FMIterGetter<Iter> const &IterGetter, MRLock &LockRef,
-		WAITTIME Timeout, THandleWaitable *AbortEvent);
+											  WAITTIME Timeout, THandleWaitable *AbortEvent);
 #else 
 	static TSDQBaseLockInfo __PushPopLockInfo;
 	void __PushPopLock_Check(TLock const &Lock) const;
@@ -290,7 +291,7 @@ protected:
 
 	TQueueAccessor __Accessor_Pickup_Safe(void);
 	TQueueAccessor __Accessor_Pickup_Gated(TSyncCounter &Hold, TEvent &Sync, TimeStamp &EntryTS,
-		WAITTIME &Timeout, THandleWaitable *AbortEvent);
+										   WAITTIME &Timeout, THandleWaitable *AbortEvent);
 
 #define __Impl__Push(method)								\
 	if (Accessor->empty() && PopWaiters) ContentWait.Set();	\
@@ -472,19 +473,22 @@ public:
 class TSyncBlockingDequeException : public Exception {
 	typedef TSyncBlockingDequeException _this;
 
-protected:
-	template <typename... Params>
-	TSyncBlockingDequeException(TString const &xContainerName, TString &&xSource,
-		LPCTSTR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ContainerName(xContainerName) {}
-
 public:
 	TString const ContainerName;
 
-	template <class CSyncQueue, typename... Params>
-	static _this* Create(CSyncQueue const &xSyncQueue, TString &&xSource,
-		LPCTSTR ReasonFmt, Params&&... xParams) {
-		return DEFAULT_NEW(_this, xSyncQueue.Name, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
+	template <typename T, typename... Params>
+	TSyncBlockingDequeException(TSyncBlockingDeque<T> const &xContainer, TString &&xSource,
+								LPCTSTR ReasonFmt, Params&&... xParams) :
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ContainerName(xContainer.Name) {}
+
+	TSyncBlockingDequeException(_this &&xException) NOEXCEPT
+		: Exception(std::move(xException)), ContainerName(std::move(xException.ContainerName)) {}
+
+	TSyncBlockingDequeException(_this const &xException)
+		: Exception(xException), ContainerName(xException.ContainerName) {}
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override {
+		return DEFAULT_NEW(_this, *this);
 	}
 
 	TString const& Why(void) const override {
@@ -498,9 +502,9 @@ public:
 
 //! @ingroup Threading
 //! Raise an exception within a synchronized queue with formatted string message
-#define __SDQFAIL(inst, ...) {															\
-	SOURCEMARK;																			\
-	throw TSyncBlockingDequeException::Create(inst, std::move(__SrcMark), __VA_ARGS__);	\
+#define __SDQFAIL(inst, ...) {													\
+	SOURCEMARK;																	\
+	throw TSyncBlockingDequeException(inst, std::move(__SrcMark), __VA_ARGS__);	\
 }
 
 //! Perform logging within a synchronized queue
@@ -596,58 +600,58 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 	}
 }
 
-#define __IMPL_IterLockOp(sync_raii,free_olock,regain_olock_raii,replace_olock,spin_nlock,single_nlock,opname)	\
-	TAllocResource<__ARC_INT> WaitCounter([&] { return IterWaiters++; }, [&](__ARC_INT &) { --IterWaiters; });	\
-	TimeStamp EntryTS;																							\
-	while (true) {																								\
-		{																										\
-			sync_raii;																							\
-			free_olock;																							\
-			{																									\
-				regain_olock_raii;																				\
-				if (spin_nlock) {																				\
-					replace_olock;																				\
-					break;																						\
-				}																								\
-				/* Allocate wait counter */																		\
-				if (!WaitCounter.Allocated()) {																	\
-					if (*WaitCounter) {																			\
-						/* Check if we are racing against the event object allocation */						\
-						while (!IterWaitEvent.Allocated()) SwitchToThread();									\
-					}																							\
-					/* Check again before wait */																\
-					if (single_nlock) {																			\
-						replace_olock;																			\
-						break;																					\
-					}																							\
-				}																								\
-			}																									\
-		}																										\
-		/* Calculate remaining wait time */																		\
-		if (Timeout != FOREVER) {																				\
-			if (!EntryTS) {																						\
-				EntryTS = TimeStamp::Now();																		\
-			} else {																							\
-				TimeStamp Now = TimeStamp::Now();																\
-				INT64 WaitDur = (Now - EntryTS).GetValue(TimeUnit::MSEC);										\
-				Timeout = Timeout > WaitDur ? Timeout - (WAITTIME)WaitDur : 0;									\
-				EntryTS = Now;																					\
-			}																									\
-		}																										\
-		/* Perform the wait */																					\
-		WaitResult WRet = AbortEvent ?																			\
-			WaitMultiple({ IterWaitEvent, *AbortEvent }, false, Timeout) :										\
-			IterWaitEvent.WaitFor(Timeout);																		\
-		/* Analyze the result */																				\
-		switch (WRet) {																							\
-			case WaitResult::Error: SYSFAIL(_T("Failed to " opname));											\
-			case WaitResult::Signaled:																			\
-			case WaitResult::Signaled_0: continue;																\
-			case WaitResult::Signaled_1:																		\
-			case WaitResult::TimedOut: break;																	\
-			default: SYSFAIL(_T("Unable to " opname));															\
-		}																										\
-		break;																									\
+#define __IMPL_IterLockOp(sync_raii, free_olock, regain_olock_raii, replace_olock, spin_nlock, single_nlock, opname)	\
+	TAllocResource<__ARC_INT> WaitCounter([&] { return IterWaiters++; }, [&](__ARC_INT &) { --IterWaiters; });			\
+	TimeStamp EntryTS;																									\
+	while (true) {																										\
+		{																												\
+			sync_raii;																									\
+			free_olock;																									\
+			{																											\
+				regain_olock_raii;																						\
+				if (spin_nlock) {																						\
+					replace_olock;																						\
+					break;																								\
+				}																										\
+				/* Allocate wait counter */																				\
+				if (!WaitCounter.Allocated()) {																			\
+					if (*WaitCounter) {																					\
+						/* Check if we are racing against the event object allocation */								\
+						while (!IterWaitEvent.Allocated()) SwitchToThread();											\
+					}																									\
+					/* Check again before wait */																		\
+					if (single_nlock) {																					\
+						replace_olock;																					\
+						break;																							\
+					}																									\
+				}																										\
+			}																											\
+		}																												\
+		/* Calculate remaining wait time */																				\
+		if (Timeout != FOREVER) {																						\
+			if (!EntryTS) {																								\
+				EntryTS = TimeStamp::Now();																				\
+			} else {																									\
+				TimeStamp Now = TimeStamp::Now();																		\
+				INT64 WaitDur = (Now - EntryTS).GetValue(TimeUnit::MSEC);												\
+				Timeout = Timeout > WaitDur ? Timeout - (WAITTIME)WaitDur : 0;											\
+				EntryTS = Now;																							\
+			}																											\
+		}																												\
+		/* Perform the wait */																							\
+		WaitResult WRet = AbortEvent ?																					\
+			WaitMultiple({ IterWaitEvent, *AbortEvent }, false, Timeout) :												\
+			IterWaitEvent.WaitFor(Timeout);																				\
+		/* Analyze the result */																						\
+		switch (WRet) {																									\
+			case WaitResult::Error: SYSFAIL(_T("Failed to ") opname);													\
+			case WaitResult::Signaled:																					\
+			case WaitResult::Signaled_0: continue;																		\
+			case WaitResult::Signaled_1:																				\
+			case WaitResult::TimedOut: break;																			\
+			default: SYSFAIL(_T("Unable to ") opname);																	\
+		}																												\
+		break;																											\
 	}
 
 #define __IMPL_LinkLock(exlock, lockbase, container)						\
@@ -659,7 +663,7 @@ void TSyncBlockingDeque<T>::__Lock_Demote(TSDQPushPopLockInfo *LockInfo, bool is
 
 template<class T>
 typename TLockable::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& BaseLock,
-	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+																		 TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we have already promoted
 	if (LockInfo->_ExclusiveLock) return { LockInfo->_ExclusiveLock };
 
@@ -669,26 +673,26 @@ typename TLockable::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& 
 		auto LinkedLockBaseInfo = static_cast<TSDQBaseLockInfo*>(__LockInfo(*LockInfo->_SharedLock));
 		auto LinkedLockInfo = dynamic_cast<TSDQIterLockInfo*>(LinkedLockBaseInfo);
 		__IMPL_IterLockOp(auto QueueLock = __Accessor_Sync(),
-			{
-				(*SRWSync).EndRead(); __LockDrop(*LinkedLockInfo->_IterLock);
-			},
-			TAllocResource<int> __LockRecover_RAII(0,
-				[&](int &) { *LinkedLockInfo->_IterLock = SRWSync.Lock_Read(); }
-			),
-			{
-				__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock);
-				__LockRecover_RAII.Invalidate();
-			},
-				*Ret = SRWSync.TryLock_Write(),
-				*Ret = SRWSync.TryLock_Write(1),
-				"promote to exclusive lock"
-				);
+						  {
+							  (*SRWSync).EndRead(); __LockDrop(*LinkedLockInfo->_IterLock);
+						  },
+						  TAllocResource<int> __LockRecover_RAII(0,
+																 [&](int &) { *LinkedLockInfo->_IterLock = SRWSync.Lock_Read(); }
+						  ),
+						  {
+							  __IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock);
+							  __LockRecover_RAII.Invalidate();
+						  },
+							  *Ret = SRWSync.TryLock_Write(),
+							  *Ret = SRWSync.TryLock_Write(1),
+							  _T("promote to exclusive lock")
+							  );
 	} else {
 		__IMPL_IterLockOp(auto QueueLock = __Accessor_Sync(), {}, {},
-			__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock),
-			*Ret = SRWSync.TryLock_Write(),
-			*Ret = SRWSync.TryLock_Write(1),
-			"acquire exclusive lock"
+						  __IMPL_LinkLock(*Ret, BaseLock, LockInfo->_ExclusiveLock),
+						  *Ret = SRWSync.TryLock_Write(),
+						  *Ret = SRWSync.TryLock_Write(1),
+						  _T("acquire exclusive lock")
 		);
 	}
 	return std::move(Ret);
@@ -696,7 +700,7 @@ typename TLockable::MRLock TSyncBlockingDeque<T>::__GetExclusiveIterLock(TLock& 
 
 template<class T>
 typename TLockable::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock& BaseLock,
-	TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+																	  TSDQPushPopLockInfo *LockInfo, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	// Check if we already have a shared iterator lock
 	if (LockInfo->_SharedLock) return { LockInfo->_SharedLock };
 
@@ -706,10 +710,10 @@ typename TLockable::MRLock TSyncBlockingDeque<T>::__GetSharedIterLock(TLock& Bas
 		__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_SharedLock);
 	} else {
 		__IMPL_IterLockOp({}, {}, {},
-			__IMPL_LinkLock(*Ret, BaseLock, LockInfo->_SharedLock),
-			*Ret = SRWSync.TryLock_Read(),
-			*Ret = SRWSync.TryLock_Read(1),
-			"acquire shared lock"
+						  __IMPL_LinkLock(*Ret, BaseLock, LockInfo->_SharedLock),
+						  *Ret = SRWSync.TryLock_Read(),
+						  *Ret = SRWSync.TryLock_Read(1),
+						  _T("acquire shared lock")
 		);
 	}
 	return std::move(Ret);
@@ -839,7 +843,7 @@ void TSyncBlockingDeque<T>::__Unlock(TLockInfo *LockInfo) {
 
 template<class T>
 WaitResult TSyncBlockingDeque<T>::__WaitFor_Event(TEvent &Event, TimeStamp &EntryTS,
-	WAITTIME &Timeout, THandleWaitable *AbortEvent) {
+												  WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	WaitResult WRet = AbortEvent ?
 		WaitMultiple({ Event, *AbortEvent }, false, Timeout) :
 		Event.WaitFor(Timeout);
@@ -937,28 +941,28 @@ template<class T>
 typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::begin(
 	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	return __Create_Iterator((FMIterGetter<typename Container::iterator>)&Container::begin,
-		PushPopLock, Timeout, AbortEvent);
+							 PushPopLock, Timeout, AbortEvent);
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::iterator TSyncBlockingDeque<T>::end(
 	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	return __Create_Iterator((FMIterGetter<typename Container::iterator>)&Container::end,
-		PushPopLock, Timeout, AbortEvent);
+							 PushPopLock, Timeout, AbortEvent);
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::rbegin(
 	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	return __Create_Iterator((FMIterGetter<typename Container::reverse_iterator>)&Container::rbegin,
-		PushPopLock, Timeout, AbortEvent);
+							 PushPopLock, Timeout, AbortEvent);
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::reverse_iterator TSyncBlockingDeque<T>::rend(
 	MRLock &PushPopLock, WAITTIME Timeout, THandleWaitable *AbortEvent) {
 	return __Create_Iterator((FMIterGetter<typename Container::reverse_iterator>)&Container::rend,
-		PushPopLock, Timeout, AbortEvent);
+							 PushPopLock, Timeout, AbortEvent);
 }
 
 template<class T>

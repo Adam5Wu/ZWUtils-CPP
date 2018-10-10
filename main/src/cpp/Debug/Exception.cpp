@@ -33,12 +33,41 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Exception.h"
 
 #include "Logging.h"
+#include "Memory/ObjAllocator.h"
 
 #define ExceptSourceNone	_T("(unknown source)")
 #define ExceptReasonNone	_T("(unknown reason)")
 #define FExceptionMessage	_T("Exception @ [%s]: %s")
 
+//#define __EXCEPTION_MEMDEBUG__
+
 // --- Exception
+
+Exception::Exception(_this &&xException) NOEXCEPT
+	: Source(std::move(xException.Source))
+	, Reason(std::move(xException.Reason)) {
+#ifdef __EXCEPTION_MEMDEBUG__
+	LOG(_T("------------- Exception copy constructed!"));
+#endif
+}
+
+Exception::Exception(_this const &xException)
+	: Source(xException.Source), Reason(xException.Reason) {
+#ifdef __EXCEPTION_MEMDEBUG__
+	LOG(_T("------------- Exception move constructed!"));
+#endif
+}
+
+Exception::~Exception(void) {
+#ifdef __EXCEPTION_MEMDEBUG__
+	LOG(_T("------------- Exception freed!"));
+#endif
+}
+
+Exception* Exception::MakeClone(IObjAllocator<void> &_Alloc) const {
+	return DEFAULT_NEW(Exception, *this);
+}
+
 TString const& Exception::Why(void) const {
 	if (rWhy.empty()) {
 		PCTCHAR dSource = Source.empty() ? ExceptSourceNone : Source.c_str();
@@ -54,6 +83,10 @@ void Exception::Show(void) const {
 }
 
 // --- STException
+STException* STException::MakeClone(IObjAllocator<void> &_Alloc) const {
+	return DEFAULT_NEW(STException, *this);
+}
+
 TString STException::ExtractTopFrame(std::deque<TString> &xStackTrace) {
 	TString Ret;
 	if (!xStackTrace.empty()) {
@@ -84,15 +117,22 @@ void STException::ShowStack(void) const {
 #include "StackWalker.h"
 
 std::deque<TString> STException::TraceStack(int PopFrame) {
+	CONTEXT CurContext;
+	RtlCaptureContext(&CurContext);
+
 	std::deque<TString> StrTrace;
-	CONTEXT CurContext;	RtlCaptureContext(&CurContext);
-	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), CurContext,
-						 [&](TStackWalker::CallstackEntry const& Entry) {
-							 if (--PopFrame < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
-							 return true;
-						 })) StrTrace.emplace_back(TraceFailureMessage);
-						 return StrTrace;
+	if (!LocalStackTrace(
+		THandle::Dummy(GetCurrentThread()), CurContext,
+		[&](TStackWalker::CallstackEntry const& Entry) {
+			if (--PopFrame < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
+			return true;
+		})) {
+		StrTrace.emplace_back(TraceFailureMessage);
+	}
+	return StrTrace;
 }
+
+// --- SEHException
 
 #define FSEHMessage	_T("%s @%p")
 #define AccessOp_Read _T("READ")
@@ -188,13 +228,14 @@ SEHException::SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xS
 void SEHException::Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr) {
 	std::deque<TString> StrTrace;
 	CONTEXT ExcContext = *ExcPtr->ContextRecord;
-	if (!LocalStackTrace(THandle(GetCurrentThread(), TResource<HANDLE>::NullDealloc), ExcContext,
-						 [&](TStackWalker::CallstackEntry const &Entry) {
-							 return StrTrace.emplace_back(TStackWalker::FormatEntry(Entry)), true;
-						 })) {
+	if (!LocalStackTrace(
+		THandle::Dummy(GetCurrentThread()), ExcContext,
+		[&](TStackWalker::CallstackEntry const &Entry) {
+			return StrTrace.emplace_back(TStackWalker::FormatEntry(Entry)), true;
+		})) {
 		StrTrace.emplace_back(TraceFailureMessage);
 	}
-	throw DEFAULT_NEW(SEHException, _T("<SEH Exception Translator>"), ExcPtr->ExceptionRecord, std::move(StrTrace));
+	throw SEHException(_T("<SEH Exception Translator>"), ExcPtr->ExceptionRecord, std::move(StrTrace));
 }
 
 bool SEHTranslation = false;

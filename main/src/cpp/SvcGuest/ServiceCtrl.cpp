@@ -14,11 +14,11 @@
 #include "Memory/Resource.h"
 
 #include <Windows.h>
-#include <KtmW32.h>
+#include <ktmw32.h>
 
 #include <algorithm>
 
-#pragma comment(lib, "KtmW32.lib")
+#pragma comment(lib, "ktmw32.lib")
 
 #define SERVICECTRL_INSTALL		"Install"
 #define SERVICECTRL_UNINSTALL	"Uninstall"
@@ -601,9 +601,8 @@ void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int 
 		} else {
 			LOG(_T("Unrecognized service operation '%s'"), lpszCmdLine);
 		}
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Failed to process request"));
-		DEFAULT_DESTROY(Exception, e);
 	}
 
 	if (HasConsole) system("pause");

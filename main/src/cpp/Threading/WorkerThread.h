@@ -90,6 +90,7 @@ class TWorkerThread : public THandleWaitable {
 	typedef TWorkerThread _this;
 	friend class ManagedRef<_this>;
 	friend class IObjAllocator<_this>;
+
 public:
 	enum class State : unsigned int {
 		Constructed,
@@ -193,7 +194,7 @@ public:
 	 **/
 	Exception* FatalException(bool Prune = false);
 
-	typedef std::function<void(TWorkerThread &, State const &) throw()> TStateNotice;
+	typedef std::function<void(TWorkerThread &, State const &) NOEXCEPT> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;
 	/**
 	 * Register a notification callback when specified thread state is reached
@@ -223,18 +224,20 @@ typedef ManagedRef<TWorkerThread> MRWorkerThread;
 class TWorkerThreadException : public Exception {
 	typedef TWorkerThreadException _this;
 
-protected:
-	template<typename... Params>
-	TWorkerThreadException(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), WorkerThreadName(xWorkerThread.Name) {}
-
 public:
 	TString const WorkerThreadName;
 
 	template<typename... Params>
-	static _this* Create(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-		return DEFAULT_NEW(_this, xWorkerThread, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
-	}
+	TWorkerThreadException(TWorkerThread const &xWorkerThread, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
+		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), WorkerThreadName(xWorkerThread.Name) {}
+
+	TWorkerThreadException(_this &&xException) NOEXCEPT
+		: Exception(std::move(xException)), WorkerThreadName(std::move(xException.WorkerThreadName)) {}
+
+	TWorkerThreadException(_this const &xException)
+		: Exception(xException), WorkerThreadName(xException.WorkerThreadName) {}
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
 
 	TString const& Why(void) const override;
 };
@@ -245,13 +248,9 @@ class TWorkThreadSelfDestruct : public TWorkerThreadException {
 protected:
 	static PCTCHAR const REASON_THREADSELFDESTRUCT;
 
+public:
 	TWorkThreadSelfDestruct(TWorkerThread const &xWorkerThread, TString &&xSource) :
 		TWorkerThreadException(xWorkerThread, std::move(xSource), REASON_THREADSELFDESTRUCT) {}
-
-public:
-	static _this* Create(TWorkerThread const &xWorkerThread, TString &&xSource) {
-		return DEFAULT_NEW(_this, xWorkerThread, std::move(xSource));
-	}
 };
 
 #endif //ZWUtils_WorkerThread_H

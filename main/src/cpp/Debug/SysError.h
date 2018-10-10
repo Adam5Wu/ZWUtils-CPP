@@ -44,8 +44,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Misc/TString.h"
 
-#include "Memory/ObjAllocator.h"
-
 #include "Debug.h"
 #include "Logging.h"
 #include "Exception.h"
@@ -64,11 +62,11 @@ PCTCHAR DecodeLastSysError(va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the error code in GetLastError using a pre-allocated message buffer
-void DecodeLastSysError(PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
+PCTCHAR DecodeLastSysError(PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the error code in GetLastError and allocate a string buffer for the message
-void DecodeLastSysError(TString &StrBuf, va_list *pArgs = nullptr);
+PCTCHAR DecodeLastSysError(TString &StrBuf, va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the specified system error code and allocate a buffer for the message (free with FreeErrorMessage)
@@ -76,11 +74,11 @@ PCTCHAR DecodeSysError(unsigned int ErrCode, va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the specified system error code using a pre-allocated message buffer
-void DecodeSysError(unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
+PCTCHAR DecodeSysError(unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the specified system error code and allocate a string buffer for the message
-void DecodeSysError(unsigned int ErrCode, TString &StrBuf, va_list *pArgs = nullptr);
+PCTCHAR DecodeSysError(unsigned int ErrCode, TString &StrBuf, va_list *pArgs = nullptr);
 
 #ifdef WINDOWS
 
@@ -90,11 +88,11 @@ PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, va_list *pArgs = nu
 
 //! @ingroup Utilities
 //! Decode the specified module error code using a pre-allocated message buffer
-void DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
+PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs = nullptr);
 
 //! @ingroup Utilities
 //! Decode the specified module error code using a pre-allocated message buffer
-void DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_list *pArgs = nullptr);
+PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_list *pArgs = nullptr);
 
 #endif
 
@@ -111,7 +109,7 @@ DecodeSysError(errcode, __SysErrMsg, __VA_ARGS__);
 
 #ifdef WINDOWS
 
-void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
+PCTCHAR __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 	PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
 	PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
 
@@ -193,30 +191,32 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
  **/
 class SystemError : public Exception {
 	typedef SystemError _this;
-	friend class IObjAllocator<_this>;
 
 protected:
 	TString mutable rErrorMsg;
+
+public:
+	unsigned int const ErrorCode;
 
 	template<typename... Params>
 	SystemError(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...), ErrorCode(xErrorCode) {}
 
-public:
-	unsigned int const ErrorCode;
+	SystemError(_this &&xException) NOEXCEPT
+		: Exception(std::move(xException)), ErrorCode(xException.ErrorCode) {}
+
+	SystemError(_this const &xException)
+		: Exception(xException), ErrorCode(xException.ErrorCode) {}
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
 
 	virtual TString const& ErrorMessage(void) const;
 	TString const& Why(void) const override;
-
-	template<typename... Params>
-	static SystemError* Create(unsigned int xErrorCode, TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-		return DEFAULT_NEW(SystemError, xErrorCode, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
-	}
 };
 
 //! @ingroup Utilities
 //! Raise a system error exception with a formatted string message
-#define SYSERRFAILS(src, errcode, fmt, ...)	throw SystemError::Create(src, errcode, fmt, __VA_ARGS__)
+#define SYSERRFAILS(src, errcode, fmt, ...)	SystemError(src, errcode, fmt, __VA_ARGS__)
 #define SYSERRFAIL(errcode, fmt, ...) {								\
 	SOURCEMARK														\
 	SYSERRFAILS(errcode, std::move(__SrcMark), fmt, __VA_ARGS__);	\

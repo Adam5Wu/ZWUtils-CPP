@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "SyncObjects.h"
 
-#define _IMPL_AbortableLock(spin_trylock,single_trylock,objname)										\
+#define _IMPL_AbortableLock(spin_trylock, single_trylock, objname)										\
 	TAllocResource<__ARC_INT> WaitCounter([&] { return WaitCnt++; }, [&](__ARC_INT &) { --WaitCnt; });	\
 	TimeStamp EntryTS;																					\
 	while (!spin_trylock) {																				\
@@ -62,18 +62,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 			WaitEvent.WaitFor(Timeout);																	\
 		/* Analyze the result */																		\
 		switch (WRet) {																					\
-			case WaitResult::Error: SYSFAIL(_T("Failed to lock " objname));								\
+			case WaitResult::Error: SYSFAIL(_T("Failed to lock ") objname);								\
 			case WaitResult::Signaled:																	\
 			case WaitResult::Signaled_0: break;															\
 			case WaitResult::Signaled_1:																\
 			case WaitResult::TimedOut: return false;													\
-			default: SYSFAIL(_T("Unable to lock" objname));												\
+			default: SYSFAIL(_T("Unable to lock ") objname);											\
 		}																								\
 	}																									\
 	return true;
 
 bool TLockableCS::__Lock_Abortable(WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	_IMPL_AbortableLock(__TryLock(), TryEnter(), "critical section");
+	_IMPL_AbortableLock(__TryLock(), TryEnter(), _T("critical section"));
 }
 
 #ifdef __ZWUTILS_SYNC_SLIMRWLOCK
@@ -82,11 +82,11 @@ TLockableSRW::TSRWLockInfo TLockableSRW::__ReadLockInfo = { false };
 TLockableSRW::TSRWLockInfo TLockableSRW::__WriteLockInfo = { true };
 
 bool TLockableSRW::__Lock_Read_Do(TInterlockedArchInt &WaitCnt, TEvent &WaitEvent, WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	_IMPL_AbortableLock(__TryLock_Read(), __Lock_Read_Probe(1), "SRW lock");
+	_IMPL_AbortableLock(__TryLock_Read(), __Lock_Read_Probe(1), _T("SRW lock"));
 }
 
 bool TLockableSRW::__Lock_Write_Do(TInterlockedArchInt &WaitCnt, TEvent &WaitEvent, WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	_IMPL_AbortableLock(__TryLock_Write(), __Lock_Write_Probe(1), "SRW lock");
+	_IMPL_AbortableLock(__TryLock_Write(), __Lock_Write_Probe(1), _T("SRW lock"));
 }
 
 #endif

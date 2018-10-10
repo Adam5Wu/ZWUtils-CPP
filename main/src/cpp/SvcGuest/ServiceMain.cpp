@@ -89,9 +89,8 @@ static VOID WINAPI _ServiceControlHandler(DWORD fdwControl) {
 			default:
 				LOG(_T("WARNING: Unrecognized service control code %d, ignored"), fdwControl);
 		}
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Unhanded Exception in service control handler"));
-		DEFAULT_DESTROY(Exception, e);
 	}
 }
 
@@ -124,9 +123,8 @@ static void _ServiceMain_Inner(DWORD dwArgc, LPCTSTR *lpszArgv) {
 
 		// Report stop pending
 		ServiceReport(SERVICE_STOP_PENDING, 100);
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Abnormal service termination due to unhanded Exception"));
-		DEFAULT_DESTROY(Exception, e);
 
 		ServiceStatus.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
 		ServiceStatus.dwServiceSpecificExitCode = -1;
@@ -200,9 +198,8 @@ static bool _Invoke_ServiceEvent(TString const &SvcName, LPCTSTR EvtKind, Servic
 	try {
 		SvcEvt();
 		return true;
-	} catch (Exception* e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Exception in service module '%s' %s handler"), SvcName.c_str(), EvtKind);
-		DEFAULT_DESTROY(Exception, e);
 		return false;
 	}
 }
@@ -231,9 +228,8 @@ static DWORD ServiceModule_Init() {
 	try {
 		// Initialize each service module
 		ServiceMain_LoadModules();
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Unhanded Exception in service module initializer"));
-		DEFAULT_DESTROY(Exception, e);
 		return 100;
 	}
 	return 0;
@@ -386,9 +382,8 @@ static void ServiceModule_FInit(void) {
 	try {
 		// Finalize each service module
 		ServiceMain_UnloadModules();
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Unhanded Exception in service module finalizer"));
-		DEFAULT_DESTROY(Exception, e);
 	}
 }
 
@@ -513,9 +508,8 @@ DWORD WINAPI ServiceMain(DWORD dwArgc, LPCWSTR *lpszArgv) {
 	ControlSEHTranslation(true);
 	try {
 		RunService(_SvcMain, dwArgc, lpszArgv, ServiceMain_ServiceStopNotify, ServiceMain_ServiceStopNotify);
-	} catch (Exception *e) {
+	} catch (_ECR_ e) {
 		LOGEXCEPTIONV(e, _T("WARNING: Unhanded Exception in service main"));
-		DEFAULT_DESTROY(Exception, e);
 		return -1;
 	}
 	return 0;

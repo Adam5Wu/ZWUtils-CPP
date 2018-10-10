@@ -598,6 +598,29 @@ public:
 	}
 };
 
+// Forward declaration avoid circular header dependency
+template<class T> class IObjAllocator;
+template<class T> IObjAllocator<T>& DefaultObjAllocator(void);
+
+class Cloneable : public TCastable<Cloneable> {
+	typedef Cloneable _this;
+
+protected:
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const;
+
+public:
+	template<class T>
+	static T* Clone(T const *xObj, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>());
+};
+
+template<class T>
+static T* Cloneable::Clone(T const *xObj, IObjAllocator<T> &xAlloc) {
+	if (auto Ref = Cast(xObj))
+		return dynamic_cast<T*>(Ref->MakeClone((IObjAllocator<void> &)xAlloc));
+	// Not a Cloneable derivative
+	return nullptr;
+}
+
 // For use in wrapper classes to determine how to construct wrapped instance
 class CONSTRUCTION {
 public:

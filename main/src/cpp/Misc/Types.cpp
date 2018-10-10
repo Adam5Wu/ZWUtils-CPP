@@ -379,6 +379,13 @@ UINT32 CountBits64(UINT64 Mask) {
 	return (Ret * 0x0101010101010101) >> 56;
 }
 
+// --- Clonable
+Cloneable* Cloneable::MakeClone(IObjAllocator<void> &_Alloc) const {
+	FAIL(_T("Abstract function"));
+}
+
+// --- CONSTURCTION
+
 struct CONSTRUCTION::EMPLACE_T const CONSTRUCTION::EMPLACE;
 struct CONSTRUCTION::HANDOFF_T const CONSTRUCTION::HANDOFF;
 struct CONSTRUCTION::CLONE_T const CONSTRUCTION::CLONE;

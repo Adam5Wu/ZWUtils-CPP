@@ -47,19 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Misc/TString.h"
 #include "Misc/Types.h"
 
-#include "ObjAllocator.h"
-
-class Cloneable : public TCastable<Cloneable> {
-	typedef Cloneable _this;
-
-protected:
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const;
-
-public:
-	template<class T>
-	static T* Clone(T const *xObj, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>());
-};
-
 class ManagedObj : public TCastable<ManagedObj> {
 	typedef ManagedObj _this;
 
@@ -91,6 +78,8 @@ public:
 		return TStringCast(_T("MObj@") << (void*)this << _T('(') << RefCount() << _T(')'));
 	}
 };
+
+#include "ObjAllocator.h"
 
 template<class TObject>
 class ManagedObjAdapter final : public TObject, public ManagedObj {
@@ -148,13 +137,5 @@ public:
 	}
 
 };
-
-#include "Debug/Exception.h"
-
-template<class T>
-static T* Cloneable::Clone(T const *xObj, IObjAllocator<T> &xAlloc) {
-	if (auto Ref = Cast(xObj)) return dynamic_cast<T*>(Ref->MakeClone((IObjAllocator<void> &)xAlloc));
-	else FAIL(_T("Not a Cloneable derivative"));
-}
 
 #endif

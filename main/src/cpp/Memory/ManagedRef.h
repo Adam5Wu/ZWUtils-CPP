@@ -98,7 +98,7 @@ public:
 	// Copy constructor
 	ManagedRef(_this const &xMR) : _Obj(_DupObj(&xMR, false, xMR._Alloc)), _Alloc(xMR._Alloc) {}
 	// Move constructor
-	ManagedRef(_this &&xMR) noexcept : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) {}
+	ManagedRef(_this &&xMR) NOEXCEPT : _Obj(xMR.Drop()), _Alloc(xMR._Alloc) {}
 
 	// Note: For performance reasons, we do not have a virtual destructor
 	// Hence we seal this class and do not allow further derivation
@@ -136,7 +136,9 @@ T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
 		if (auto MRef = ManagedObj::Cast(xObj))
 			return MRef->_AddRef(), xObj;
 	}
-	return Cloneable::Clone(xObj, xAlloc);
+	auto iRet = Cloneable::Clone(xObj, xAlloc);
+	if (iRet == nullptr) FAIL(_T("Not a Cloneable derivative"))
+	return iRet;
 }
 
 template<class T>

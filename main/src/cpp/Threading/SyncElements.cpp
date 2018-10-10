@@ -153,13 +153,13 @@ WaitResult WaitSingle(THandleWaitable &Waitable, WAITTIME Timeout, bool WaitAPC,
 	return WaitSingle(*Waitable.WaitHandle(), Timeout, WaitAPC, WaitMsg);
 }
 
-// THandleWaitable
+// --- THandleWaitable
 WaitResult THandleWaitable::WaitFor(WAITTIME Timeout) const {
 	return WaitSingle(const_cast<_this*>(this)->Refer(), Timeout, false, false);
 }
 
 THandle THandleWaitable::WaitHandle(void) {
-	return WaitOnly ? THandle(Refer(), NullDealloc) : DupWaitable();
+	return WaitOnly ? THandle::Dummy(Refer()) : DupWaitable();
 }
 
 THandleWaitable THandleWaitable::DupWaitable(void) {
@@ -168,7 +168,7 @@ THandleWaitable THandleWaitable::DupWaitable(void) {
 	return Ret;
 }
 
-// TSemaphore
+// --- TSemaphore
 HANDLE DupSemSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
 						  HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
 	HANDLE Ret;
@@ -201,7 +201,7 @@ long TSemaphore::Signal(long Count) {
 	return PrevCnt;
 }
 
-// TMutex
+// --- TMutex
 HANDLE TMutex::Create(bool Acquired, TString const &Name) {
 	HANDLE Ret = CreateMutex(nullptr, Acquired, Name.empty() ? nullptr : Name.c_str());
 	if (Ret == nullptr)
@@ -220,7 +220,7 @@ void TMutex::Release(void) {
 		SYSFAIL(_T("Failed to release mutex"));
 }
 
-// TEvent
+// --- TEvent
 HANDLE DupEventSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
 							HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
 	HANDLE Ret;
@@ -263,7 +263,7 @@ void TEvent::Pulse(void) {
 
 #if (_WIN32_WINNT >= 0x0600)
 
-// TConditionVariable
+// --- TConditionVariable
 
 WaitResult TConditionVariable::WaitFor(TCriticalSection &CS, WAITTIME Timeout) {
 	if (!SleepConditionVariableCS(&rConditionVariable, &CS.rCriticalSection, Timeout)) {
@@ -295,6 +295,8 @@ void TConditionVariable::Signal(bool All) {
 
 #endif
 
+// --- TAlarmClock
+
 #include "Threading/WorkerThread.h"
 
 class __ClockRunner : public TRunnable {
@@ -318,10 +320,12 @@ public:
 		Ret->ExitTS = TimeStamp::Now();
 		Ret->Remainder = ExitTS - Ret->ExitTS;
 
-		DEBUGV_DO({
-			LOG("Alarm clock armed @ %s", Ret->ExitTS.toString().c_str());
-			LOG("- Scheduled wake up in: %s", Ret->Remainder.toString(TimeUnit::MSEC).c_str());
-				  });
+		DEBUGV_DO(
+			{
+			LOG(_T("Alarm clock armed @ %s"), Ret->ExitTS.toString().c_str());
+			LOG(_T("- Scheduled wake up in: %s"), Ret->Remainder.toString(TimeUnit::MSEC).c_str());
+			}
+		);
 
 		Ret->Result = WaitResult::Signaled;
 		try {
@@ -350,17 +354,18 @@ public:
 				}
 			}
 
-			DEBUGV_DO({
-				LOG("Alarm clock triggered [%s] @ %s", WaitResultToString(Ret->Result).c_str(),
+			DEBUGV_DO(
+				{
+				LOG(_T("Alarm clock triggered [%s] @ %s"), WaitResultToString(Ret->Result).c_str(),
 					Ret->ExitTS.toString().c_str());
 				if (Ret->Remainder) {
-					LOG("- Wake up time compared with deadline: %s",
+					LOG(_T("- Wake up time compared with deadline: %s"),
 						Ret->Remainder.toString(TimeUnit::MSEC).c_str());
 				}
-					  });
-		} catch (Exception *e) {
-			ManagedRef<Exception> E(e, CONSTRUCTION::HANDOFF);
-			E->Show();
+				}
+			);
+		} catch (_ECR_ e) {
+			e.Show();
 
 			Ret->Result = WaitResult::Error;
 			Ret->ExitTS = TimeStamp::Now();

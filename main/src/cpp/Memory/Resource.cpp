@@ -36,6 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WINDOWS
 
+// --- THandle
+
 HANDLE THandle::ValidateHandle(HANDLE const &Ref) {
 	if (Ref == INVALID_HANDLE_VALUE)
 		FAIL(_T("Cannot assign invalid handle"));
@@ -51,6 +53,8 @@ void THandle::HandleDealloc_BestEffort(HANDLE &Res) {
 	if (!CloseHandle(Res))
 		SYSERRLOG(_T("Failed to release handle"));
 }
+
+// --- TModule
 
 HMODULE TModule::ValidateHandle(HMODULE const &Ref) {
 	if (Ref == NULL)

@@ -485,16 +485,26 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Debug\Debug.cpp">
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','/'))\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|x64'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_LIB;_WIN32;_DEBUG;DBGV;DBGVV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|Win32'">_LIB;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|Win32'">_LIB;_WIN32;DBGV;DBGVV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_LIB;_WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|Win32'">_LIB;_WIN32;DBGV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">_LIB;_WIN32;_DEBUG;DBGV;DBGVV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseD|x64'">_LIB;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDVV|x64'">_LIB;_WIN32;DBGV;DBGVV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_LIB;_WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseDV|x64'">_LIB;_WIN32;DBGV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="Debug\Exception.cpp" />
     <ClCompile Include="Debug\Logging.cpp" />

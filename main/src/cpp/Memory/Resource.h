@@ -54,7 +54,7 @@ class TResource : public Reference<X> {
 	typedef TResource _this;
 
 protected:
-	X * _ObjPointer(void) const override {
+	X* _ObjPointer(void) const override {
 		return &const_cast<_this*>(this)->Refer();
 	}
 
@@ -143,8 +143,8 @@ public:
 	// Copy consutrction does not make sense
 	TAllocResource(_this const &) = delete;
 	// Move construction
-	TAllocResource(_this &&xResource) noexcept :
-		_ResRef(std::move(xResource._ResRef)), _ResValid(xResource._ResValid),
+	TAllocResource(_this &&xResource) NOEXCEPT :
+	_ResRef(std::move(xResource._ResRef)), _ResValid(xResource._ResValid),
 		_Alloc(std::move(xResource._Alloc)), _Dealloc(std::move(xResource._Dealloc)) {
 		xResource.Invalidate();
 	}
@@ -195,6 +195,8 @@ public:
 #ifdef WINDOWS
 
 class THandle : public TAllocResource<HANDLE> {
+	typedef THandle _this;
+
 public:
 	static HANDLE ValidateHandle(HANDLE const &Ref);
 	static void HandleDealloc_Standard(HANDLE &Res);
@@ -206,6 +208,18 @@ public:
 		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
 	THandle(CONSTRUCTION::VALIDATED_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(xResRef, xDealloc, xAlloc) {}
+
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	THandle(_this const &) = delete;
+	THandle(_this &&xHandle) NOEXCEPT : TAllocResource(std::move(xHandle)) {}
+	_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xHandle)
+	{ TAllocResource::operator=(std::move(xHandle)); }
+#endif
+
+	static _this Dummy(HANDLE const &xHandle)
+	{ return _this(CONSTRUCTION::VALIDATED, xHandle, NullDealloc); }
 };
 
 class TModule : public TAllocResource<HMODULE> {
@@ -251,16 +265,25 @@ protected:
 	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
 	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource<T*>([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
-			[=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+						   [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 
 	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
 	_TTypedBuffer(T *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
-			[=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
+						   [=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
 
 public:
-	T * operator&(void) const {
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	//_TTypedBuffer(_this const &) = delete;
+	_TTypedBuffer(_this &&xBuffer) NOEXCEPT : TAllocResource<T*>(std::move(xBuffer)) {}
+	//_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xBuffer)
+	{ return TAllocResource<T*>::operator=(std::move(xBuffer)), *this; }
+#endif
+
+	T* operator&(void) const {
 		return *_ObjPointer();
 	}
 };
@@ -277,6 +300,15 @@ public:
 		_TTypedBuffer<T>(&xBuffer, xAllocator) {}
 	TTypedBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer<T>(&xBuffer, xSize, xAllocator) {}
+
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	//TTypedBuffer(_this const &) = delete;
+	TTypedBuffer(_this &&xBuffer) NOEXCEPT : _TTypedBuffer<T>(std::move(xBuffer)) {}
+	//_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xBuffer)
+	{ return _TTypedBuffer<T>::operator=(std::move(xBuffer)), *this; }
+#endif
 
 	T& operator*(void) const {
 		return **_ObjPointer();
@@ -297,6 +329,15 @@ public:
 		_TTypedBuffer(xBuffer, xAllocator) {}
 	TTypedBuffer(void *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
+
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	//TTypedBuffer(_this const &) = delete;
+	TTypedBuffer(_this &&xBuffer) NOEXCEPT : _TTypedBuffer<void>(std::move(xBuffer)) {}
+	//_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xBuffer)
+	{ return _TTypedBuffer<void>::operator=(std::move(xBuffer)), *this; }
+#endif
 };
 
 typedef TTypedBuffer<void> TFixedBuffer;
@@ -360,7 +401,7 @@ protected:
 		_PVSize(xSize), _Allocator(xAllocator), _Size(xSize) {}
 
 	// Move construction
-	_TTypedDynBuffer(_this &&xResource) noexcept :
+	_TTypedDynBuffer(_this &&xResource) NOEXCEPT :
 		TAllocResource(xResource._ResRef, [&](T* &X) { Dealloc(X); }, [&] { return Realloc(nullptr, _Size); }),
 		_PVSize(xResource._PVSize), _Allocator(xResource._Allocator), _Size(xResource._Size) {
 		_ResValid = xResource._ResValid;
@@ -422,6 +463,15 @@ public:
 	TTypedDynBuffer(T &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedDynBuffer(&xBuffer, xSize, xAllocator) {}
 
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	//TTypedDynBuffer(_this const &) = delete;
+	TTypedDynBuffer(_this &&xBuffer) NOEXCEPT : _TTypedDynBuffer<T>(std::move(xBuffer)) {}
+	//_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xBuffer)
+	{ return _TTypedDynBuffer<T>::operator=(std::move(xBuffer)), *this; }
+#endif
+
 	T& operator*(void) const {
 		return **_ObjPointer();
 	}
@@ -440,6 +490,15 @@ public:
 		_TTypedDynBuffer(xSize, xAllocator) {}
 	TTypedDynBuffer(void* const &xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedDynBuffer(xBuffer, xSize, xAllocator) {}
+
+#if _MSC_VER <= 1900
+	// Older MS compilers are buggy at inheriting methods from template
+	//TTypedDynBuffer(_this const &) = delete;
+	TTypedDynBuffer(_this &&xBuffer) NOEXCEPT : _TTypedDynBuffer<void>(std::move(xBuffer)) {}
+	//_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&xBuffer)
+	{ return _TTypedDynBuffer<void>::operator=(std::move(xBuffer)), *this; }
+#endif
 };
 
 typedef TTypedDynBuffer<void> TDynBuffer;

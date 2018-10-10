@@ -78,7 +78,7 @@ TJVM::InitArgs::InitArgs(void) : TTypedBuffer() {
 
 void TJVM::InitArgs::SetOpt(TJVMOptions &&xOpts) {
 	Opts = std::move(xOpts);
-	ConvOpts = TTypedBuffer<JavaVMOption>(sizeof(JavaVMOption)*Opts.size());
+	ConvOpts = { sizeof(JavaVMOption) * Opts.size() };
 	for (size_t idx = 0; idx < Opts.size(); idx++) {
 		JavaVMOption &Opt = (&ConvOpts)[idx];
 		auto &TOpt = Opts.at(idx);
@@ -106,7 +106,7 @@ void TJVM::FreeJVM(JavaVM* &Inst) {
 
 TJVM::InitArgs TJVM::PrepareArgs(TString const &ClassPath, TString const &LocalJREPath, int DebugPort, int RemotePort) {
 	if (!LocalJREPath.empty()) {
-		AddSearchPath(TStringCast(LocalJREPath << _T(JRE_PLATFORM_PATHFRAG "\\bin\\server")));
+		AddSearchPath(TStringCast(LocalJREPath << _T(JRE_PLATFORM_PATHFRAG) _T("\\bin\\server")));
 	}
 
 	TJVMOptions Opts;

@@ -33,11 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ManagedObj.h"
 
 #include "Debug/Logging.h"
-#include "Debug/Exception.h"
-
-Cloneable* Cloneable::MakeClone(IObjAllocator<void> &_Alloc) const {
-	FAIL(_T("Abstract function"));
-}
 
 #ifndef __MANAGEDOBJ_LITE
 

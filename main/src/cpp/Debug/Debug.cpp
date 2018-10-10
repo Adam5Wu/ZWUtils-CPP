@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SOLUTION_PATH
 #pragma WARNING("Please define the project path before compiling this file!")
 #if _MSC_VER
-#pragma WARNING("Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','/'))\\\"\"")
+#pragma WARNING("Hint - /D \"SOLUTION_PATH=\\\"$(SolutionDir.Replace('\\','\\\\'))\\\\\"\"")
 #endif
 #define SOLUTION_PATH ""
 #else
@@ -45,9 +45,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Aquire the skip length of source code (so we can properly print relative source file paths)
 #ifdef WINDOWS
 
+#include "Misc/TString.h"
+
 PCTCHAR __RelPath(PCTCHAR Path) {
 	static size_t __RelPathLen = wcslen(_T(SOLUTION_PATH));
-	return Path + __RelPathLen;
+	if (_tcsnicmp(Path, _T(SOLUTION_PATH), __RelPathLen) == 0)
+		return Path + __RelPathLen;
+	return Path;
 }
 
 PCTCHAR __PTID(void) {

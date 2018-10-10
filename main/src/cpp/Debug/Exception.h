@@ -42,11 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  // Project global control 
 #include "Misc/Global.h"
 
+#include "Misc/Types.h"
 #include "Misc/TString.h"
 
 #include "Debug.h"
-
-template<typename T> class IObjAllocator;
 
 /**
  * @ingroup Utilities
@@ -54,9 +53,8 @@ template<typename T> class IObjAllocator;
  *
  * Contains useful information about the exception: Source, Reason
  **/
-class Exception {
+class Exception : public Cloneable {
 	typedef Exception _this;
-	friend class IObjAllocator<_this>;
 
 protected:
 	TString mutable rWhy;
@@ -68,6 +66,10 @@ protected:
 		return Ret;
 	}
 
+public:
+	TString const Source;
+	TString const Reason;
+
 	template<typename... Params>
 	Exception(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(TString(xSource), ReasonFmt, std::forward<Params>(xParams)...) {
@@ -78,11 +80,19 @@ protected:
 		Source(std::move(xSource)), Reason(PopulateReason(ReasonFmt, std::forward<Params>(xParams)...)) {
 	}
 
-	virtual ~Exception(void) {}
+	// Prevent all assignments
+	_this& operator=(_this const &) = delete;
+	_this& operator=(_this &&) = delete;
 
-public:
-	TString const Source;
-	TString const Reason;
+	// Enable move construction
+	Exception(_this &&xException) NOEXCEPT;
+
+	// Enable copy construction
+	Exception(_this const &xException);
+
+	virtual ~Exception(void);
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
 
 	/**
 	 * Returns a description of the exception
@@ -94,22 +104,12 @@ public:
 	 * Prints the description of the exception via @link LOG() DEBUG printing function @endlink
 	 **/
 	virtual void Show(void) const;
-
-	/**
-	 * Create an exception object with given source, reason, and an optional helper integer
-	 *
-	 * @note Use the @link FAIL() \p FAIL* @endlink macros to retrive source info automatically
-	 **/
-	template<typename... Params>
-	static _this* Create(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams);
-
-	template<typename... Params>
-	static _this* Create(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams);
 };
+#define _ECR_ Exception const &
 
 //! @ingroup Utilities
 //! Raise an exception with a formatted string message
-#define FAILS(src, fmt, ...)	throw Exception::Create(src, fmt, __VA_ARGS__);
+#define FAILS(src, fmt, ...)	throw Exception(src, fmt, __VA_ARGS__);
 #define FAIL(fmt, ...) {							\
 	SOURCEMARK										\
 	FAILS(std::move(__SrcMark), fmt, __VA_ARGS__);	\
@@ -118,17 +118,17 @@ public:
 #define LOGEXCEPTIONV(e,fmt,...)							\
 DEBUGV_DO_OR({												\
 	_LOG(fmt, __VA_ARGS__);									\
-	e->Show();												\
+	e.Show();												\
 }, {														\
-	_LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why().c_str());	\
+	_LOG(fmt _T(" - %s"), __VA_ARGS__, e.Why().c_str());	\
 })
 
 #define LOGEXCEPTIONVV(e,fmt,...)							\
 DEBUGVV_DO_OR({												\
 	_LOG(fmt, __VA_ARGS__);									\
-	e->Show();												\
+	e.Show();												\
 }, {														\
-	_LOG(fmt _T(" - %s"), __VA_ARGS__, e->Why().c_str());	\
+	_LOG(fmt _T(" - %s"), __VA_ARGS__, e.Why().c_str());	\
 })
 
 #include <deque>
@@ -138,6 +138,9 @@ class STException : public Exception {
 
 protected:
 	static TString ExtractTopFrame(std::deque<TString> &xStackTrace);
+
+public:
+	std::deque<TString> const rStackTrace;
 
 	template<typename... Params>
 	STException(TString &&xSource, std::deque<TString> &&xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
@@ -151,30 +154,21 @@ protected:
 	STException(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) :
 		Exception(ExtractTopFrame(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...), rStackTrace(std::move(xStackTrace)) {}
 
-public:
-	std::deque<TString> const rStackTrace;
+	STException(_this &&xException) NOEXCEPT
+		: Exception(std::move(xException)), rStackTrace(std::move(xException.rStackTrace)) {}
+
+	STException(_this const &xException)
+		: Exception(xException), rStackTrace(xException.rStackTrace) {}
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
 
 	void Show(void) const override;
 	void ShowStack(void) const;
 
-	static std::deque<TString> TraceStack(int PopFrame = 1);
-
-	/**
-	 * Create an exception object with given source, reason, and an optional helper integer
-	 *
-	 * @note Use the @link FAIL() \p FAIL* @endlink macros to retrive source info automatically
-	 **/
-	template<typename... Params>
-	static _this* Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
-
-	template<typename... Params>
-	static _this* Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
-
-	template<typename... Params>
-	static _this* Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams);
+	static std::deque<TString> TraceStack(int PopFrame = 0);
 };
 
-#define FAILST(fmt, ...) throw STException::Create(STException::TraceStack(), fmt, __VA_ARGS__);
+#define FAILST(fmt, ...) { throw STException(STException::TraceStack(), fmt, __VA_ARGS__); }
 
 #if defined(DBGVV) || defined(DEFAULT_EXCEPTION_WITH_STACK)
 #undef FAIL
@@ -187,43 +181,16 @@ class SEHException : public STException {
 protected:
 	static TString STR_ExceptCode(PEXCEPTION_RECORD ExcRecord);
 
+public:
 	SEHException(TString const &xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
 	SEHException(TString &&xSource, PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
 	SEHException(PEXCEPTION_RECORD ExcRecord, std::deque<TString> &&xStackTrace);
 
-public:
 	static void Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr);
 };
 
 bool ControlSEHTranslation(bool Enable);
 
 #endif
-
-#include "Memory/ObjAllocator.h"
-
-template<typename... Params>
-static Exception* Exception::Create(TString const &xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DEFAULT_NEW(Exception, xSource, ReasonFmt, std::forward<Params>(xParams)...);
-}
-
-template<typename... Params>
-static Exception* Exception::Create(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DEFAULT_NEW(Exception, std::move(xSource), ReasonFmt, std::forward<Params>(xParams)...);
-}
-
-template<typename... Params>
-static STException* STException::Create(TString const &xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DEFAULT_NEW(STException, xSource, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
-}
-
-template<typename... Params>
-static STException* STException::Create(TString &&xSource, std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DEFAULT_NEW(STException, std::move(xSource), std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
-}
-
-template<typename... Params>
-static STException* STException::Create(std::deque<TString> && xStackTrace, PCTCHAR ReasonFmt, Params&&... xParams) {
-	return DEFAULT_NEW(STException, std::move(xStackTrace), ReasonFmt, std::forward<Params>(xParams)...);
-}
 
 #endif

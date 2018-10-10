@@ -156,6 +156,7 @@ public:
  **/
 class THandleWaitable : protected THandle, public TWaitable {
 	typedef THandleWaitable _this;
+
 protected:
 	bool WaitOnly = false;
 public:
@@ -165,7 +166,7 @@ public:
 		THandle(xHandle, xDealloc, xAlloc) {}
 
 	// Move construction
-	THandleWaitable(_this &&xHandleWaitable) noexcept :
+	THandleWaitable(_this &&xHandleWaitable) NOEXCEPT :
 		THandle(std::move(xHandleWaitable)), WaitOnly(xHandleWaitable.WaitOnly) {}
 
 	// Move assignment

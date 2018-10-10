@@ -143,7 +143,7 @@ public:
 		// Copy construction does not make sense, because the lock maybe non-reentrant
 		TLock(_this const &) = delete;
 
-		TLock(_this &&xLock) noexcept : InstRef(xLock.InstRef), __Info(xLock.__Info) {
+		TLock(_this &&xLock) NOEXCEPT : InstRef(xLock.InstRef), __Info(xLock.__Info) {
 			xLock.__Info = nullptr;
 		}
 
@@ -229,6 +229,7 @@ template<class T>
  **/
 class TLockableSyncPerms : public TLockable, protected T {
 	typedef TLockableSyncPerms _this;
+
 public:
 	TLockableSyncPerms(void) {}
 	TLockableSyncPerms(T && xSync) : T(std::move(xSync)) {}
@@ -241,9 +242,10 @@ public:
 // !Lockable using critical section
 class TLockableCS : public TLockableSyncPerms<TCriticalSection> {
 	typedef TLockableCS _this;
+
 private:
 	TInterlockedArchInt WaitCnt = 0;
-	TEvent WaitEvent = TEvent(CONSTRUCTION::DEFER);
+	TEvent WaitEvent = { CONSTRUCTION::DEFER };
 
 	void __Signal_Event(TEvent &Event) {
 		// We are in a transient state of deferred event creation
@@ -280,11 +282,12 @@ protected:
 
 class TLockableSRW : public TLockableSyncPerms<TSRWLock> {
 	typedef TLockableSRW _this;
+
 private:
 	TInterlockedArchInt RWaitCnt = 0;
 	TInterlockedArchInt WWaitCnt = 0;
-	TEvent RWaitEvent = TEvent(CONSTRUCTION::DEFER);
-	TEvent WWaitEvent = TEvent(CONSTRUCTION::DEFER);
+	TEvent RWaitEvent = { CONSTRUCTION::DEFER };
+	TEvent WWaitEvent = { CONSTRUCTION::DEFER };
 
 	void __Signal_Event(TEvent &Event) {
 		// We are in a transient state of deferred event creation
@@ -400,7 +403,7 @@ class TLockableHandleWaitable : public TLockableSyncPerms<W> {
 protected:
 	bool __Lock(WAITTIME Timeout, THandleWaitable *AbortEvent) override {
 		WaitResult WRet = AbortEvent ?
-			WaitMultiple({ *(THandleWaitable*)this, *AbortEvent }, false, Timeout) :
+			WaitMultiple({ {*(THandleWaitable*)this}, {*AbortEvent} }, false, Timeout) :
 			WaitFor(Timeout);
 		switch (WRet) {
 			case WaitResult::Error: SYSFAIL(_T("Failed to lock synchronization premises"));
@@ -528,7 +531,7 @@ public:
 
 	public:
 		// Move construction for returning accessors
-		Accessor(_this &&xAccessor) noexcept : _Lock(std::move(xAccessor._Lock)) {}
+		Accessor(_this &&xAccessor) NOEXCEPT : _Lock(std::move(xAccessor._Lock)) {}
 
 		TString toString(void) const {
 			return _toString();

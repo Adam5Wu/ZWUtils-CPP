@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iomanip>
 
+// --- TimeSpan
+
 TimeSpan const TimeSpan::Null;
 
 TimeSpan& TimeSpan::operator=(_this const &xTimeSpan) {
@@ -67,6 +69,8 @@ TString TimeSpan::toString(TimeUnit const &Unit, bool Abbrv, bool OmitPlus) cons
 TString TimeSpan::toString(bool Abbrv, bool OmitPlus, TimeUnit const &HiUnit, TimeUnit const &LoUnit) const {
 	return ToString(Value.S64, Unit, Abbrv, OmitPlus, HiUnit, LoUnit);
 }
+
+// --- TimeStamp
 
 // Choose the smallest possible granularity
 TimeUnit const TimeStamp::__UNIT = TimeUnit::HNSEC;

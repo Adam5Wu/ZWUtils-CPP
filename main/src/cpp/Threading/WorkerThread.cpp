@@ -129,16 +129,16 @@ TWorkerThread::TNotificationStub TWorkerThread::GStateNotify(TString const &Name
 
 //! @ingroup Threading
 //! Raise an exception within a worker thread with formatted string message
-#define WTFAIL(...) {																\
-	SOURCEMARK																		\
-	throw TWorkerThreadException::Create(*this, std::move(__SrcMark), __VA_ARGS__);	\
+#define WTFAIL(...) {														\
+	SOURCEMARK																\
+	throw TWorkerThreadException(*this, std::move(__SrcMark), __VA_ARGS__);	\
 }
 
 //! @ingroup Threading
 //! Raise a self-destruct exception within a worker thread
-#define WTDESTROY {														\
-	SOURCEMARK															\
-	throw TWorkThreadSelfDestruct::Create(*this, std::move(__SrcMark));	\
+#define WTDESTROY {												\
+	SOURCEMARK													\
+	throw TWorkThreadSelfDestruct(*this, std::move(__SrcMark));	\
 }
 
 //! Perform logging within a worker thread
@@ -166,7 +166,7 @@ typedef unsigned(__stdcall *__ThreadProc) (void *);
 HANDLE TWorkerThread::__CreateThread(size_t StackSize, bool xSelfFree) {
 	MRThreadRecord Foward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__CallForwarder, xSelfFree);
 	HANDLE rThread = (HANDLE)_beginthreadex(nullptr, (UINT)StackSize, (__ThreadProc)&_ThreadProc,
-		&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
+											&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
 	if (rThread == nullptr) SYSFAIL(_T("Failed to create thread for worker '%s'"), Name.c_str());
 	return Foward.Drop(), rThread;
 }
@@ -210,12 +210,11 @@ DWORD TWorkerThread::__CallForwarder(void) {
 			WTLOGV(_T("Running"));
 			try {
 				rReturnData = rRunnable->Run(*this, rInputData);
-			} catch (Exception *e) {
-				rException = ManagedRef<Exception>(e, CONSTRUCTION::HANDOFF);
-				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(e) == nullptr) {
-					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception - %s"), rException->Why().c_str());
-					auto *STE = dynamic_cast<STException*>(e);
-					if (STE != nullptr) STE->ShowStack();
+			} catch (Exception &e) {
+				rException = { &e, CONSTRUCTION::CLONE };
+				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(&e) == nullptr) {
+					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
+					e.Show();
 				});
 			}
 			// Fall through...
@@ -280,14 +279,14 @@ void* TWorkerThread::ReturnData(void) {
 	State iCurState = CurrentState();
 	if (iCurState != State::Terminated)
 		WTFAIL(_T("Could not get return data while in state '%s'"), STR_State(iCurState));
-	return *rReturnData;
+	return &rReturnData;
 }
 
 Exception* TWorkerThread::FatalException(bool Prune) {
 	State iCurState = CurrentState();
 	if (iCurState != State::Terminated)
 		WTFAIL(_T("Could not get fatal exception while in state '%s'"), STR_State(iCurState));
-	return Prune? rException.Drop() : &rException;
+	return Prune ? rException.Drop() : &rException;
 }
 
 WaitResult TWorkerThread::WaitFor(WAITTIME Timeout) const {
@@ -344,6 +343,12 @@ THandle TWorkerThread::WaitHandle(void) {
 		}
 	}
 	return THandleWaitable::WaitHandle();
+}
+
+// --- TWorkerThreadException
+
+TWorkerThreadException* TWorkerThreadException::MakeClone(IObjAllocator<void> &_Alloc) const {
+	return DEFAULT_NEW(TWorkerThreadException, *this);
 }
 
 TString const& TWorkerThreadException::Why(void) const {

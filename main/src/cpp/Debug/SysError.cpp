@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SysError.h"
 
 #include "Memory/Resource.h"
+#include "Memory/ObjAllocator.h"
 
 #include <stdarg.h>
 
@@ -65,7 +66,10 @@ PCTCHAR _DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, siz
 		MsgBuf = Buffer;
 
 	BufLen = FormatMessage(MsgFlags, Module, ErrCode, 0, MsgBuf, (DWORD)BufLen, pArgs);
-	if (!BufLen) SYSFAIL(_T("Unable to decode error code %0.8X"), ErrCode);
+	if (!BufLen) {
+		LOGVV(_T("WARNING: Unable to decode error code %d (0x%0.8X)"), ErrCode, ErrCode);
+		return nullptr;
+	}
 
 	__RLNTrim(MsgBuf, BufLen);
 	return MsgBuf;
@@ -80,13 +84,13 @@ PCTCHAR DecodeLastSysError(va_list *pArgs) {
 	return DecodeSysError(GetLastError(), pArgs);
 }
 
-void DecodeLastSysError(PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
-	DecodeSysError(GetLastError(), Buffer, BufLen, pArgs);
+PCTCHAR DecodeLastSysError(PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
+	return DecodeSysError(GetLastError(), Buffer, BufLen, pArgs);
 }
 
-void DecodeLastSysError(TString &StrBuf, va_list *pArgs) {
+PCTCHAR DecodeLastSysError(TString &StrBuf, va_list *pArgs) {
 	unsigned int ErrCode = GetLastError();
-	DecodeSysError(ErrCode, StrBuf, pArgs);
+	return DecodeSysError(ErrCode, StrBuf, pArgs);
 }
 
 PCTCHAR DecodeSysError(unsigned int ErrCode, va_list *pArgs) {
@@ -98,41 +102,53 @@ PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, va_list *pArgs) {
 	return _DecodeSysError(Module, ErrCode, nullptr, __BufLen, pArgs);
 }
 
-void DecodeSysError(unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
-	DecodeSysError(0, ErrCode, Buffer, BufLen, pArgs);
+PCTCHAR DecodeSysError(unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
+	return DecodeSysError(0, ErrCode, Buffer, BufLen, pArgs);
 }
 
-void DecodeSysError(unsigned int ErrCode, TString &StrBuf, va_list *pArgs) {
-	DecodeSysError(0, ErrCode, StrBuf, pArgs);
+PCTCHAR DecodeSysError(unsigned int ErrCode, TString &StrBuf, va_list *pArgs) {
+	return DecodeSysError(0, ErrCode, StrBuf, pArgs);
 }
 
-void DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
-	_DecodeSysError(Module, ErrCode, Buffer, BufLen, pArgs);
+PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, PTCHAR Buffer, size_t &BufLen, va_list *pArgs) {
+	return _DecodeSysError(Module, ErrCode, Buffer, BufLen, pArgs);
 }
 
-void DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_list *pArgs) {
+PCTCHAR DecodeSysError(HMODULE Module, unsigned int ErrCode, TString &StrBuf, va_list *pArgs) {
 	StrBuf.resize(ERRMSG_BUFLEN);
 	size_t __BufLen = ERRMSG_BUFLEN;
-	_DecodeSysError(Module, ErrCode, (PTCHAR)StrBuf.data(), __BufLen, pArgs);
-	StrBuf.resize(__BufLen);
+	if (_DecodeSysError(Module, ErrCode, (PTCHAR)StrBuf.data(), __BufLen, pArgs) != nullptr) {
+		StrBuf.resize(__BufLen);
+		return StrBuf.data();
+	}
+	StrBuf.clear();
+	return nullptr;
 }
 
-void __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
-	PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-	PTCHAR ErrBuffer, size_t &ErrBufLen, ...) {
+PCTCHAR __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
+										   PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
+										   PTCHAR ErrBuffer, size_t &ErrBufLen, ...) {
 	va_list params;
 	va_start(params, ErrCode);
 	TInitResource<va_list> Params(params, [](va_list &X) {va_end(X); });
 	int __Len = _vsntprintf_s(CtxBuffer, CtxBufLen, _TRUNCATE, CtxBufFmt, params);
 	if (__Len >= 0) CtxBuffer[__Len] = NullTChar;
-	DecodeSysError(Module, ErrCode, ErrBuffer, ErrBufLen, &params);
+	return DecodeSysError(Module, ErrCode, ErrBuffer, ErrBufLen, &params);
+}
+
+// --- SystemError
+
+SystemError* SystemError::MakeClone(IObjAllocator<void> &_Alloc) const {
+	return DEFAULT_NEW(SystemError, *this);
 }
 
 #define FSystemErrorMessage _T("%s (Error %0.8X: %s)")
 
 TString const& SystemError::ErrorMessage(void) const {
-	if (rErrorMsg.empty())
-		DecodeSysError(ErrorCode, rErrorMsg);
+	if (rErrorMsg.empty()) {
+		if (DecodeSysError(ErrorCode, rErrorMsg) == nullptr)
+			rErrorMsg = TStringCast(_T("Undecodable error ") << ErrorCode << _T(" (0x") << std::hex << ErrorCode << _T(')'));
+	}
 	return rErrorMsg;
 }
 
