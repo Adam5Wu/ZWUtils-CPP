@@ -14,6 +14,21 @@
 #include <Shlobj.h>
 #include <vector>
 
+#define __SERVICE_DEFSYMBOL_LINKPARAM(name)	\
+	comment(linker, STRINGIZE(/alternatename:##__LINKER_SYMBOL(name)##=##__LINKER_SYMBOL(_DEF_##name)))
+
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_NAME)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_DISPNAME)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_DESC)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_GROUP)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_DEPENDS)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_USER)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_PRIVILEGES)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(CONFIG_ServiceStatusQueryInterval)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(CONFIG_ServiceTerminationGraceTime)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(ServiceMain_LoadModules)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(ServiceMain_UnloadModules)
+
 //-----------------------------------
 // ServiceMain General Maintenance Code
 

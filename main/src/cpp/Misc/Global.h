@@ -72,7 +72,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define WARNING(desc) message(__FILE__ "(" STRINGIZE(__LINE__) ") WARNING: " desc)
 
 #if defined(_M_IX86)
-#define __LINKER_SYMBOL(name)	_ ## name
+#define __LINKER_SYMBOL_INNER(name)	_ ## name
+#define __LINKER_SYMBOL(name)	__LINKER_SYMBOL_INNER(name)
 #endif
 #if defined(_M_AMD64)
 #define __LINKER_SYMBOL(name)	name
