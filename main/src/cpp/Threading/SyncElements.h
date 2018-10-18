@@ -207,7 +207,9 @@ public:
 
 WaitResult WaitSingle(THandleWaitable &Waitable,
 					  WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
-WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const &Waitables, bool WaitAll,
+
+typedef std::vector<std::reference_wrapper<THandleWaitable>> TWaitables;
+WaitResult WaitMultiple(TWaitables const &Waitables, bool WaitAll,
 						WAITTIME Timeout = FOREVER, bool WaitAPC = false, bool WaitMsg = false);
 
 // Raw API, make sure all handles are waitable!

@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WINDOWS
 
 class TThreadRecord {
-protected:
+private:
 	TWorkerThread* const WorkerThread;
 	typedef DWORD(TWorkerThread::*WTThreadMain)(void);
 	WTThreadMain const ThreadMain;
@@ -210,12 +210,18 @@ DWORD TWorkerThread::__CallForwarder(void) {
 			WTLOGV(_T("Running"));
 			try {
 				rReturnData = rRunnable->Run(*this, rInputData);
-			} catch (Exception &e) {
-				rException = { &e, CONSTRUCTION::CLONE };
-				DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(&e) == nullptr) {
-					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
-					e.Show();
-				});
+			} catch (std::exception &e) {
+				Exception *ZWE = dynamic_cast<Exception*>(&e);
+				if (ZWE != nullptr) {
+					rException = { ZWE, CONSTRUCTION::CLONE };
+					DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(ZWE) == nullptr) {
+						WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
+						ZWE->Show();
+					});
+				} else {
+					WTLOG(_T("WARNING: Abnormal termination due to unhanded std::exception - %S"), e.what());
+					rException = { STDException::Wrap(std::move(e)), CONSTRUCTION::HANDOFF };
+				}
 			}
 			// Fall through...
 

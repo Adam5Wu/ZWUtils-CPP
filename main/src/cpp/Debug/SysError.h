@@ -110,8 +110,8 @@ DecodeSysError(errcode, __SysErrMsg, __VA_ARGS__);
 #ifdef WINDOWS
 
 PCTCHAR __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
-	PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-	PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
+										   PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
+										   PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
 
 #define __FormatCtxAndDecodeSysError(ErrCode, CtxBuffer, CtxBufLen, CtxBufFmt, ErrBuffer, ErrBufLen, ...) \
 	__ModuleFormatCtxAndDecodeSysError(0, ErrCode, CtxBuffer, CtxBufLen, CtxBufFmt, ErrBuffer, ErrBufLen, __VA_ARGS__)
@@ -119,19 +119,19 @@ PCTCHAR __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 #else
 
 void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t CtxBufLen, PCTCHAR CtxBufFmt,
-	PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
+								  PTCHAR ErrBuffer, size_t &ErrBufLen, ...);
 
 #endif
 
 //! @ingroup Utilities
 //! Log a failure with a system error and context
-#define ERRLOG(errcode, ctx, ...) {																\
-	SYSERRMSG_STACK(errcode);																	\
-	LOG(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
+#define ERRLOG(errcode, ctx, ...) {																	\
+	SYSERRMSG_STACK(errcode);																		\
+	LOG(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);		\
 }
 
-#define ERRLOGS(errcode, ctx, ...) {															\
-	SYSERRMSG_STACK(errcode);																	\
+#define ERRLOGS(errcode, ctx, ...) {																\
+	SYSERRMSG_STACK(errcode);																		\
 	LOGS(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
 }
 

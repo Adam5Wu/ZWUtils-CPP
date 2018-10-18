@@ -123,16 +123,16 @@ WaitResult WaitMultiple(std::vector<HANDLE> const &WaitHandles, bool WaitAll, WA
 	}
 }
 
-WaitResult WaitMultiple(std::vector<std::reference_wrapper<THandleWaitable>> const &Waitables, bool WaitAll, WAITTIME Timeout, bool WaitAPC, bool WaitMsg) {
+WaitResult WaitMultiple(TWaitables const &Waitables, bool WaitAll, WAITTIME Timeout, bool WaitAPC, bool WaitMsg) {
 	class TRawWaitHandles : public std::vector<HANDLE> {
-	protected:
+	private:
 		std::vector<THandle> Handles;
 		void AddHandle(THandle &&Handle) {
 			emplace_back(*Handle);
 			Handles.emplace_back(std::move(Handle));
 		}
 	public:
-		TRawWaitHandles(std::vector<std::reference_wrapper<THandleWaitable>> const &RefWaitables) {
+		explicit TRawWaitHandles(TWaitables const &RefWaitables) {
 			for (THandleWaitable &Waitable : RefWaitables)
 				AddHandle(Waitable.WaitHandle());
 		}
@@ -300,7 +300,7 @@ void TConditionVariable::Signal(bool All) {
 #include "Threading/WorkerThread.h"
 
 class __ClockRunner : public TRunnable {
-protected:
+private:
 	TimeStamp ExitTS;
 	TEvent &WEvent;
 	TEvent &HEvent;

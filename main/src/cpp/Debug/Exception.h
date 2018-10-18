@@ -53,10 +53,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Contains useful information about the exception: Source, Reason
  **/
-class Exception : public Cloneable {
+class Exception : public Cloneable, public std::exception {
 	typedef Exception _this;
 
 protected:
+	static LPSTR STR_STD_EXCEPTION_WHAT;
 	TString mutable rWhy;
 
 	template<typename... Params>
@@ -77,7 +78,9 @@ public:
 
 	template<typename... Params>
 	Exception(TString &&xSource, PCTCHAR ReasonFmt, Params&&... xParams) :
-		Source(std::move(xSource)), Reason(PopulateReason(ReasonFmt, std::forward<Params>(xParams)...)) {
+		Source(std::move(xSource)),
+		Reason(PopulateReason(ReasonFmt, std::forward<Params>(xParams)...)),
+		std::exception(STR_STD_EXCEPTION_WHAT, 0) {
 	}
 
 	// Prevent all assignments
@@ -130,6 +133,32 @@ DEBUGVV_DO_OR({												\
 }, {														\
 	_LOG(fmt _T(" - %s"), __VA_ARGS__, e.Why().c_str());	\
 })
+
+class STDException : public Exception {
+	typedef STDException _this;
+
+protected:
+	static LPTSTR STR_STD_EXCEPTION_WRAP;
+
+	STDException(TString &&xSource, std::exception &&xException) :
+		Exception(std::move(xSource), STR_STD_EXCEPTION_WRAP), Object(std::move(xException)) {}
+
+	STDException(TString &xSource, std::exception &&xException) :
+		Exception(xSource, STR_STD_EXCEPTION_WRAP), Object(std::move(xException)) {}
+
+public:
+	std::exception const Object;
+
+	STDException(_this &&xException) NOEXCEPT
+		: Exception(std::move(xException)), Object(std::move(xException.Object)) {}
+
+	STDException(_this const &xException)
+		: Exception(xException), Object(xException.Object) {}
+
+	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+
+	static STDException *Wrap(std::exception &&xException);
+};
 
 #include <deque>
 

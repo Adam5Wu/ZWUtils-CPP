@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define __EXCEPTION_MEMDEBUG__
 
 // --- Exception
+LPSTR Exception::STR_STD_EXCEPTION_WHAT = "ZWUtils Exception";
 
 Exception::Exception(_this &&xException) NOEXCEPT
 	: Source(std::move(xException.Source))
@@ -80,6 +81,18 @@ TString const& Exception::Why(void) const {
 // Display the error message via DEBUG output
 void Exception::Show(void) const {
 	_LOG(_T("%s"), Why().c_str());
+}
+
+// --- STDException
+LPTSTR STDException::STR_STD_EXCEPTION_WRAP = _T("Wrapped std::exception");
+
+STDException* STDException::MakeClone(IObjAllocator<void> &_Alloc) const {
+	return DEFAULT_NEW(STDException, *this);
+}
+
+STDException* STDException::Wrap(std::exception &&xException) {
+	auto STrace = STException::TraceStack(1);
+	return DEFAULT_NEW(STDException, STrace.empty() ? TString() : std::move(STrace.front()), std::move(xException));
 }
 
 // --- STException
