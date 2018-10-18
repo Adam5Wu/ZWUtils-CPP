@@ -15,7 +15,7 @@
 #include <vector>
 
 #define __SERVICE_DEFSYMBOL_LINKPARAM(name)	\
-	comment(linker, STRINGIZE(/alternatename:##__LINKER_SYMBOL(name)##=##__LINKER_SYMBOL(_DEF_##name)))
+	comment(linker, STRINGIZE(/alternatename:__LINKER_SYMBOL(name)=__LINKER_SYMBOL(_DEF_##name)))
 
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_NAME)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_DISPNAME)
