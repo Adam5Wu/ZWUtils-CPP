@@ -69,11 +69,11 @@ void SETLOGTARGET(TString const &Name, FILE *xTarget) {
 		if (setvbuf(xTarget, nullptr, _IOLBF, 4096) != 0) {
 			LOG(_T("WARNING: Unable to turn off file buffering for log target '%s'"), Name);
 		}
-		LOG_WRITE(xTarget, _T(MESSAGE_LOGTARGET_START));
+		LOG_WRITE(xTarget, _T(MESSAGE_LOGTARGET_START)TNewLine);
 
 		for (auto entry : *LogTargets) {
 			if (entry.first.compare(Name) == 0) {
-				LOG_WRITE(entry.second, _T(MESSAGE_LOGTARGET_END));
+				LOG_WRITE(entry.second, _T(MESSAGE_LOGTARGET_END)TNewLine);
 				entry.second = xTarget;
 				xTarget = nullptr;
 				break;
@@ -84,7 +84,7 @@ void SETLOGTARGET(TString const &Name, FILE *xTarget) {
 		auto Iter = LogTargets->begin();
 		while (Iter != LogTargets->end()) {
 			if (Iter->first.compare(Name) == 0) {
-				LOG_WRITE(Iter->second, _T(MESSAGE_LOGTARGET_END));
+				LOG_WRITE(Iter->second, _T(MESSAGE_LOGTARGET_END)TNewLine);
 				LogTargets->erase(Iter);
 				break;
 			} else Iter++;
