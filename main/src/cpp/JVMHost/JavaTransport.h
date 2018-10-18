@@ -28,6 +28,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __ZWUTILS_JAVAEMBED
+
 /**
  * @addtogroup AdvUtils Advanced Supporting Utilities
  * @file
@@ -96,3 +98,5 @@ public:
 };
 
 #endif //ZWUtils_JavaTransport_H
+
+#endif

@@ -28,6 +28,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __ZWUTILS_JAVAEMBED
+
 // [AdvUtils] JVM loading and initialization support
 
 #include "JVMLoader.h"
@@ -159,3 +161,5 @@ void TJVMThreadEnv::Detach(JNIEnv*& Inst) {
 			FAIL(_T("Unable to detach from JVM (%d)"), res);
 	}
 }
+
+#endif

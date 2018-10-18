@@ -28,6 +28,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __ZWUTILS_JAVAEMBED
+
 // [AdvUtils] Data chunk pool for Java transport
 
 #include "NativeChunkPool.h"
@@ -88,3 +90,5 @@ void TNativeChunkPool::Return(TNativeChunk *Chunk) {
 		WaterMark = 1;
 	}
 }
+
+#endif

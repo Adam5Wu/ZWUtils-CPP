@@ -28,6 +28,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef __ZWUTILS_JAVAEMBED
+
 // [AdvUtils] Data chunk object for Java transport
 
 #include "NativeChunk.h"
@@ -61,3 +63,5 @@ void* TNativeChunkV1::AllocBuffer(size_t xSize) {
 	FreePos += xSize;
 	return Ret;
 }
+
+#endif

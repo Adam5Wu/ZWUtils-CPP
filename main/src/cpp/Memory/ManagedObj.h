@@ -60,8 +60,9 @@ protected:
 #ifdef __MANAGEDOBJ_LITE
 	// Disable virtual destructor for performance reasons
 #else
-	virtual ~ManagedObj(void);
+	virtual
 #endif
+		~ManagedObj(void);
 
 public:
 	void _AddRef(void) {

@@ -34,12 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Debug/Logging.h"
 
-#ifndef __MANAGEDOBJ_LITE
-
 ManagedObj::~ManagedObj(void) {
 	if (RefCount()) {
 		LOGV(_T("WARNING: Destruction of %s"), this->toString().c_str());
 	}
 }
-
-#endif
