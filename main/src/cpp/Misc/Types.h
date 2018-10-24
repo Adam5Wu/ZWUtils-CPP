@@ -94,6 +94,9 @@ struct Cardinal {
 	virtual TString toString(unsigned int bcnt) const = 0;
 	virtual bool equalto(Cardinal const &T) const = 0;
 	virtual bool isZero(void) const = 0;
+
+	operator bool() const
+	{ return !isZero(); }
 };
 
 struct Cardinal32 : public Cardinal {

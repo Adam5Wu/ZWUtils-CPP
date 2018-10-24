@@ -81,7 +81,7 @@ enum class WaitResult : unsigned int {
 
 	Signaled_0 = 100,
 #if MAXIMUM_WAIT_OBJECTS < 8
-#error Come on, you can do better than that!
+#error Come on, use a system can do better than that!
 #endif
 	Signaled_1 = Signaled_0 + 1,
 	Signaled_2 = Signaled_0 + 2,

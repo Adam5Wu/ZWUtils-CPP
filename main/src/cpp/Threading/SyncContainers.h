@@ -160,7 +160,7 @@ protected:
 	TEvent PopWait = { true, true };
 
 	TEvent EmptyWait = { true, true };
-	TEvent ContentWait = { true, true };
+	TEvent ContentWait = { true, false };
 
 #if defined(__SDQ_ITERATORS) && defined(__SDQ_MUTABLE_ITERATORS)
 
