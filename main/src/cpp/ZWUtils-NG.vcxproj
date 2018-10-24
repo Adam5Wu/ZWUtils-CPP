@@ -46,8 +46,9 @@
     <ProjectGuid>{DB79A950-A9B8-4C18-96C2-6AED866A73EC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ZWUtilsNG</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
-    <AdditionalPreprocessor></AdditionalPreprocessor>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <AdditionalPreprocessor>
+    </AdditionalPreprocessor>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -209,6 +210,7 @@
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <AdditionalOptions>/bigobj</AdditionalOptions>
       <LanguageStandard>stdcpp14</LanguageStandard>
+      <MinimalRebuild>true</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -236,6 +238,7 @@
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <AdditionalOptions>/bigobj</AdditionalOptions>
       <LanguageStandard>stdcpp14</LanguageStandard>
+      <MinimalRebuild>true</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -248,7 +251,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Full</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_LIB;_WIN32;$(AdditionalPreprocessor);NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -278,7 +281,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Full</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_LIB;_WIN32;$(AdditionalPreprocessor);NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
