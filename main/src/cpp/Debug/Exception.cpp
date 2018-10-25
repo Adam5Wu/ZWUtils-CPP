@@ -137,7 +137,7 @@ std::deque<TString> STException::TraceStack(int PopFrame) {
 	if (!LocalStackTrace(
 		THandle::Dummy(GetCurrentThread()), CurContext,
 		[&](TStackWalker::CallstackEntry const& Entry) {
-			if (--PopFrame < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
+			if (PopFrame-- < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
 			return true;
 		})) {
 		StrTrace.emplace_back(TraceFailureMessage);

@@ -139,8 +139,8 @@ public:
 
 protected:
 	volatile bool __Cleanup = false;
-	volatile __ARC_INT PopWaiters = 0;
-	volatile __ARC_INT EmptyWaiters = 0;
+	//volatile __ARC_INT PopWaiters = 0;
+	//volatile __ARC_INT EmptyWaiters = 0;
 
 #ifdef __SDQ_LITE
 	TLockableCS _Sync;
@@ -293,9 +293,12 @@ protected:
 	TQueueAccessor __Accessor_Pickup_Gated(TSyncCounter &Hold, TEvent &Sync, TimeStamp &EntryTS,
 										   WAITTIME &Timeout, THandleWaitable *AbortEvent);
 
-#define __Impl__Push(method)								\
-	if (Accessor->empty() && PopWaiters) ContentWait.Set();	\
-	Accessor->method;										\
+#define __Impl__Push(method)					\
+	if (Accessor->empty()) {					\
+		EmptyWait.Reset();						\
+		ContentWait.Set();						\
+	}											\
+	Accessor->method;							\
 	return Accessor->size();
 
 	size_type __Push_Front(TQueueAccessor &Accessor, T const &entry) {
@@ -314,10 +317,13 @@ protected:
 		__Impl__Push(push_back(std::move(entry)));
 	}
 
-#define __Impl__Pop(dir)									\
-	entry = std::move(Accessor->dir());						\
-	Accessor->pop_##dir();									\
-	if (Accessor->empty() && EmptyWaiters) EmptyWait.Set();
+#define __Impl__Pop(dir)						\
+	entry = std::move(Accessor->dir());			\
+	Accessor->pop_##dir();						\
+	if (Accessor->empty()) {					\
+		EmptyWait.Set();						\
+		ContentWait.Reset();					\
+	}
 
 	void __Pop_Front(TQueueAccessor &Accessor, T &entry) {
 		__Impl__Pop(front);
@@ -1085,7 +1091,6 @@ typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
 }
 
 #define __Impl_Pop(dir)																							\
-	TAllocResource<__ARC_INT> WaitCounter([&] { return PopWaiters++; }, [&](__ARC_INT &) { --PopWaiters; });	\
 	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();								\
 	while (true) {																								\
 		{																										\
@@ -1094,7 +1099,6 @@ typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
 			{																									\
 				__SyncLock_RAII;																				\
 				if (!Accessor->empty()) return __Pop_##dir(Accessor, entry), true;								\
-				if (!*WaitCounter) ContentWait.Reset();															\
 			}																									\
 		}																										\
 		switch (__WaitFor_Event(ContentWait, EntryTS, Timeout, AbortEvent)) {									\
@@ -1119,7 +1123,6 @@ bool TSyncBlockingDeque<T>::Pop_Back(T &entry, WAITTIME Timeout, THandleWaitable
 
 template<class T>
 typename TLockable::TLock TSyncBlockingDeque<T>::DrainAndLock(WAITTIME Timeout, THandleWaitable *AbortEvent) {
-	TAllocResource<__ARC_INT> WaitCounter([&] { return EmptyWaiters++; }, [&](__ARC_INT &) { --EmptyWaiters; });
 	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();
 	auto _Lock = Lock_Push();
 	while (true) {
@@ -1127,8 +1130,7 @@ typename TLockable::TLock TSyncBlockingDeque<T>::DrainAndLock(WAITTIME Timeout, 
 			auto Accessor = __Accessor_Pickup_Safe();
 			{
 				__SyncLock_RAII;
-				if (Accessor->size() == 0) return std::move(_Lock);
-				if (!*WaitCounter) EmptyWait.Reset();
+				if (Accessor->empty()) return std::move(_Lock);
 			}
 		}
 		switch (__WaitFor_Event(EmptyWait, EntryTS, Timeout, AbortEvent)) {
