@@ -15,9 +15,9 @@ extern "C" {
 	extern PCTCHAR const _DEF_SERVICE_DISPNAME = _T("SvcHost Guest Service");
 	extern PCTCHAR const _DEF_SERVICE_DESC = _T("A empty service doing nothing");
 	extern PCTCHAR const _DEF_SERVICE_GROUP = _T("SvcGuest");
-	extern PCTCHAR const _DEF_SERVICE_DEPENDS = _T("\0");
+	extern PCTCHAR const _DEF_SERVICE_DEPENDS = NullTStr;
 	extern PCTCHAR const _DEF_SERVICE_USER = _T("NT AUTHORITY\\System");
-	extern PCTCHAR const _DEF_SERVICE_PRIVILEGES = _T("\0");
+	extern PCTCHAR const _DEF_SERVICE_PRIVILEGES = SE_CREATE_GLOBAL_NAME NullTStr;
 
 	//----------------------
 	// Service Configurations

@@ -65,6 +65,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NullWChar	L'\0'
 #define NullTChar	_T('\0')
 
+#define NullAStr	"\0"
+#define NullWStr	L"\0"
+#define NullTStr	_T("\0")
+
 #ifdef WINDOWS
 #define ANewLine	"\r\n"
 #define WNewLine	L"\r\n"
