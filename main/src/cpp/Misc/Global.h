@@ -58,9 +58,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define NOEXCEPT throw()
 
-// Visual Studio parser bug work-around
-#define VAWRAP(...) ,##__VA_ARGS__
-
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -79,10 +76,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __LINKER_SYMBOL(name)	name
 #endif
 
-#endif
-
+// Visual Studio parser bug work-arounds
 #define __EXPAND(x)		x
 #define __PAREN(...)	(__VA_ARGS__)
+#define __VAWRAP(...)	,##__VA_ARGS__
 
 #define __NUM_ARGS_SELECTOR(x16, x15, x14, x13, x12, x11, x10, x9, x8, x7, x6, x5, x4, x3, x2, x1, x0, ...) x0
 #define __NUM_ARGS(...) __EXPAND(__NUM_ARGS_SELECTOR(__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
@@ -108,5 +105,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __APPLY_ALL_N(t, n, ...)	__EXPAND(__APPLY_##n(t, __VA_ARGS__))
 #define __APPLY_ALL_WRAP(t, n, ...)	__APPLY_ALL_N(t, n, __VA_ARGS__)
 #define __APPLY_ALL(t, ...)			__APPLY_ALL_WRAP(t, __NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+#endif
 
 #endif

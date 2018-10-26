@@ -70,7 +70,7 @@ void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
 LOG_DO({															\
 	TString __TS = __TimeStamp();									\
 	__LOG(_T("[%s] %s | ") fmt TNewLine,							\
-		__PTID(), __TS.c_str() VAWRAP(__VA_ARGS__));				\
+		__PTID(), __TS.c_str() __VAWRAP(__VA_ARGS__));				\
 })
 
 #define _LOGS(fmt, ...)												\
@@ -79,14 +79,14 @@ LOG_DO({															\
 	TString __TS = __TimeStamp();									\
 	__LOG(_T("@<%s>") TNewLine _T("[%s] %s | ") fmt TNewLine,		\
 		__SrcMark.c_str(), __PTID(), __TS.c_str()					\
-		VAWRAP(__VA_ARGS__));										\
+		__VAWRAP(__VA_ARGS__));										\
 })
 
 #define _TLOG(t,fmt, ...)											\
 LOG_DO({															\
 	TString __TS = __TimeStamp();									\
 	__TLOG(t, _T("[%s] %s | ") fmt TNewLine,						\
-		__PTID(), __TS.c_str() VAWRAP(__VA_ARGS__));				\
+		__PTID(), __TS.c_str() __VAWRAP(__VA_ARGS__));				\
 })
 
 #define _TLOGS(t,fmt, ...)											\
@@ -95,7 +95,7 @@ LOG_DO({															\
 	TString __TS = __TimeStamp();									\
 	__TLOG(t, _T("@<%s>") TNewLine _T("[%s] %s | ") fmt TNewLine,	\
 		__SrcMark.c_str(), __PTID(), __TS.c_str()					\
-		VAWRAP(__VA_ARGS__));										\
+		__VAWRAP(__VA_ARGS__));										\
 })
 
 #ifndef __LOGPFX__

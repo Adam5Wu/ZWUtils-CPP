@@ -127,12 +127,12 @@ void __FormatCtxAndDecodeSysError(unsigned int ErrCode, PTCHAR CtxBuffer, size_t
 //! Log a failure with a system error and context
 #define ERRLOG(errcode, ctx, ...) {																	\
 	SYSERRMSG_STACK(errcode);																		\
-	LOG(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);		\
+	LOG(_T("System Error: ") ctx _T(" (%0.8X: %s)") __VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
 }
 
 #define ERRLOGS(errcode, ctx, ...) {																\
 	SYSERRMSG_STACK(errcode);																		\
-	LOGS(_T("System Error: ") ctx _T(" (%0.8X: %s)") VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
+	LOGS(_T("System Error: ") ctx _T(" (%0.8X: %s)") __VAWRAP(__VA_ARGS__), errcode, __SysErrMsg);	\
 }
 
 //! @ingroup Utilities
