@@ -216,7 +216,7 @@ public:
 
 //! @ingroup Utilities
 //! Raise a system error exception with a formatted string message
-#define SYSERRFAILS(src, errcode, fmt, ...)	SystemError(src, errcode, fmt, __VA_ARGS__)
+#define SYSERRFAILS(src, errcode, fmt, ...)	throw SystemError(src, errcode, fmt, __VA_ARGS__)
 #define SYSERRFAIL(errcode, fmt, ...) {								\
 	SOURCEMARK														\
 	SYSERRFAILS(errcode, std::move(__SrcMark), fmt, __VA_ARGS__);	\
