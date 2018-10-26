@@ -390,7 +390,7 @@ static DWORD _ServiceStop(void) {
 		}
 
 		TimeSpan ServiceDuration = TimeStamp::Now() - ServiceStartTS;
-		LOG(_T("* Service execution duration: %s"), ServiceDuration.toString().c_str());
+		LOG(_T("* Service execution duration: %s"), ServiceDuration.toString(true, true, TimeUnit::DAY, TimeUnit::MSEC).c_str());
 	}
 	return failcount;
 }
