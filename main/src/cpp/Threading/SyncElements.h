@@ -187,7 +187,7 @@ public:
 	virtual THandle WaitHandle(void);
 
 	/**
-	 * Get a duplicated THandleWaitable instance 
+	 * Get a duplicated THandleWaitable instance
 	 **/
 	THandleWaitable DupWaitable(void);
 
@@ -343,7 +343,12 @@ public:
 	}
 
 	~TCriticalSection(void) {
-		DEBUGV_DO_OR({ if (!TryEnter()) LOG(_T("WARNING: Freeing an acquired critical section!")); }, { Enter(); });
+		DEBUGV_DO_OR(
+			{
+				if (!TryEnter()) LOG(_T("WARNING: Freeing an acquired critical section!"));
+			}, {
+				Enter();
+			});
 		DeleteCriticalSection(&rCriticalSection);
 	}
 
@@ -393,7 +398,12 @@ public:
 	}
 
 	~TSRWLock(void) {
-		DEBUGV_DO_OR({ if (!TryWrite()) LOG(_T("WARNING: Freeing an acquired slim R/W lock!")); }, { BeginWrite(); });
+		DEBUGV_DO_OR(
+			{
+				if (!TryWrite()) LOG(_T("WARNING: Freeing an acquired slim R/W lock!"));
+			}, {
+				BeginWrite();
+			});
 	}
 
 	/**
