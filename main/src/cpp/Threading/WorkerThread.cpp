@@ -259,14 +259,17 @@ TWorkerThread::State TWorkerThread::SignalTerminate(void) {
 		switch (iCurState) {
 			case State::Constructed:
 				iCurState = _State.CompareAndSwap(State::Constructed, State::Terminating);
-				if (iCurState == State::Constructed)
-					__StateNotify(State::Terminating), ResumeThread(Refer());
+				if (iCurState == State::Constructed) {
+					__StateNotify(State::Terminating);
+					ResumeThread(Refer());
+				}
 				break;
 			case State::Initialzing:
 				SwitchToThread();
 				continue;
 			case State::Running:
-				__StateNotify(State::Terminating), rRunnable->StopNotify(*this);
+				__StateNotify(State::Terminating);
+				rRunnable->StopNotify(*this);
 				break;
 		}
 		return iCurState;

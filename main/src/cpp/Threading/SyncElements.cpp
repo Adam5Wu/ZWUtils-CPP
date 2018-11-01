@@ -53,9 +53,9 @@ TString WaitResultToString(WaitResult const &WRet) {
 		case WaitResult::Message: return _T("Message");
 		default:
 			if (WRet >= WaitResult::Signaled_0 && WRet <= WaitResult::Signaled_MAX) {
-				return TStringCast(_T("Signaled #") << WaitSlot(WRet, WaitResult::Signaled_0));
+				return TStringCast(_T("Signaled #") << WaitSlot_Signaled(WRet));
 			} else if (WRet >= WaitResult::Abandoned_0 && WRet <= WaitResult::Abandoned_MAX) {
-				return TStringCast(_T("Abandoned #") << WaitSlot(WRet, WaitResult::Abandoned_0));
+				return TStringCast(_T("Abandoned #") << WaitSlot_Abandoned(WRet));
 			}
 	}
 	return TStringCast(_T("Unknown Wait Result (") << std::hex << std::uppercase << (unsigned int)WRet << _T(')'));

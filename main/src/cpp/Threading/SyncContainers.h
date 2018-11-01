@@ -71,7 +71,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Enables concurrent const iterator support
 // - If enabled, mutable iterators will only be available to one thread at a time, while const iterators will be
 //     concurrently avaiable to all threads *when there are no active mutable iterator(s)*;
-//     otherwise, if active mutable iterator(s) present, only thread that owns them will have access to const iterators.
+//     * When an active mutable iterator present, only thread that owns it will have concurrent access to const
+//       iterators, all other threads have to wait to access either mutable or const iterators.
 #define __SDQ_CONCURRENT_CONST_ITERATORS
 
 #endif //__SDQ_MUTABLE_ITERATORS
@@ -337,6 +338,7 @@ public:
 	TString const Name;
 
 	TSyncBlockingDeque(TString const &xName) : Name(xName) {}
+	TSyncBlockingDeque(TString &&xName) : Name(std::move(xName)) {}
 	~TSyncBlockingDeque(void) override;
 
 	TLock Lock_Push(void) {

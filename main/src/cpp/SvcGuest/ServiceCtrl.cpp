@@ -571,7 +571,7 @@ void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int 
 
 	BOOL HasConsole = false;
 
-	DEBUG_DO(HasConsole = AllocConsole());
+	DEBUGV_DO(HasConsole = AllocConsole());
 	if (HasConsole) {
 		FILE *conin, *conout, *conerr;
 		freopen_s(&conin, "CONIN$", "r", stdin);

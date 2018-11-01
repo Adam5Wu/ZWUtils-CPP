@@ -108,6 +108,9 @@ enum class WaitResult : unsigned int {
 //! Calculate the slot of the result result (no sanity check, make sure pass in sane values)
 unsigned int WaitSlot(WaitResult const &X, WaitResult const &Base);
 
+#define WaitSlot_Signaled(x) WaitSlot(x, WaitResult::Signaled_0)
+#define WaitSlot_Abandoned(x) WaitSlot(x, WaitResult::Abandoned_0)
+
 TString WaitResultToString(WaitResult const &WRet);
 
 /**
