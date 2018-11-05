@@ -151,6 +151,7 @@ public:
 #define NPFAIL(s, ...)			FAIL(NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
 #define NPSYSFAIL(s, ...)		SYSFAIL(NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
 #define NPSYSERRFAIL(e, s, ...)	SYSERRFAIL(e, NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
+#define NPLOGEXCEPTIONV(e, s, ...)	LOGEXCEPTIONV(e, NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
 
 #define __GEN_CANCEL_PIPE_IO(__X,__O)								\
 if (!CancelIoEx(__X, __O)) {										\
@@ -165,20 +166,20 @@ if (!CancelIoEx(__X, __O)) {										\
 
 #define __GEN_TERMSIGNAL_HANDLE										\
 case 0:																\
-	NPLOGVV(_T("Detected external termination signal"));			\
+	NPLOGV(_T("Detected external termination signal"));				\
 	WorkerThread.SignalTerminate();									\
 	continue;														\
 case 1:																\
-	NPLOGVV(_T("Detected internal termination signal"));			\
+	NPLOGV(_T("Detected internal termination signal"));				\
 	continue;
 
 #define __GEN_ASYNCERRROR_HANDLE												\
 switch (ErrCode) {																\
 	case ERROR_MORE_DATA:														\
-		NPLOGVV(_T("ERROR: Excessive data size"));								\
+		NPLOG(_T("ERROR: Excessive data size"));								\
 		break;																	\
 	case ERROR_BROKEN_PIPE:														\
-		NPLOGVV(_T("ERROR: Pipe disconnected from the other end"));				\
+		NPLOGV(_T("ERROR: Pipe disconnected from the other end"));				\
 		break;																	\
 	default:																	\
 		NPERRLOG(ErrCode, _T("ERROR: Unexpected asynchronous error status"));	\
@@ -194,106 +195,110 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 	THandle ConnectSignalHandle = ConnectEvent.SignalHandle();
 	OVERLAPPED AsyncConnect;
 
-	while (WorkerThread.CurrentState() == TWorkerThread::State::Running) {
-		THandle _Pipe(
-			[&] {
-				SECURITY_ATTRIBUTES SA = { 0 };
-				SA.nLength = sizeof(SECURITY_ATTRIBUTES);
+	try {
+		while (WorkerThread.CurrentState() == TWorkerThread::State::Running) {
+			THandle _Pipe(
+				[&] {
+					SECURITY_ATTRIBUTES SA = { 0 };
+					SA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-				if (!_ServRec->_DACL.empty()) {
-					// Prepare DACL that allow users read access
-					PSECURITY_DESCRIPTOR pSD;
-					if (!ConvertStringSecurityDescriptorToSecurityDescriptor(_ServRec->_DACL.c_str(), SDDL_REVISION_1, &pSD, nullptr)) {
-						NPSYSFAIL(_T("Unable to create security descriptor"));
+					if (!_ServRec->_DACL.empty()) {
+						// Prepare DACL that allow users read access
+						PSECURITY_DESCRIPTOR pSD;
+						if (!ConvertStringSecurityDescriptorToSecurityDescriptor(_ServRec->_DACL.c_str(), SDDL_REVISION_1, &pSD, nullptr)) {
+							NPSYSFAIL(_T("Unable to create security descriptor"));
+						}
+						TInitResource<PSECURITY_DESCRIPTOR> SD_RAII(pSD, [](PSECURITY_DESCRIPTOR &X) { LocalFree(X); });
+
+						SA.lpSecurityDescriptor = pSD;
 					}
-					TInitResource<PSECURITY_DESCRIPTOR> SD_RAII(pSD, [](PSECURITY_DESCRIPTOR &X) { LocalFree(X); });
 
-					SA.lpSecurityDescriptor = pSD;
-				}
-
-				// Create NamedPipe server side
-				HANDLE Ret = CreateNamedPipe(FullPath.c_str(),
-											 PIPE_ACCESS_DUPLEX |
-											 FILE_FLAG_OVERLAPPED,
-											 PIPE_TYPE_MESSAGE |
-											 PIPE_READMODE_MESSAGE |
-											 PIPE_WAIT,
-											 PIPE_UNLIMITED_INSTANCES,
-											 _ServRec->_BufferSize,
-											 _ServRec->_BufferSize,
-											 0, &SA);
-				if (Ret == INVALID_HANDLE_VALUE) {
-					NPSYSFAIL(_T("Unable to create named pipe"));
-				}
-				return Ret;
-			});
-
-		{
-			// Prepare overlapped IO structure
-			AsyncConnect = { 0 };
-			AsyncConnect.hEvent = *ConnectSignalHandle;
-
-			TInitResource<OVERLAPPED*> OverlappedConnect_RAII(
-				&AsyncConnect,
-				[&](OVERLAPPED* &X) {
-					if (_Pipe.Allocated() && !HasOverlappedIoCompleted(X)) {
-						// Need to cancel the unfinished wait for connection
-						NPLOGVV(_T("Try to cancel unfinished connect..."));
-						__GEN_CANCEL_PIPE_IO(*_Pipe, X);
+					// Create NamedPipe server side
+					HANDLE Ret = CreateNamedPipe(FullPath.c_str(),
+												 PIPE_ACCESS_DUPLEX |
+												 FILE_FLAG_OVERLAPPED,
+												 PIPE_TYPE_MESSAGE |
+												 PIPE_READMODE_MESSAGE |
+												 PIPE_WAIT,
+												 PIPE_UNLIMITED_INSTANCES,
+												 _ServRec->_BufferSize,
+												 _ServRec->_BufferSize,
+												 0, &SA);
+					if (Ret == INVALID_HANDLE_VALUE) {
+						NPSYSFAIL(_T("Unable to create named pipe"));
 					}
-					ConnectEvent.Reset();
+					return Ret;
 				});
 
-			// Try asynchronous ConnectNamedPipe
-			if (ConnectNamedPipe(*_Pipe, &AsyncConnect))
-				NPFAIL(_T("Unexpected success return for asynchronous ConnectNamedPipe"));
-			DWORD ErrCode = GetLastError();
-			switch (ErrCode) {
-				case ERROR_IO_PENDING:
-				{
-					NPLOGVV(_T("Waiting for client to connect"));
-					auto WaitResult = WaitMultiple({ _ServRec->_TermSignal, _IntTermSignal, ConnectEvent }, false);
-					if ((WaitResult >= WaitResult::Signaled_0) && (WaitResult <= WaitResult::Signaled_MAX)) {
-						auto SlotIdx = WaitSlot_Signaled(WaitResult);
-						switch (SlotIdx) {
-							__GEN_TERMSIGNAL_HANDLE
+			{
+				// Prepare overlapped IO structure
+				AsyncConnect = { 0 };
+				AsyncConnect.hEvent = *ConnectSignalHandle;
 
-							case 2:
-								// Client connected, handle in the next case via fall through
-								break;
-
-							default:
-								NPLOG(_T("ERROR: Unexpected signaled wait slot (%d)"), SlotIdx);
-								WorkerThread.SignalTerminate();
+				TInitResource<OVERLAPPED*> OverlappedConnect_RAII(
+					&AsyncConnect,
+					[&](OVERLAPPED* &X) {
+						if (_Pipe.Allocated() && !HasOverlappedIoCompleted(X)) {
+							// Need to cancel the unfinished wait for connection
+							NPLOGVV(_T("Try to cancel unfinished connect..."));
+							__GEN_CANCEL_PIPE_IO(*_Pipe, X);
 						}
-					} else {
-						NPFAIL(_T("ERROR: Unexpected wait result '%s'"), WaitResultToString(WaitResult).c_str());
-					}
-				} // Fall through...
+						ConnectEvent.Reset();
+					});
 
-				case ERROR_PIPE_CONNECTED:
-				{
-					auto ClientIdx = _ClientCnt.Increment();
-					NPLOGVV(_T("Client #%d connected"), ClientIdx);
-					TString ClientName = TStringCast(_ServRec->_Name << _T('#') << ClientIdx);
-					_ServRec->_OnConnect(DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
-													 std::move(_Pipe), _ServRec->_BufferSize, _ServRec->_TermSignal));
-				} break;
+				// Try asynchronous ConnectNamedPipe
+				if (ConnectNamedPipe(*_Pipe, &AsyncConnect))
+					NPFAIL(_T("Unexpected success return for asynchronous ConnectNamedPipe"));
+				DWORD ErrCode = GetLastError();
+				switch (ErrCode) {
+					case ERROR_IO_PENDING:
+					{
+						NPLOGVV(_T("Waiting for client to connect"));
+						auto WaitResult = WaitMultiple({ _ServRec->_TermSignal, _IntTermSignal, ConnectEvent }, false);
+						if ((WaitResult >= WaitResult::Signaled_0) && (WaitResult <= WaitResult::Signaled_MAX)) {
+							auto SlotIdx = WaitSlot_Signaled(WaitResult);
+							switch (SlotIdx) {
+								__GEN_TERMSIGNAL_HANDLE
 
-				default:
-					NPSYSERRFAIL(ErrCode, _T("Unexpected error for asynchronous ConnectNamedPipe"));
+								case 2:
+									// Client connected, handle in the next case via fall through
+									break;
+
+								default:
+									NPLOG(_T("ERROR: Unexpected signaled wait slot (%d)"), SlotIdx);
+									WorkerThread.SignalTerminate();
+							}
+						} else {
+							NPFAIL(_T("ERROR: Unexpected wait result '%s'"), WaitResultToString(WaitResult).c_str());
+						}
+					} // Fall through...
+
+					case ERROR_PIPE_CONNECTED:
+					{
+						auto ClientIdx = _ClientCnt.Increment();
+						NPLOGV(_T("Client #%d connected"), ClientIdx);
+						TString ClientName = TStringCast(_ServRec->_Name << _T('#') << ClientIdx);
+						_ServRec->_OnConnect(DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
+														 std::move(_Pipe), _ServRec->_BufferSize, _ServRec->_TermSignal));
+					} break;
+
+					default:
+						NPSYSERRFAIL(ErrCode, _T("Unexpected error for asynchronous ConnectNamedPipe"));
+				}
 			}
 		}
+	} catch (_ECR_ e) {
+		NPLOGEXCEPTIONV(e, _T("Named pipe server failed"));
 	}
 
-	NPLOGVV(_T("Stopped serving (%s)"), FullPath.c_str());
+	NPLOGV(_T("Stopped serving (%s)"), FullPath.c_str());
 	return TFixedBuffer(nullptr);
 }
 
 TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
-	NPLOGVV(_T("Starting serving..."));
+	NPLOGV(_T("Starting serving..."));
 	TDynBuffer OutBuffer;
-	TDynBuffer InBuffer(_ServRec->_BufferSize);
+	TDynBuffer InBuffer;
 	THandleWaitable OutRequest = _ServRec->_OutQueue.ContentWaitable();
 
 	THandle ExtTermWaitHandle = _ServRec->_TermSignal.WaitHandle();
@@ -318,7 +323,7 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 			_ServRec->_Pipe.Deallocate();
 		});
 
-	{
+	try {
 		TInitResource<OVERLAPPED*> OverlappedRead_RAII(
 			&AsyncRead,
 			[&](OVERLAPPED* &X) {
@@ -342,6 +347,7 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 		while (WorkerThread.CurrentState() == TWorkerThread::State::Running) {
 			if (!AsyncRead.hEvent) {
 				AsyncRead.hEvent = *ReadSignalHandle;
+				InBuffer.SetSize(_ServRec->_BufferSize);
 				if (!ReadFile(*_ServRec->_Pipe, &InBuffer, _ServRec->_BufferSize, NULL, &AsyncRead)) {
 					DWORD ErrCode = GetLastError();
 					if (ErrCode != ERROR_IO_PENDING) {
@@ -382,8 +388,9 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 								__GEN_ASYNCERRROR_HANDLE
 							}
 							if (cbWrite != OutBuffer.GetSize()) {
-								NPLOGVV(_T("WARNING: Unexpected written data size (%d, expect %d)"), cbWrite, OutBuffer.GetSize());
+								NPLOGV(_T("WARNING: Unexpected written data size (%d, expect %d)"), cbWrite, OutBuffer.GetSize());
 							}
+							OutBuffer.Deallocate();
 							AsyncWrite = { 0 };
 							WriteEvent.Reset();
 						} else {
@@ -410,9 +417,11 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 				NPFAIL(_T("ERROR: Unexpected wait result '%s'"), WaitResultToString(WaitResult).c_str());
 			}
 		}
+	} catch (_ECR_ e) {
+		NPLOGEXCEPTIONV(e, _T("Named pipe endpoint failed"));
 	}
 
-	NPLOGVV(_T("Stopped serving"));
+	NPLOGV(_T("Stopped serving"));
 	return TFixedBuffer(nullptr);
 }
 

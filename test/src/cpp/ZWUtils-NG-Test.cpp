@@ -1023,7 +1023,7 @@ void TestSyncObj_2(bool Robust) {
 
 		_LOG(_T("--- Pickup (Failure with timeout & abort)"));
 		{
-			MRWorkerThread X(TWorkerThread::Create(_T("TestSyncLock"), DEFAULT_NEW(TestSyncLock)), CONSTRUCTION::HANDOFF);
+			MRWorkerThread X(CONSTRUCTION::EMPLACE, _T("TestSyncLock"), MRRunnable(DEFAULT_NEW(TestSyncLock), CONSTRUCTION::HANDOFF));
 			X->Start({ &A, DummyAllocator() });
 			// Wait for the thread to claim the lock
 			_LOG(_T("Waiting for locking thread to start..."));
@@ -1178,8 +1178,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1224,8 +1224,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1270,8 +1270,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1316,8 +1316,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1362,8 +1362,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1451,8 +1451,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue;
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Benchmarking Comparison Queue (Upper-bound)..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1507,8 +1507,8 @@ void TestSyncQueue(bool Profiling) {
 
 			ExtAllocator NullAlloc;
 			TSyncIntQueue Queue(_T("SyncIntQueue"));
-			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread->Start({ &Queue, NullAlloc });
 			GetThread->Start({ &Queue, NullAlloc });
@@ -1516,8 +1516,8 @@ void TestSyncQueue(bool Profiling) {
 			_LOG(_T("--- Finished All Queue Operation..."));
 			Queue.Deflate();
 
-			MRWorkerThread PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), DEFAULT_NEW(TestQueuePut));
-			MRWorkerThread GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), DEFAULT_NEW(TestQueueGet));
+			MRWorkerThread PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
+			MRWorkerThread GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
 			PutThread2->Start({ &Queue, NullAlloc });
 			GetThread2->Start({ &Queue, NullAlloc });
@@ -1646,7 +1646,7 @@ void TestSyncQueue(bool Profiling) {
 							}
 						};
 
-						MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DEFAULT_NEW(TestQueueIter));
+						MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), MRRunnable(DEFAULT_NEW(TestQueueIter), CONSTRUCTION::HANDOFF));
 						IterThread->Start({ &Queue, NullAlloc });
 						IterThread->WaitFor();
 						auto IterExcept = IterThread->FatalException(true);
@@ -1681,7 +1681,7 @@ void TestSyncQueue(bool Profiling) {
 						}
 					};
 
-					MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), DEFAULT_NEW(TestQueueIter));
+					MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), MRRunnable(DEFAULT_NEW(TestQueueIter), CONSTRUCTION::HANDOFF));
 					IterThread->Start({ &Queue, NullAlloc });
 					Sleep(1000);
 
