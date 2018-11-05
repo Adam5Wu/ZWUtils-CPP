@@ -91,7 +91,7 @@ public:
 	virtual T* Transfer(T *Obj, _this &OAlloc);
 };
 
-#define RLAMBDANEW(cls, ...) [&](void *X) {return new (X) cls (__VA_ARGS__);}
+#define RLAMBDANEW(cls, ...) [&](void *__X) {return new (__X) cls (__VA_ARGS__);}
 
 template<class T>
 bool operator ==(IObjAllocator<T> const &A, IObjAllocator<T> const &B) {

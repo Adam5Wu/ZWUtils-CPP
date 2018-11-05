@@ -64,6 +64,8 @@ protected:
 #endif
 		~ManagedObj(void);
 
+	virtual void __Pre_Destroy(void) {}
+
 public:
 	void _AddRef(void) {
 		++_RefCount;

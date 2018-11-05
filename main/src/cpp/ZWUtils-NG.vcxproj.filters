@@ -76,6 +76,9 @@
     <ClCompile Include="SvcGuest\ServiceStubs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Comm\NamedPipe.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">
@@ -151,6 +154,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="SvcGuest\ServiceMain.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Comm\LocalComm.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Comm\NamedPipe.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -60,6 +60,31 @@ static DWORD WINAPI _ThreadProc(LPVOID PThreadRecord) {
 	return (*ThreadRecord)();
 }
 
+// Utility for setting thread name
+// Reference: https://docs.microsoft.com/en-us/visualstudio/debugger/how-to-set-a-thread-name-in-native-code
+const DWORD MS_VC_EXCEPTION = 0x406D1388;
+
+#pragma pack(push,8)  
+typedef struct tagTHREADNAME_INFO {
+	DWORD dwType; // Must be 0x1000.  
+	LPCSTR szName; // Pointer to name (in user addr space).  
+	DWORD dwThreadID; // Thread ID (-1=caller thread).  
+	DWORD dwFlags; // Reserved for future use, must be zero.  
+} THREADNAME_INFO;
+#pragma pack(pop)  
+
+static void SetThreadName(DWORD dwThreadID, LPCSTR threadName) {
+	THREADNAME_INFO info = { 0x1000, threadName, dwThreadID, 0 };
+#pragma warning(push)
+#pragma warning(disable: 6320 6322) 
+	__try {
+		RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		// Do nothing, ignore exception
+	}
+#pragma warning(pop) 
+}
+
 #endif
 
 #define WTLogTag _T("WThread '%s'")
@@ -184,12 +209,13 @@ void TWorkerThread::__Pre_Destroy(void) {
 				WTDESTROY;
 			}
 	}
+	Deallocate();
 }
 
 void TWorkerThread::__DestroyThread(TString const &Name, HANDLE &X) {
 	if (GetCurrentThreadId() != _ThreadID) {
 		State PrevState = SignalTerminate();
-		if ((PrevState == State::Running) || (PrevState == State::Terminating)) {
+		if (PrevState <= State::Terminating) {
 			WTLOGV(_T("WARNING: Waiting for worker termination..."));
 			WaitFor();
 		}
@@ -202,6 +228,19 @@ void TWorkerThread::__DestroyThread(TString const &Name, HANDLE &X) {
 }
 
 DWORD TWorkerThread::__CallForwarder(void) {
+#ifndef NDEBUG
+#ifdef UNICODE
+	TString ErrMsg;
+	CString TName = WStringtoCString(CP_ACP, Name, ErrMsg);
+	if (!ErrMsg.empty()) {
+		LOG(_T("WARNING: Error during converting thread name - %s"), ErrMsg.c_str());
+	}
+	SetThreadName(_ThreadID, TName.c_str());
+#else
+	SetThreadName(_ThreadID, Name.c_str());
+#endif
+#endif
+
 	DWORD Ret = 0;
 	auto iCurState = _State.CompareAndSwap(State::Initialzing, State::Running);
 	switch (iCurState) {
@@ -214,7 +253,7 @@ DWORD TWorkerThread::__CallForwarder(void) {
 				Exception *ZWE = dynamic_cast<Exception*>(&e);
 				if (ZWE != nullptr) {
 					rException = { ZWE, CONSTRUCTION::CLONE };
-					DEBUGV_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(ZWE) == nullptr) {
+					DEBUG_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(ZWE) == nullptr) {
 						WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
 						ZWE->Show();
 					});
@@ -250,7 +289,7 @@ void TWorkerThread::Start(TFixedBuffer &&xInputData) {
 }
 
 DWORD TWorkerThread::ThreadID(void) {
-	return Refer(), _ThreadID;
+	return _ThreadID;
 }
 
 TWorkerThread::State TWorkerThread::SignalTerminate(void) {
@@ -258,18 +297,26 @@ TWorkerThread::State TWorkerThread::SignalTerminate(void) {
 		auto iCurState = _State.CompareAndSwap(State::Running, State::Terminating);
 		switch (iCurState) {
 			case State::Constructed:
+				// Try to switch to terminating before someone start it
 				iCurState = _State.CompareAndSwap(State::Constructed, State::Terminating);
-				if (iCurState == State::Constructed) {
-					__StateNotify(State::Terminating);
-					ResumeThread(Refer());
-				}
+				// If failed, loop back and try again
+				if (iCurState != State::Constructed) continue;
+				// We have switched the state, now let loose the thread so it can finish its course
+				WTLOGV(_T("Terminated before start"));
+				ResumeThread(Refer());
 				break;
+
 			case State::Initialzing:
+				// Someone already started the thread, and it has not reached running state
 				SwitchToThread();
+				// Loop back and try again
 				continue;
+
 			case State::Running:
+				// The thread was in running and we switched it to terminating, so we should do notify
 				__StateNotify(State::Terminating);
 				rRunnable->StopNotify(*this);
+				// The thread will do the state switch to terminated, as well as notify
 				break;
 		}
 		return iCurState;

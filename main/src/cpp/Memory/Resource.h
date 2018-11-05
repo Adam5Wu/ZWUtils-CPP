@@ -136,6 +136,7 @@ public:
 		_Alloc(xAlloc), _Dealloc(xDealloc) {}
 	TAllocResource(X const &xResRef, TResDealloc const &xDealloc, TResAlloc const &xAlloc = NoAlloc) :
 		_ResRef(xResRef), _ResValid(true), _Dealloc(xDealloc), _Alloc(xAlloc) {}
+
 	~TAllocResource(void) override {
 		Deallocate();
 	}

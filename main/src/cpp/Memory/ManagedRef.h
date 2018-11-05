@@ -73,14 +73,14 @@ public:
 	ManagedRef(IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
 		_Alloc(xAlloc) {}
 
+	ManagedRef(CONSTRUCTION::EMPLACE_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+		_Obj(_RefObj(xAlloc.Create())), _Alloc(xAlloc) {}
+
 	template<typename... Params>
 	ManagedRef(IObjAllocator<T> &xAlloc, Params&&... xParams) :
 		_Alloc(xAlloc) {
 		_Obj = _RefObj(xAlloc.Create(RLAMBDANEW(T, std::forward<Params>(xParams)...)));
 	}
-
-	ManagedRef(CONSTRUCTION::EMPLACE_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
-		_Obj(_RefObj(xAlloc.Create())), _Alloc(xAlloc) {}
 
 	template<typename... Params>
 	ManagedRef(CONSTRUCTION::EMPLACE_T const&, Params&&... xParams) :

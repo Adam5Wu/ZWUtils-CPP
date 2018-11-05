@@ -488,6 +488,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Comm\NamedPipe.cpp" />
     <ClCompile Include="Debug\Debug.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">/D "SOLUTION_PATH=\"$(SolutionDir.Replace('\','\\'))\\""</AdditionalOptions>
@@ -544,6 +545,8 @@
     <ClCompile Include="Threading\WorkerThread.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Comm\LocalComm.h" />
+    <ClInclude Include="Comm\NamedPipe.h" />
     <ClInclude Include="Debug\Debug.h" />
     <ClInclude Include="Debug\Exception.h" />
     <ClInclude Include="Debug\Logging.h" />

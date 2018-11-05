@@ -51,6 +51,7 @@ void TestSyncObj_1();
 void TestWorkerThread();
 void TestSyncObj_2(bool Robust = false);
 void TestSyncQueue(bool Profiling = false);
+void TestNamedPipe();
 
 #ifdef WINDOWS
 int _tmain(int argc, _TCHAR* argv[])
@@ -62,9 +63,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	try {
 		if (argc != 2)
 			FAIL(_T("Require 1 parameter: <TestType> = 'ALL' | ")
-				_T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'DynBuffer' / ")
-				_T("'ManagedObj' / 'SyncObj' / 'Size' / 'Timing' / 'WorkerThread' / 'SyncQueue'")
-				_T("'SyncQueueProf' / 'SyncObjRobust'"));
+				 _T("'Exception' / 'ErrCode' / 'StringConv' / 'SyncPrems' / 'DynBuffer' / ")
+				 _T("'ManagedObj' / 'SyncObj' / 'Size' / 'Timing' / 'WorkerThread' / 'SyncQueue'")
+				 _T("'SyncQueueProf' / 'SyncObjRobust'"));
 
 		bool TestAll = _tcsicmp(argv[1], _T("ALL")) == 0;
 		if (TestAll || (_tcsicmp(argv[1], _T("Exception")) == 0)) {
@@ -102,6 +103,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		if (TestAll || (_tcsicmp(argv[1], _T("SyncQueue")) == 0)) {
 			TestSyncQueue();
+		}
+		if (TestAll || _tcsicmp(argv[1], _T("NamedPipe")) == 0) {
+			TestNamedPipe();
 		}
 		if (_tcsicmp(argv[1], _T("SyncQueueProf")) == 0) {
 			TestSyncQueue(true);
@@ -473,7 +477,7 @@ void TestDynBuffer() {
 		_LOG(_T("Buffer status: %s"), TVoidDynBuffer.Allocated() ? _T("Allocated") : _T("Unallocated"));
 
 		_LOG(_T("Extend to 2KB: %s, %s"), TVoidDynBuffer.SetSize(2048) ? _T("Success") : _T("Fail"),
-			TStringCast((char*)&TVoidDynBuffer).c_str());
+			 TStringCast((char*)&TVoidDynBuffer).c_str());
 		memset(((char*)&TVoidDynBuffer) + 9, 'B', 9);
 		((char*)&TVoidDynBuffer)[18] = '\0';
 		_LOG(_T("Append with 9x'B' = %p (%s)"), &TVoidDynBuffer, TStringCast((char*)&TVoidDynBuffer).c_str());
@@ -622,7 +626,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Normal)"));
 	{
-		MRWorkerThread A(TWorkerThread::Create(_T("TestA"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
+		MRWorkerThread A(TWorkerThread::Create(_T("TestA"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 		A->Start();
 		A->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(A->ReturnData()).c_str());
@@ -633,7 +637,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Exception during run)"));
 	{
-		MRWorkerThread B(TWorkerThread::Create(_T("TestB"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
+		MRWorkerThread B(TWorkerThread::Create(_T("TestB"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 		B->Start(TFixedBuffer(DefaultAllocator().Alloc(100)));
 		B->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(B->ReturnData()).c_str());
@@ -646,7 +650,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Normal, Self-free)"));
 	{
-		TWorkerThread::Create(_T("TestC"), DEFAULT_NEW(TestRunnable), true)->Start();
+		TWorkerThread::Create(_T("TestC"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }, true)->Start();
 		TDelayWaitable WaitASec(500);
 		WaitASec.WaitFor(FOREVER);
 		_LOG(_T("Expect the worker thread has terminated and destroyed by now..."));
@@ -654,7 +658,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Exception, Self-free)"));
 	{
-		TWorkerThread::Create(_T("TestD"), DEFAULT_NEW(TestRunnable), true)->Start(DefaultAllocator().Alloc(100));
+		TWorkerThread::Create(_T("TestD"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }, true)->Start(DefaultAllocator().Alloc(100));
 		TDelayWaitable WaitASec(500);
 		WaitASec.WaitFor(FOREVER);
 		_LOG(_T("Expect the worker thread has terminated and destroyed by now..."));
@@ -671,7 +675,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Self-destroy)"));
 	{
-		MRWorkerThread E(TWorkerThread::Create(_T("TestE"), DEFAULT_NEW(TestSelfDestroyRunnable)), CONSTRUCTION::HANDOFF);
+		MRWorkerThread E(TWorkerThread::Create(_T("TestE"), { DEFAULT_NEW(TestSelfDestroyRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 		E->Start();
 		E->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(E->ReturnData()).c_str());
@@ -684,7 +688,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Terminate before run)"));
 	{
-		MRWorkerThread F(TWorkerThread::Create(_T("TestF"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
+		MRWorkerThread F(TWorkerThread::Create(_T("TestF"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 		F->SignalTerminate();
 		F->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(F->ReturnData()).c_str());
@@ -697,26 +701,26 @@ void TestWorkerThread() {
 	{
 		{
 			auto ConstructEvent = TWorkerThread::GStateNotify(_T("TestConstructed"), TWorkerThread::State::Constructed,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+															  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																  _LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+															  });
 			auto InitializingEvent = TWorkerThread::GStateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+																 [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																	 _LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+																 });
 			auto RunningEvent = TWorkerThread::GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+															[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+															});
 			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																	_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+																});
 			auto TerminatedEvent = TWorkerThread::GStateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
-			MRWorkerThread G(TWorkerThread::Create(_T("TestG"), DEFAULT_NEW(TestRunnable)), CONSTRUCTION::HANDOFF);
+															   [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																   _LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+															   });
+			MRWorkerThread G(TWorkerThread::Create(_T("TestG"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 			G->SignalTerminate();
 			G->WaitFor();
 			_LOG(_T("Return data: %s"), TStringCast(G->ReturnData()).c_str());
@@ -733,19 +737,19 @@ void TestWorkerThread() {
 			}
 		};
 		{
-			MRWorkerThread H(TWorkerThread::Create(_T("TestH"), DEFAULT_NEW(TestDelayRunnable)), CONSTRUCTION::HANDOFF);
+			MRWorkerThread H(TWorkerThread::Create(_T("TestH"), { DEFAULT_NEW(TestDelayRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 			auto InitializingEvent = H->StateNotify(_T("TestInitializing"), TWorkerThread::State::Initialzing,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+														_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+													});
 			auto RunningEvent = H->GStateNotify(_T("TestRunning"), TWorkerThread::State::Running,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+												[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+													_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+												});
 			auto TerminatingEvent = H->GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+													[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+														_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+													});
 			H->Start();
 			H->WaitFor(500);
 			H->SignalTerminate();
@@ -757,14 +761,14 @@ void TestWorkerThread() {
 		}
 		{
 			auto TerminatingEvent = TWorkerThread::GStateNotify(_T("TestTerminating"), TWorkerThread::State::Terminating,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
-			MRWorkerThread I(TWorkerThread::Create(_T("TestI"), DEFAULT_NEW(TestDelayRunnable)), CONSTRUCTION::HANDOFF);
+																[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+																	_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+																});
+			MRWorkerThread I(TWorkerThread::Create(_T("TestI"), { DEFAULT_NEW(TestDelayRunnable) , CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
 			auto TerminatedEvent = I->StateNotify(_T("TestTerminated"), TWorkerThread::State::Terminated,
-				[](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
-					_LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
-				});
+												  [](TWorkerThread &WT, TWorkerThread::State const &State) throw() {
+													  _LOG(_T("- Worker thread '%s', State [%s]"), WT.Name.c_str(), TWorkerThread::STR_State(State));
+												  });
 			I->Start();
 			_LOG(_T("Going out-of-scope, expect signal terminate and wait for 1 second (no local event notification)..."));
 		}
@@ -792,38 +796,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -844,7 +848,7 @@ void TestSyncObj_2(bool Robust) {
 				*TestCount14, *TestCount15, *TestCount16, *TestCount17,
 				*TestCount18, *TestCount19, *TestCount1A, *TestCount1B,
 				*TestCount1C, *TestCount1D, *TestCount1E, *TestCount1F
-				}, true);
+						 }, true);
 
 			_LOG(_T("--- Finished All Counting..."));
 			_LOG(_T("X = %d"), X.Pickup()->value);
@@ -867,38 +871,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -919,7 +923,7 @@ void TestSyncObj_2(bool Robust) {
 				*TestCount14, *TestCount15, *TestCount16, *TestCount17,
 				*TestCount18, *TestCount19, *TestCount1A, *TestCount1B,
 				*TestCount1C, *TestCount1D, *TestCount1E, *TestCount1F
-				}, true);
+						 }, true);
 
 			_LOG(_T("--- Finished All Counting..."));
 			_LOG(_T("X = %d"), X.Pickup()->value);
@@ -942,38 +946,38 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount00(CONSTRUCTION::EMPLACE, _T("CounterThread00"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount01(CONSTRUCTION::EMPLACE, _T("CounterThread01"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount02(CONSTRUCTION::EMPLACE, _T("CounterThread02"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount03(CONSTRUCTION::EMPLACE, _T("CounterThread03"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount04(CONSTRUCTION::EMPLACE, _T("CounterThread04"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount05(CONSTRUCTION::EMPLACE, _T("CounterThread05"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount06(CONSTRUCTION::EMPLACE, _T("CounterThread06"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount07(CONSTRUCTION::EMPLACE, _T("CounterThread07"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount08(CONSTRUCTION::EMPLACE, _T("CounterThread08"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount09(CONSTRUCTION::EMPLACE, _T("CounterThread09"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0A(CONSTRUCTION::EMPLACE, _T("CounterThread0A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0B(CONSTRUCTION::EMPLACE, _T("CounterThread0B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0C(CONSTRUCTION::EMPLACE, _T("CounterThread0C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0D(CONSTRUCTION::EMPLACE, _T("CounterThread0D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0E(CONSTRUCTION::EMPLACE, _T("CounterThread0E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount0F(CONSTRUCTION::EMPLACE, _T("CounterThread0F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount10(CONSTRUCTION::EMPLACE, _T("CounterThread10"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount11(CONSTRUCTION::EMPLACE, _T("CounterThread11"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount12(CONSTRUCTION::EMPLACE, _T("CounterThread12"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount13(CONSTRUCTION::EMPLACE, _T("CounterThread13"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount14(CONSTRUCTION::EMPLACE, _T("CounterThread14"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount15(CONSTRUCTION::EMPLACE, _T("CounterThread15"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount16(CONSTRUCTION::EMPLACE, _T("CounterThread16"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount17(CONSTRUCTION::EMPLACE, _T("CounterThread17"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount18(CONSTRUCTION::EMPLACE, _T("CounterThread18"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount19(CONSTRUCTION::EMPLACE, _T("CounterThread19"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1A(CONSTRUCTION::EMPLACE, _T("CounterThread1A"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1B(CONSTRUCTION::EMPLACE, _T("CounterThread1B"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1C(CONSTRUCTION::EMPLACE, _T("CounterThread1C"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1D(CONSTRUCTION::EMPLACE, _T("CounterThread1D"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1E(CONSTRUCTION::EMPLACE, _T("CounterThread1E"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
 			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
@@ -994,7 +998,7 @@ void TestSyncObj_2(bool Robust) {
 				*TestCount14, *TestCount15, *TestCount16, *TestCount17,
 				*TestCount18, *TestCount19, *TestCount1A, *TestCount1B,
 				*TestCount1C, *TestCount1D, *TestCount1E, *TestCount1F
-				}, true);
+						 }, true);
 
 			_LOG(_T("--- Finished All Counting..."));
 			_LOG(_T("X = %d"), X.Pickup()->value);
@@ -1070,22 +1074,22 @@ void TestSyncObj_2(bool Robust) {
 				}
 			};
 
-			MRWorkerThread TestCount0(CONSTRUCTION::EMPLACE, _T("CounterThread0"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount1(CONSTRUCTION::EMPLACE, _T("CounterThread1"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount2(CONSTRUCTION::EMPLACE, _T("CounterThread2"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount3(CONSTRUCTION::EMPLACE, _T("CounterThread3"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount4(CONSTRUCTION::EMPLACE, _T("CounterThread4"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount5(CONSTRUCTION::EMPLACE, _T("CounterThread5"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount6(CONSTRUCTION::EMPLACE, _T("CounterThread6"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount7(CONSTRUCTION::EMPLACE, _T("CounterThread7"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount8(CONSTRUCTION::EMPLACE, _T("CounterThread8"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCount9(CONSTRUCTION::EMPLACE, _T("CounterThread9"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountA(CONSTRUCTION::EMPLACE, _T("CounterThreadA"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountB(CONSTRUCTION::EMPLACE, _T("CounterThreadB"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountC(CONSTRUCTION::EMPLACE, _T("CounterThreadC"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountD(CONSTRUCTION::EMPLACE, _T("CounterThreadD"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountE(CONSTRUCTION::EMPLACE, _T("CounterThreadE"), DEFAULT_NEW(TestCount));
-			MRWorkerThread TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), DEFAULT_NEW(TestCount));
+			MRWorkerThread TestCount0(CONSTRUCTION::EMPLACE, _T("CounterThread0"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount1(CONSTRUCTION::EMPLACE, _T("CounterThread1"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount2(CONSTRUCTION::EMPLACE, _T("CounterThread2"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount3(CONSTRUCTION::EMPLACE, _T("CounterThread3"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount4(CONSTRUCTION::EMPLACE, _T("CounterThread4"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount5(CONSTRUCTION::EMPLACE, _T("CounterThread5"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount6(CONSTRUCTION::EMPLACE, _T("CounterThread6"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount7(CONSTRUCTION::EMPLACE, _T("CounterThread7"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount8(CONSTRUCTION::EMPLACE, _T("CounterThread8"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCount9(CONSTRUCTION::EMPLACE, _T("CounterThread9"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountA(CONSTRUCTION::EMPLACE, _T("CounterThreadA"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountB(CONSTRUCTION::EMPLACE, _T("CounterThreadB"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountC(CONSTRUCTION::EMPLACE, _T("CounterThreadC"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountD(CONSTRUCTION::EMPLACE, _T("CounterThreadD"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountE(CONSTRUCTION::EMPLACE, _T("CounterThreadE"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
+			MRWorkerThread TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting..."));
 			TestCount0->Start({ &X, NullAlloc }); TestCount1->Start({ &X, NullAlloc }); TestCount2->Start({ &X, NullAlloc }); TestCount3->Start({ &X, NullAlloc });
@@ -1743,5 +1747,184 @@ void TestSyncQueue(bool Profiling) {
 #endif
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
+	}
+}
+
+#include "Comm/NamedPipe.h"
+
+#define NAMEDPIPE_TEST		_T("ZWUtils-Test")
+#define NAMEDPIPE_BUFSIZE	4096
+
+class TestLocalCommSender : public TRunnable {
+	MRLocalCommEndPoint EndPoint;
+public:
+	TestLocalCommSender(MRLocalCommEndPoint &&xEndPoint) : EndPoint(std::move(xEndPoint)) {}
+protected:
+	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
+		__ARC_UINT Counter = 0;
+		while (EndPoint->isConnected()) {
+			TDynBuffer SendBuf(sizeof(__ARC_UINT));
+			*(__ARC_UINT*)&SendBuf = Counter;
+			if (EndPoint->Send(std::move(SendBuf))) Counter++;
+			Sleep(100);
+		}
+		_LOG(_T("Sent %d messages"), Counter);
+		return { nullptr };
+	}
+};
+
+class TestLocalCommLargeSender : public TRunnable {
+	MRLocalCommEndPoint EndPoint;
+public:
+	TestLocalCommLargeSender(MRLocalCommEndPoint &&xEndPoint) : EndPoint(std::move(xEndPoint)) {}
+protected:
+	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
+		__ARC_UINT Counter = 0;
+		while (EndPoint->isConnected()) {
+			TDynBuffer SendBuf(NAMEDPIPE_BUFSIZE + sizeof(__ARC_UINT));
+			*(__ARC_UINT*)&SendBuf = Counter;
+			if (EndPoint->Send(std::move(SendBuf))) Counter++;
+			Sleep(100);
+		}
+		_LOG(_T("Sent %d messages"), Counter);
+		return { nullptr };
+	}
+};
+
+class TestLocalCommReceiver : public TRunnable {
+	MRLocalCommEndPoint EndPoint;
+public:
+	TestLocalCommReceiver(MRLocalCommEndPoint &&xEndPoint) : EndPoint(std::move(xEndPoint)) {}
+protected:
+	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
+		__ARC_UINT Counter = 0;
+		while (EndPoint->isConnected()) {
+			TDynBuffer RecvBuf;
+			if (EndPoint->Receive(std::move(RecvBuf))) {
+				if (RecvBuf.GetSize() != sizeof(__ARC_UINT)) {
+					FAIL(_T("Unexpected received buffer size (%d, expect %d)"), RecvBuf.GetSize(), sizeof(__ARC_UINT));
+				}
+				if (*(__ARC_UINT*)&RecvBuf != Counter) {
+					FAIL(_T("Unexpected received message (%d, expect %d)"), *(__ARC_UINT*)&RecvBuf, Counter);
+				}
+				Counter++;
+			}
+		}
+		_LOG(_T("Received %d messages"), Counter);
+		return { nullptr };
+	}
+};
+
+void TestNamedPipe(void) {
+	_LOG(_T("*** Test NamedPipe (Normal)"));
+	{
+		TEvent PipeTermSignal(true);
+		_LOG(_T("**** Creating NamedPipe Server"));
+		MRWorkerThread NPSrv;
+		auto NPServer = INamedPipeServer::Create(
+			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			[&](MRLocalCommEndPoint &&EP) {
+				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer"),
+						MRRunnable(DEFAULT_NEW(TestLocalCommReceiver, std::move(EP)),
+								   CONSTRUCTION::HANDOFF) };
+				NPSrv->Start();
+			}, PipeTermSignal);
+		_LOG(_T("**** Start Server and wait for 0.5 seconds"));
+		NPServer->SignalStart();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Creating NamedPipe Client"));
+		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		MRWorkerThread NPCli(CONSTRUCTION::EMPLACE,
+							 _T("TestNamedPipeClient"),
+							 MRRunnable(DEFAULT_NEW(TestLocalCommSender, std::move(EP)),
+										CONSTRUCTION::HANDOFF));
+		NPCli->Start();
+		_LOG(_T("**** Wait for 3 seconds..."));
+		{
+			TDelayWaitable WaitASec(3000);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Set termination signal, wait for server finish"));
+		PipeTermSignal.Set();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		NPServer->WaitFor(FOREVER);
+	}
+	_LOG(_T("*** Test NamedPipe (Short-Circuit instance)"));
+	{
+		TEvent PipeTermSignal(true);
+		_LOG(_T("**** Creating NamedPipe Server"));
+		MRWorkerThread NPSrv;
+		auto NPServer = INamedPipeServer::Create(
+			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			[&](MRLocalCommEndPoint &&EP) {
+				// Does not handle client connect
+				_LOG(_T("**** Client connect event triggered, discard instance immediately"));
+			}, PipeTermSignal);
+		_LOG(_T("**** Start Server and wait for 0.5 seconds"));
+		NPServer->SignalStart();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Creating NamedPipe Client (discard instance immediately)"));
+		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		// Does not handle server connect
+		_LOG(_T("**** Wait for 1 seconds..."));
+		{
+			TDelayWaitable WaitASec(1000);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Set termination signal, wait for server finish"));
+		PipeTermSignal.Set();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		NPServer->WaitFor(FOREVER);
+	}
+	_LOG(_T("*** Test NamedPipe (Excessive send)"));
+	{
+		TEvent PipeTermSignal(true);
+		_LOG(_T("**** Creating NamedPipe Server"));
+		MRWorkerThread NPSrv;
+		auto NPServer = INamedPipeServer::Create(
+			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			[&](MRLocalCommEndPoint &&EP) {
+				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer"),
+						MRRunnable(DEFAULT_NEW(TestLocalCommReceiver, std::move(EP)),
+								   CONSTRUCTION::HANDOFF) };
+				NPSrv->Start();
+			}, PipeTermSignal);
+		_LOG(_T("**** Start Server and wait for 0.5 seconds"));
+		NPServer->SignalStart();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Creating NamedPipe Client (Sending excessively large data)"));
+		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		MRWorkerThread NPCli(CONSTRUCTION::EMPLACE,
+							 _T("TestNamedPipeClient-LargeSend"),
+							 MRRunnable(DEFAULT_NEW(TestLocalCommLargeSender, std::move(EP)),
+										CONSTRUCTION::HANDOFF));
+		NPCli->Start();
+		_LOG(_T("**** Wait for 1 seconds..."));
+		{
+			TDelayWaitable WaitASec(1000);
+			WaitASec.WaitFor(FOREVER);
+		}
+		_LOG(_T("**** Set termination signal, wait for server finish"));
+		PipeTermSignal.Set();
+		{
+			TDelayWaitable WaitASec(500);
+			WaitASec.WaitFor(FOREVER);
+		}
+		NPServer->WaitFor(FOREVER);
 	}
 }

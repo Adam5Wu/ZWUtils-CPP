@@ -387,7 +387,8 @@ public:
 
 void TAlarmClock::Arm(TimeStamp const &Clock) {
 	if (Armed()) FAIL(_T("Clock already armed!"));
-	TWorkerThread::Create(_T("ClockThread"), DEFAULT_NEW(__ClockRunner, Clock, _WEvent, _HEvent),
+	TWorkerThread::Create(_T("ClockThread"),
+						  { DEFAULT_NEW(__ClockRunner, Clock, _WEvent, _HEvent), CONSTRUCTION::HANDOFF },
 						  true)->Start({ &_ClockRet, DummyAllocator() });
 }
 

@@ -80,6 +80,9 @@ public:
 	virtual void StopNotify(TWorkerThread &WorkerThread) {}
 };
 
+typedef ManagedRef<TRunnable> MRRunnable;
+typedef ManagedRef<Exception> MRException;
+
 /**
  * @ingroup Threading
  * @brief Generic worker thread template
@@ -105,15 +108,11 @@ public:
 private:
 	HANDLE __CreateThread(size_t StackSize, bool xSelfFree);
 	void __DestroyThread(TString const &Name, HANDLE &X);
-
-#ifdef WINDOWS
-	void CollectSEHException(struct _EXCEPTION_POINTERS *SEH);
 	DWORD __CallForwarder(void);
-#endif
 
 protected:
-	ManagedRef<TRunnable> rRunnable;
-	ManagedRef<Exception> rException;
+	MRRunnable rRunnable;
+	MRException rException;
 
 	TFixedBuffer rInputData;
 	TFixedBuffer rReturnData;
@@ -124,25 +123,30 @@ protected:
 	DWORD _ThreadID;
 #endif
 
+	// This function performs pre-processing before the destructor is called
+	// This is necessary because of C++'s layered object destruction -- the worker thread is still
+	//   running while the wrapper class already started partial destrution, which does not end well.
+	void __Pre_Destroy(void);
+
 	/**
 	 * Create a thread for executing the Runnable object instance
 	 * @note Thread is not running until one of start function is called
 	 * @note Use caution when starting self-free thread -- the instance may be freed *ANY MOMENT* after start.
 	 *       Basically, once started, you should give up *ALL* active control and communication.
+	 * @note We are hiding the constructor because we need our own allocator to manage the destruction process.
+	 *       Otherwise, the __Pre_Destroy() function will NOT be executed, and some corner cases (such as,
+	 *       destroying a thread before starting it) will lead to undesired outcome (crash)
 	 **/
-	template<class IRunnable>
-	TWorkerThread(TString const &xName, IRunnable *xRunnable, bool xSelfFree = false, size_t xStackSize = 0) :
+	TWorkerThread(TString const &xName, MRRunnable &&xRunnable, bool xSelfFree = false, size_t xStackSize = 0) :
 		THandleWaitable(__CreateThread(xStackSize, xSelfFree), [&, xName](HANDLE &X) {__DestroyThread(xName, X); }),
-		rRunnable(xRunnable, CONSTRUCTION::HANDOFF), Name(xName) {
+		rRunnable(std::move(xRunnable)), Name(xName) {
 		__StateNotify(~_State);
 	}
-
-	void __Pre_Destroy(void);
 
 public:
 	TString const Name;
 
-	~TWorkerThread(void) { Deallocate(); }
+	~TWorkerThread(void) {}
 
 	WaitResult WaitFor(WAITTIME Timeout = FOREVER) const override;
 	THandle WaitHandle(void) override;
@@ -204,9 +208,8 @@ public:
 	TNotificationStub StateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
 	static TNotificationStub GStateNotify(TString const &Name, State const &rState, TStateNotice const &Func);
 
-	template<class IRunnable>
-	static TWorkerThread* Create(TString const &xName, IRunnable *xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
-		return DEFAULT_NEW(_this, xName, xRunnable, xSelfFree, xStackSize);
+	static TWorkerThread* Create(TString const &xName, MRRunnable &&xRunnable, bool xSelfFree = false, size_t xStackSize = 0) {
+		return DEFAULT_NEW(_this, xName, std::move(xRunnable), xSelfFree, xStackSize);
 	}
 
 protected:
