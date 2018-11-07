@@ -1762,7 +1762,7 @@ public:
 protected:
 	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 		__ARC_UINT Counter = 0;
-		while (EndPoint->isConnected()) {
+		while ((WorkerThread.CurrentState() == TWorkerThread::State::Running) && EndPoint->isConnected()) {
 			TDynBuffer SendBuf(sizeof(__ARC_UINT));
 			*(__ARC_UINT*)&SendBuf = Counter;
 			if (EndPoint->Send(std::move(SendBuf))) Counter++;
@@ -1780,7 +1780,7 @@ public:
 protected:
 	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 		__ARC_UINT Counter = 0;
-		while (EndPoint->isConnected()) {
+		while ((WorkerThread.CurrentState() == TWorkerThread::State::Running) && EndPoint->isConnected()) {
 			TDynBuffer SendBuf(NAMEDPIPE_BUFSIZE + sizeof(__ARC_UINT));
 			*(__ARC_UINT*)&SendBuf = Counter;
 			if (EndPoint->Send(std::move(SendBuf))) Counter++;
@@ -1798,9 +1798,9 @@ public:
 protected:
 	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 		__ARC_UINT Counter = 0;
-		while (EndPoint->isConnected()) {
+		while ((WorkerThread.CurrentState() == TWorkerThread::State::Running) && EndPoint->isConnected()) {
 			TDynBuffer RecvBuf;
-			if (EndPoint->Receive(std::move(RecvBuf))) {
+			if (EndPoint->Receive(std::move(RecvBuf), 100)) {
 				if (RecvBuf.GetSize() != sizeof(__ARC_UINT)) {
 					FAIL(_T("Unexpected received buffer size (%d, expect %d)"), RecvBuf.GetSize(), sizeof(__ARC_UINT));
 				}
@@ -1816,15 +1816,15 @@ protected:
 };
 
 void TestNamedPipe(void) {
+	TEvent PipeTermSignal(true);
 	_LOG(_T("*** Test NamedPipe (Normal)"));
 	{
-		TEvent PipeTermSignal(true);
 		_LOG(_T("**** Creating NamedPipe Server"));
 		MRWorkerThread NPSrv;
 		auto NPServer = INamedPipeServer::Create(
-			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			TStringCast(NAMEDPIPE_TEST << 1), NAMEDPIPE_BUFSIZE,
 			[&](MRLocalCommEndPoint &&EP) {
-				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer"),
+				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer1"),
 						MRRunnable(DEFAULT_NEW(TestLocalCommReceiver, std::move(EP)),
 								   CONSTRUCTION::HANDOFF) };
 				NPSrv->Start();
@@ -1836,9 +1836,9 @@ void TestNamedPipe(void) {
 			WaitASec.WaitFor(FOREVER);
 		}
 		_LOG(_T("**** Creating NamedPipe Client"));
-		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		auto EP = INamedPipeClient::Connect(TStringCast(NAMEDPIPE_TEST << 1), NAMEDPIPE_BUFSIZE, PipeTermSignal);
 		MRWorkerThread NPCli(CONSTRUCTION::EMPLACE,
-							 _T("TestNamedPipeClient"),
+							 _T("TestNamedPipeClient1"),
 							 MRRunnable(DEFAULT_NEW(TestLocalCommSender, std::move(EP)),
 										CONSTRUCTION::HANDOFF));
 		NPCli->Start();
@@ -1847,13 +1847,7 @@ void TestNamedPipe(void) {
 			TDelayWaitable WaitASec(3000);
 			WaitASec.WaitFor(FOREVER);
 		}
-		_LOG(_T("**** Set termination signal, wait for server finish"));
-		PipeTermSignal.Set();
-		{
-			TDelayWaitable WaitASec(500);
-			WaitASec.WaitFor(FOREVER);
-		}
-		NPServer->WaitFor(FOREVER);
+		_LOG(_T("**** Set termination signal"));
 	}
 	_LOG(_T("*** Test NamedPipe (Short-Circuit instance)"));
 	{
@@ -1861,7 +1855,7 @@ void TestNamedPipe(void) {
 		_LOG(_T("**** Creating NamedPipe Server"));
 		MRWorkerThread NPSrv;
 		auto NPServer = INamedPipeServer::Create(
-			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			TStringCast(NAMEDPIPE_TEST << 2), NAMEDPIPE_BUFSIZE,
 			[&](MRLocalCommEndPoint &&EP) {
 				// Does not handle client connect
 				_LOG(_T("**** Client connect event triggered, discard instance immediately"));
@@ -1873,20 +1867,13 @@ void TestNamedPipe(void) {
 			WaitASec.WaitFor(FOREVER);
 		}
 		_LOG(_T("**** Creating NamedPipe Client (discard instance immediately)"));
-		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		auto EP = INamedPipeClient::Connect(TStringCast(NAMEDPIPE_TEST << 2), NAMEDPIPE_BUFSIZE, PipeTermSignal);
 		// Does not handle server connect
 		_LOG(_T("**** Wait for 1 seconds..."));
 		{
 			TDelayWaitable WaitASec(1000);
 			WaitASec.WaitFor(FOREVER);
 		}
-		_LOG(_T("**** Set termination signal, wait for server finish"));
-		PipeTermSignal.Set();
-		{
-			TDelayWaitable WaitASec(500);
-			WaitASec.WaitFor(FOREVER);
-		}
-		NPServer->WaitFor(FOREVER);
 	}
 	_LOG(_T("*** Test NamedPipe (Excessive send)"));
 	{
@@ -1894,9 +1881,9 @@ void TestNamedPipe(void) {
 		_LOG(_T("**** Creating NamedPipe Server"));
 		MRWorkerThread NPSrv;
 		auto NPServer = INamedPipeServer::Create(
-			NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE,
+			TStringCast(NAMEDPIPE_TEST << 3), NAMEDPIPE_BUFSIZE,
 			[&](MRLocalCommEndPoint &&EP) {
-				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer"),
+				NPSrv = { CONSTRUCTION::EMPLACE, _T("TestNamedPipeServer3"),
 						MRRunnable(DEFAULT_NEW(TestLocalCommReceiver, std::move(EP)),
 								   CONSTRUCTION::HANDOFF) };
 				NPSrv->Start();
@@ -1908,9 +1895,9 @@ void TestNamedPipe(void) {
 			WaitASec.WaitFor(FOREVER);
 		}
 		_LOG(_T("**** Creating NamedPipe Client (Sending excessively large data)"));
-		auto EP = INamedPipeClient::Connect(NAMEDPIPE_TEST, NAMEDPIPE_BUFSIZE, PipeTermSignal);
+		auto EP = INamedPipeClient::Connect(TStringCast(NAMEDPIPE_TEST << 3), NAMEDPIPE_BUFSIZE, PipeTermSignal);
 		MRWorkerThread NPCli(CONSTRUCTION::EMPLACE,
-							 _T("TestNamedPipeClient-LargeSend"),
+							 _T("TestNamedPipeClient3"),
 							 MRRunnable(DEFAULT_NEW(TestLocalCommLargeSender, std::move(EP)),
 										CONSTRUCTION::HANDOFF));
 		NPCli->Start();
@@ -1919,12 +1906,5 @@ void TestNamedPipe(void) {
 			TDelayWaitable WaitASec(1000);
 			WaitASec.WaitFor(FOREVER);
 		}
-		_LOG(_T("**** Set termination signal, wait for server finish"));
-		PipeTermSignal.Set();
-		{
-			TDelayWaitable WaitASec(500);
-			WaitASec.WaitFor(FOREVER);
-		}
-		NPServer->WaitFor(FOREVER);
 	}
 }

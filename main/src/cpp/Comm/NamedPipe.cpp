@@ -66,10 +66,6 @@ public:
 		_ServThread->SignalTerminate();
 	}
 
-	virtual WaitResult WaitFor(WAITTIME Timeout) const override {
-		return _ServThread->WaitFor(Timeout);
-	}
-
 };
 
 typedef TSyncBlockingDeque<TDynBuffer> TCommBufferQueue;
@@ -103,6 +99,10 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 		TServRunnable(TServRec *ServRec) : _ServRec(ServRec), _IntTermSignal(true) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
+
+		virtual void StopNotify(TWorkerThread &WorkerThread) override {
+			_IntTermSignal.Set();
+		}
 	};
 
 	ManagedRef<TServRec> _ServRec;
@@ -129,6 +129,10 @@ public:
 	virtual bool Receive(TDynBuffer & Buffer, DWORD Timeout = FOREVER) override {
 		return isConnected() && _ServRec->_InQueue.Pop_Front(Buffer, Timeout,
 															 &_ServRec->_TermSignal);
+	}
+
+	virtual THandleWaitable ReceiveWaitable(void) override {
+		return _ServRec->_InQueue.ContentWaitable();
 	}
 
 	virtual bool isConnected(void) const {
@@ -278,8 +282,10 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 						auto ClientIdx = _ClientCnt.Increment();
 						NPLOGV(_T("Client #%d connected"), ClientIdx);
 						TString ClientName = TStringCast(_ServRec->_Name << _T('#') << ClientIdx);
-						_ServRec->_OnConnect(DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
-														 std::move(_Pipe), _ServRec->_BufferSize, _ServRec->_TermSignal));
+						_ServRec->_OnConnect({
+							DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
+								std::move(_Pipe), _ServRec->_BufferSize, _ServRec->_TermSignal),
+							CONSTRUCTION::HANDOFF });
 					} break;
 
 					default:
@@ -427,7 +433,10 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 
 MRLocalCommServer INamedPipeServer::Create(TString const &xPath, DWORD BufferSize, FLocalCommClientConnect const &OnConnect,
 										   THandleWaitable &TermSignal, TString const &DACL) {
-	return DEFAULT_NEW(TNamedPipeServer, xPath, BufferSize, OnConnect, TermSignal, DACL);
+	return {
+		DEFAULT_NEW(TNamedPipeServer, xPath, BufferSize, OnConnect, TermSignal, DACL),
+		CONSTRUCTION::HANDOFF
+	};
 }
 
 MRLocalCommEndPoint INamedPipeClient::Connect(TString const &xPath, DWORD BufferSize, THandleWaitable &TermSignal) {
@@ -440,8 +449,10 @@ MRLocalCommEndPoint INamedPipeClient::Connect(TString const &xPath, DWORD Buffer
 		SYSFAIL(_T("Failed to connect to pipe <%s>"), xPath.c_str());
 	}
 	TString ClientName = TStringCast(NAMEDPIPE_CLIENT_NAMEPFX << _T('<') << xPath << _T('>'));
-	return DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
-					   { hPipe }, BufferSize, TermSignal);
+	return {
+		DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName), { hPipe }, BufferSize, TermSignal),
+		CONSTRUCTION::HANDOFF
+	};
 }
 
 #endif

@@ -4,12 +4,11 @@
 #include "Misc/TString.h"
 #include "Debug/Exception.h"
 #include "Memory/ManagedRef.h"
-#include "Memory/ManagedObj.h"
 #include "Threading/SyncElements.h"
 
 #include <functional>
 
-class ILocalCommEndPoint : public ManagedObj {
+class ILocalCommEndPoint {
 public:
 	virtual ~ILocalCommEndPoint(void) {}
 
@@ -17,6 +16,9 @@ public:
 		FAIL(_T("Abstract Function"));
 	}
 	virtual bool Receive(TDynBuffer &Buffer, DWORD Timeout = FOREVER) {
+		FAIL(_T("Abstract Function"));
+	}
+	virtual THandleWaitable ReceiveWaitable(void) {
 		FAIL(_T("Abstract Function"));
 	}
 	virtual bool isConnected(void) const {
@@ -33,8 +35,10 @@ typedef std::function<void(MRLocalCommEndPoint &&)> FLocalCommClientConnect;
 class ILocalCommServer;
 typedef ManagedRef<ILocalCommServer> MRLocalCommServer;
 
-class ILocalCommServer : public TWaitable, public ManagedObj {
+class ILocalCommServer {
 public:
+	virtual ~ILocalCommServer(void) {}
+
 	virtual void SignalStart(void) {
 		FAIL(_T("Abstract Function"));
 	}
