@@ -352,7 +352,7 @@ typedef TTypedBuffer<void> TFixedBuffer;
 #define DYNBUFFER_OVERPROVISION_FIXBLOCK	0x1000000 // 16MB
 
 template<typename T>
-class _TTypedDynBuffer : public TAllocResource < T* > {
+class _TTypedDynBuffer : public TAllocResource<T*> {
 	typedef _TTypedDynBuffer _this;
 
 private:
