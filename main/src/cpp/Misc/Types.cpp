@@ -41,8 +41,19 @@ size_t Cardinal32::hashcode(void) const {
 	return std::hash<unsigned long>()(U32);
 }
 
-TString Cardinal32::toString(void) const {
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(8) << U32);
+TString Cardinal32::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	unsigned int start = 0;
+	if (bcnt == -1) {
+		bcnt = 0;
+		while (U8[start++] == 0);
+		if (--start) StrBuf << _T('~');
+	}
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (unsigned int idx = start; idx < std::min(bcnt ? bcnt : 4, (unsigned int)sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
 }
 
 static char HexCharToVal(TCHAR X) {
@@ -67,23 +78,14 @@ size_t Cardinal32::fromString(TString const &_S) {
 		char X = HexCharToVal(*iter);
 		if (pos & 1) X <<= 4;
 #ifdef LITTLE_ENDIAN
-		iVal.U8[pos / 2] |= X;
+		iVal.U8[3 - pos / 2] |= X;
 #else
-		iVal.U8[4 - (pos / 2)] |= X;
+		iVal.U8[pos / 2] |= X;
 #endif
 		if (++pos >= 8) break;
 	}
 	operator=(iVal);
 	return pos / 2;
-}
-
-TString Cardinal32::toString(unsigned int bcnt) const {
-	TStringStream StrBuf;
-	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
-		StrBuf << std::setw(2) << U8[idx];
-	}
-	return StrBuf.str();
 }
 
 bool Cardinal32::equalto(Cardinal const &T) const {
@@ -137,8 +139,19 @@ size_t Cardinal64::hashcode(void) const {
 	return std::hash<unsigned long long>()(U64);
 }
 
-TString Cardinal64::toString(void) const {
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64);
+TString Cardinal64::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	unsigned int start = 0;
+	if (bcnt == -1) {
+		bcnt = 0;
+		while (U8[start++] == 0);
+		if (--start) StrBuf << _T('~');
+	}
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (unsigned int idx = start; idx < std::min(bcnt ? bcnt : 8, (unsigned int)sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
 }
 
 size_t Cardinal64::fromString(TString const &_S) {
@@ -148,23 +161,14 @@ size_t Cardinal64::fromString(TString const &_S) {
 		char X = HexCharToVal(*iter);
 		if (pos & 1) X <<= 4;
 #ifdef LITTLE_ENDIAN
-		iVal.U8[pos / 2] |= X;
+		iVal.U8[7 - pos / 2] |= X;
 #else
-		iVal.U8[8 - (pos / 2)] |= X;
+		iVal.U8[pos / 2] |= X;
 #endif
 		if (++pos >= 16) break;
 	}
 	operator=(iVal);
 	return pos / 2;
-}
-
-TString Cardinal64::toString(unsigned int bcnt) const {
-	TStringStream StrBuf;
-	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
-		StrBuf << std::setw(2) << U8[idx];
-	}
-	return StrBuf.str();
 }
 
 bool Cardinal64::equalto(Cardinal const &T) const {
@@ -218,16 +222,19 @@ size_t Cardinal128::hashcode(void) const {
 	return std::hash<unsigned long long>()(U64A) ^ std::hash<unsigned long long>()(U64B);
 }
 
-TString Cardinal128::toString(void) const {
-#ifdef LITTLE_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-					   << std::setw(16) << U64B << std::setw(16) << U64A);
-#endif
-
-#ifdef BIG_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-					   << std::setw(16) << U64A << std::setw(16) << U64B);
-#endif
+TString Cardinal128::toString(unsigned int bcnt) const {
+	TStringStream StrBuf;
+	unsigned int start = 0;
+	if (bcnt == -1) {
+		bcnt = 0;
+		while (U8[start++] == 0);
+		if (--start) StrBuf << _T('~');
+	}
+	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
+	for (unsigned int idx = start; idx < std::min(bcnt ? bcnt : 16, (unsigned int)sizeof(U8)); idx++) {
+		StrBuf << std::setw(2) << U8[idx];
+	}
+	return StrBuf.str();
 }
 
 size_t Cardinal128::fromString(TString const &_S) {
@@ -237,23 +244,14 @@ size_t Cardinal128::fromString(TString const &_S) {
 		char X = HexCharToVal(*iter);
 		if (pos & 1) X <<= 4;
 #ifdef LITTLE_ENDIAN
-		iVal.U8[pos / 2] |= X;
+		iVal.U8[15 - pos / 2] |= X;
 #else
-		iVal.U8[16 - (pos / 2)] |= X;
+		iVal.U8[pos / 2] |= X;
 #endif
 		if (++pos >= 32) break;
 	}
 	operator=(iVal);
 	return pos / 2;
-}
-
-TString Cardinal128::toString(unsigned int bcnt) const {
-	TStringStream StrBuf;
-	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
-		StrBuf << std::setw(2) << U8[idx];
-	}
-	return StrBuf.str();
 }
 
 bool Cardinal128::equalto(Cardinal const &T) const {
@@ -316,24 +314,16 @@ size_t Cardinal256::hashcode(void) const {
 		std::hash<unsigned long long>()(U64[2]) ^ std::hash<unsigned long long>()(U64[3]);
 }
 
-TString Cardinal256::toString(void) const {
-#ifdef LITTLE_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-					   << std::setw(16) << U64[3] << std::setw(16) << U64[2]
-					   << std::setw(16) << U64[1] << std::setw(16) << U64[0]);
-#endif
-
-#ifdef BIG_ENDIAN
-	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-					   << std::setw(16) << U64[0] << std::setw(16) << U64[1]
-					   << std::setw(16) << U64[2] << std::setw(16) << U64[3]);
-#endif
-}
-
 TString Cardinal256::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
+	unsigned int start = 0;
+	if (bcnt == -1) {
+		bcnt = 0;
+		while (U8[start++] == 0);
+		if (--start) StrBuf << _T('~');
+	}
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
-	for (unsigned int idx = 0; idx < std::min(bcnt, (unsigned int)sizeof(U8)); idx++) {
+	for (unsigned int idx = start; idx < std::min(bcnt ? bcnt : 32, (unsigned int)sizeof(U8)); idx++) {
 		StrBuf << std::setw(2) << U8[idx];
 	}
 	return StrBuf.str();
@@ -346,9 +336,9 @@ size_t Cardinal256::fromString(TString const &_S) {
 		char X = HexCharToVal(*iter);
 		if (pos & 1) X <<= 4;
 #ifdef LITTLE_ENDIAN
-		iVal.U8[pos / 2] |= X;
+		iVal.U8[31 - pos / 2] |= X;
 #else
-		iVal.U8[32 - (pos / 2)] |= X;
+		iVal.U8[pos / 2] |= X;
 #endif
 		if (++pos >= 64) break;
 	}

@@ -90,8 +90,7 @@ typedef unsigned long long	__ARC_UINT;
 
 struct Cardinal {
 	virtual size_t hashcode(void) const = 0;
-	virtual TString toString(void) const = 0;
-	virtual TString toString(unsigned int bcnt) const = 0;
+	virtual TString toString(unsigned int bcnt = 0) const = 0;
 	virtual size_t fromString(TString const &_S) = 0;
 	virtual bool equalto(Cardinal const &T) const = 0;
 	virtual bool isZero(void) const = 0;
@@ -119,8 +118,7 @@ struct Cardinal32 : public Cardinal {
 	{ return U32 = _C.U32, *this; }
 
 	virtual size_t hashcode(void) const override;
-	virtual TString toString(void) const override;
-	virtual TString toString(unsigned int bcnt) const override;
+	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
@@ -165,8 +163,7 @@ struct Cardinal64 : public Cardinal {
 	{ return U64 = _C.U64, *this; }
 
 	virtual size_t hashcode(void) const override;
-	virtual TString toString(void) const override;
-	virtual TString toString(unsigned int bcnt) const override;
+	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
@@ -212,8 +209,7 @@ struct Cardinal128 : public Cardinal {
 	{ return U64A = _C.U64A, U64B = _C.U64B, *this; }
 
 	virtual size_t hashcode(void) const override;
-	virtual TString toString(void) const override;
-	virtual TString toString(unsigned int bcnt) const override;
+	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
@@ -255,16 +251,16 @@ struct Cardinal256 : public Cardinal {
 	Cardinal256(void) {}
 #if _MSC_VER >= 1900
 	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
-		unsigned long long const _V2, unsigned long long const _V3) : U64{ _V0, _V1, _V2, _V3 } {}
+				unsigned long long const _V2, unsigned long long const _V3) : U64{ _V0, _V1, _V2, _V3 } {}
 	Cardinal256(long long const _V0, long long const _V1,
-		long long const _V2, long long const _V3) : S64{ _V0, _V1, _V2, _V3 } {}
+				long long const _V2, long long const _V3) : S64{ _V0, _V1, _V2, _V3 } {}
 #else
 	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
-		unsigned long long const _V2, unsigned long long const _V3) {
+				unsigned long long const _V2, unsigned long long const _V3) {
 		U64[0] = _V0; U64[1] = _V1; U64[2] = _V2; U64[3] = _V3;
 	}
 	Cardinal256(long long const _V0, long long const _V1,
-		long long const _V2, long long const _V3) {
+				long long const _V2, long long const _V3) {
 		S64[0] = _V0; S64[1] = _V1; S64[2] = _V2; S64[3] = _V3;
 	}
 #endif
@@ -273,8 +269,7 @@ struct Cardinal256 : public Cardinal {
 	{ return U64[0] = _C.U64[0], U64[1] = _C.U64[1], U64[2] = _C.U64[2], U64[3] = _C.U64[3], *this; }
 
 	virtual size_t hashcode(void) const override;
-	virtual TString toString(void) const override;
-	virtual TString toString(unsigned int bcnt) const override;
+	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
