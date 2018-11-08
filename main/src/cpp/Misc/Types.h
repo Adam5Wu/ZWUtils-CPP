@@ -92,6 +92,7 @@ struct Cardinal {
 	virtual size_t hashcode(void) const = 0;
 	virtual TString toString(void) const = 0;
 	virtual TString toString(unsigned int bcnt) const = 0;
+	virtual size_t fromString(TString const &_S) = 0;
 	virtual bool equalto(Cardinal const &T) const = 0;
 	virtual bool isZero(void) const = 0;
 
@@ -120,6 +121,7 @@ struct Cardinal32 : public Cardinal {
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
 	virtual TString toString(unsigned int bcnt) const override;
+	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 
@@ -144,7 +146,6 @@ inline bool operator !=(Cardinal32 const &A, Cardinal32 const &B) {
 
 struct Cardinal64 : public Cardinal {
 	union {
-		struct { Cardinal32 C32A, C32B; };
 		unsigned long long U64;
 		struct { unsigned long U32A, U32B; };
 		struct { unsigned short U16[4]; };
@@ -166,6 +167,7 @@ struct Cardinal64 : public Cardinal {
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
 	virtual TString toString(unsigned int bcnt) const override;
+	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 
@@ -190,8 +192,6 @@ inline bool operator !=(Cardinal64 const &A, Cardinal64 const &B) {
 
 struct Cardinal128 : public Cardinal {
 	union {
-		struct { Cardinal64 C64A, C64B; };
-		struct { Cardinal32 C32[4]; };
 		struct { unsigned long long U64A, U64B; };
 		struct { unsigned long U32[4]; };
 		struct { unsigned short U16[8]; };
@@ -203,7 +203,7 @@ struct Cardinal128 : public Cardinal {
 	};
 
 	Cardinal128(void) {}
-	Cardinal128(Cardinal128 const &_C) : C64A(_C.C64A), C64B(_C.C64B) {}
+	Cardinal128(Cardinal128 const &_C) : U64A(_C.U64A), U64B(_C.U64B) {}
 	Cardinal128(unsigned long long const & _VA, unsigned long long const & _VB) : U64A(_VA), U64B(_VB) {}
 	Cardinal128(long long const & _VA, long long const & _VB) : S64A(_VA), S64B(_VB) {}
 	Cardinal128(GUID const &_V) { loadGUID(_V); }
@@ -214,6 +214,7 @@ struct Cardinal128 : public Cardinal {
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
 	virtual TString toString(unsigned int bcnt) const override;
+	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 
@@ -241,9 +242,6 @@ inline bool operator !=(Cardinal128 const &A, Cardinal128 const &B) {
 
 struct Cardinal256 : public Cardinal {
 	union {
-		struct { Cardinal128 C128A, C128B; };
-		struct { Cardinal64 C64[4]; };
-		struct { Cardinal32 C32[8]; };
 		struct { unsigned long long U64[4]; };
 		struct { unsigned long U32[8]; };
 		struct { unsigned short U16[16]; };
@@ -255,7 +253,6 @@ struct Cardinal256 : public Cardinal {
 	};
 
 	Cardinal256(void) {}
-	Cardinal256(Cardinal256 const &_C) : C128A(_C.C128A), C128B(_C.C128B) {}
 #if _MSC_VER >= 1900
 	Cardinal256(unsigned long long const _V0, unsigned long long const _V1,
 		unsigned long long const _V2, unsigned long long const _V3) : U64{ _V0, _V1, _V2, _V3 } {}
@@ -273,11 +270,12 @@ struct Cardinal256 : public Cardinal {
 #endif
 
 	Cardinal256& operator=(Cardinal256 const &_C)
-	{ return C128A = _C.C128A, C128B = _C.C128B, *this; }
+	{ return U64[0] = _C.U64[0], U64[1] = _C.U64[1], U64[2] = _C.U64[2], U64[3] = _C.U64[3], *this; }
 
 	virtual size_t hashcode(void) const override;
 	virtual TString toString(void) const override;
 	virtual TString toString(unsigned int bcnt) const override;
+	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 

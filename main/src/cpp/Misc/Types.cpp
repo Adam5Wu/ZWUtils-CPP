@@ -45,6 +45,38 @@ TString Cardinal32::toString(void) const {
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(8) << U32);
 }
 
+static char HexCharToVal(TCHAR X) {
+	int V = X - _T('0');
+	if (V < 0) FAIL(_T("Invalid symbol '%c'"), X);
+	if (V > 9) {
+		V -= _T('A') - _T('0');
+		if (V < 0) FAIL(_T("Invalid symbol '%c'"), X);
+		if (V > 5) {
+			V -= _T('a') - _T('A');
+			if (V < 0) FAIL(_T("Invalid symbol '%c'"), X);
+		}
+		V += 10;
+	}
+	return (char)V;
+}
+
+size_t Cardinal32::fromString(TString const &_S) {
+	Cardinal32 iVal(0UL);
+	size_t pos = 0;
+	for (auto iter = _S.crbegin(); iter != _S.crend(); iter++) {
+		char X = HexCharToVal(*iter);
+		if (pos & 1) X <<= 4;
+#ifdef LITTLE_ENDIAN
+		iVal.U8[pos / 2] |= X;
+#else
+		iVal.U8[4 - (pos / 2)] |= X;
+#endif
+		if (++pos >= 8) break;
+	}
+	operator=(iVal);
+	return pos / 2;
+}
+
 TString Cardinal32::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
@@ -62,25 +94,25 @@ bool Cardinal32::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal64)) {
 		auto & xT = (Cardinal64 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C32B.isZero() && equalto(xT.C32A);
+		return xT.U32B == 0 && U32 == xT.U32A;
 #else
-		return xT.C32A.isZero() && equalto(xT.C32B);
+		return xT.U32A == 0 && U32 == xT.U32B;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal128)) {
 		auto & xT = (Cardinal128 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C64B.isZero() && xT.C32[1].isZero() && equalto(xT.C32[0]);
+		return xT.U64B == 0 && xT.U32[1] == 0 && U32 == xT.U32[0];
 #else
-		return xT.C64A.isZero() && xT.C32[2].isZero() && equalto(xT.C32[3]);
+		return xT.U64A == 0 && xT.U32[2] == 0 && U32 == xT.U32[3];
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal256)) {
 		auto & xT = (Cardinal256 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C128B.isZero() && xT.C64[1].isZero() && xT.C32[1].isZero() && equalto(xT.C32[0]);
+		return (xT.U64[3] | xT.U64[2] | xT.U64[1]) == 0 && xT.U32[1] == 0 && U32 == xT.U32[0];
 #else
-		return xT.C128A.isZero() && xT.C64[2].isZero() && xT.C32[6].isZero() && equalto(xT.C32[7]);
+		return (xT.U64[0] | xT.U64[1] | xT.U64[2]) == 0 && xT.U32[6] == 0 && U32 == xT.U32[7];
 #endif
 	}
 	FAIL(_T("Unsupported cardinal type"));
@@ -109,6 +141,23 @@ TString Cardinal64::toString(void) const {
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0')) << std::setw(16) << U64);
 }
 
+size_t Cardinal64::fromString(TString const &_S) {
+	Cardinal64 iVal(0ULL);
+	size_t pos = 0;
+	for (auto iter = _S.crbegin(); iter != _S.crend(); iter++) {
+		char X = HexCharToVal(*iter);
+		if (pos & 1) X <<= 4;
+#ifdef LITTLE_ENDIAN
+		iVal.U8[pos / 2] |= X;
+#else
+		iVal.U8[8 - (pos / 2)] |= X;
+#endif
+		if (++pos >= 16) break;
+	}
+	operator=(iVal);
+	return pos / 2;
+}
+
 TString Cardinal64::toString(unsigned int bcnt) const {
 	TStringStream StrBuf;
 	StrBuf << std::hex << std::uppercase << std::setfill(_T('0'));
@@ -122,9 +171,9 @@ bool Cardinal64::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal32)) {
 		auto & xT = (Cardinal32 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C32B.isZero() && xT.equalto(C32A);
+		return U32B == 0 && U32A == xT.U32;
 #else
-		return C32A.isZero() && xT.equalto(C32B);
+		return U32A == 0 && U32B == xT.U32;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal64)) {
@@ -134,17 +183,17 @@ bool Cardinal64::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal128)) {
 		auto & xT = (Cardinal128 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C64B.isZero() && equalto(xT.C64A);
+		return xT.U64B == 0 && U64 == xT.U64A;
 #else
-		return xT.C64A.isZero() && equalto(xT.C64B);
+		return xT.U64A == 0 && U64 == xT.U64B;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal256)) {
 		auto & xT = (Cardinal256 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C128B.isZero() && xT.C64[1].isZero() && equalto(xT.C64[0]);
+		return (xT.U64[3] | xT.U64[2] | xT.U64[1]) == 0 && U64 == xT.U64[0];
 #else
-		return xT.C128A.isZero() && xT.C64[2].isZero() && equalto(xT.C64[3]);
+		return (xT.U64[0] | xT.U64[1] | xT.U64[2]) == 0 && U64 == xT.U64[3];
 #endif
 	}
 	FAIL(_T("Unsupported cardinal type"));
@@ -172,13 +221,30 @@ size_t Cardinal128::hashcode(void) const {
 TString Cardinal128::toString(void) const {
 #ifdef LITTLE_ENDIAN
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-		<< std::setw(16) << U64B << std::setw(16) << U64A);
+					   << std::setw(16) << U64B << std::setw(16) << U64A);
 #endif
 
 #ifdef BIG_ENDIAN
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-		<< std::setw(16) << U64A << std::setw(16) << U64B);
+					   << std::setw(16) << U64A << std::setw(16) << U64B);
 #endif
+}
+
+size_t Cardinal128::fromString(TString const &_S) {
+	Cardinal128 iVal(0ULL, 0ULL);
+	size_t pos = 0;
+	for (auto iter = _S.crbegin(); iter != _S.crend(); iter++) {
+		char X = HexCharToVal(*iter);
+		if (pos & 1) X <<= 4;
+#ifdef LITTLE_ENDIAN
+		iVal.U8[pos / 2] |= X;
+#else
+		iVal.U8[16 - (pos / 2)] |= X;
+#endif
+		if (++pos >= 32) break;
+	}
+	operator=(iVal);
+	return pos / 2;
 }
 
 TString Cardinal128::toString(unsigned int bcnt) const {
@@ -194,17 +260,17 @@ bool Cardinal128::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal32)) {
 		auto & xT = (Cardinal32 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C64B.isZero() && C32[1].isZero() && xT.equalto(C32[0]);
+		return U64B == 0 && U32[1] == 0 && U32[0] == xT.U32;
 #else
-		return C64A.isZero() && C32[2].isZero() && xT.equalto(C32[3]);
+		return U64A == 0 && U32[2] == 0 && U32[3] == xT.U32;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal64)) {
 		auto & xT = (Cardinal64 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C64B.isZero() && xT.equalto(C64A);
+		return U64B == 0 && U64A == xT.U64;
 #else
-		return C64A.isZero() && xT.equalto(C64B);
+		return U64A == 0 && U64B == xT.U64;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal128)) {
@@ -214,9 +280,9 @@ bool Cardinal128::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal256)) {
 		auto & xT = (Cardinal256 const &)T;
 #ifdef LITTLE_ENDIAN
-		return xT.C128B.isZero() && equalto(xT.C128A);
+		return (xT.U64[3] | xT.U64[2]) == 0 && U64A == xT.U64[1] && U64B == xT.U64[0];
 #else
-		return xT.C128A.isZero() && equalto(xT.C128B);
+		return (xT.U64[0] | xT.U64[1]) == 0 && U64A == xT.U64[2] && U64B == xT.U64[3];
 #endif
 	}
 	FAIL(_T("Unsupported cardinal type"));
@@ -253,14 +319,14 @@ size_t Cardinal256::hashcode(void) const {
 TString Cardinal256::toString(void) const {
 #ifdef LITTLE_ENDIAN
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-		<< std::setw(16) << U64[3] << std::setw(16) << U64[2]
-		<< std::setw(16) << U64[1] << std::setw(16) << U64[0]);
+					   << std::setw(16) << U64[3] << std::setw(16) << U64[2]
+					   << std::setw(16) << U64[1] << std::setw(16) << U64[0]);
 #endif
 
 #ifdef BIG_ENDIAN
 	return TStringCast(std::hex << std::uppercase << std::setfill(_T('0'))
-		<< std::setw(16) << U64[0] << std::setw(16) << U64[1]
-		<< std::setw(16) << U64[2] << std::setw(16) << U64[3]);
+					   << std::setw(16) << U64[0] << std::setw(16) << U64[1]
+					   << std::setw(16) << U64[2] << std::setw(16) << U64[3]);
 #endif
 }
 
@@ -273,29 +339,46 @@ TString Cardinal256::toString(unsigned int bcnt) const {
 	return StrBuf.str();
 }
 
+size_t Cardinal256::fromString(TString const &_S) {
+	Cardinal256 iVal(0ULL, 0ULL, 0ULL, 0ULL);
+	size_t pos = 0;
+	for (auto iter = _S.crbegin(); iter != _S.crend(); iter++) {
+		char X = HexCharToVal(*iter);
+		if (pos & 1) X <<= 4;
+#ifdef LITTLE_ENDIAN
+		iVal.U8[pos / 2] |= X;
+#else
+		iVal.U8[32 - (pos / 2)] |= X;
+#endif
+		if (++pos >= 64) break;
+	}
+	operator=(iVal);
+	return pos / 2;
+}
+
 bool Cardinal256::equalto(Cardinal const &T) const {
 	if (typeid(T) == typeid(Cardinal32)) {
 		auto & xT = (Cardinal32 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C128B.isZero() && C64[1].isZero() && C32[1].isZero() && xT.equalto(C32[0]);
+		return (U64[3] | U64[2] | U64[1]) == 0 && U32[1] == 0 && U32[0] == xT.U32;
 #else
-		return C128A.isZero() && C64[2].isZero() && C32[6].isZero() && xT.equalto(C32[7]);
+		return (U64[0] | U64[1] | U64[2]) == 0 && U32[6] == 0 && U32[7] == xT.U32;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal64)) {
 		auto & xT = (Cardinal64 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C128B.isZero() && C64[1].isZero() && xT.equalto(C64[0]);
+		return (U64[3] | U64[2] | U64[1]) == 0 && U64[0] == xT.U64;
 #else
-		return C128A.isZero() && C64[2].isZero() && xT.equalto(C64[3]);
+		return (U64[0] | U64[1] | U64[2]) == 0 && U64[3] == xT.U64;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal128)) {
 		auto & xT = (Cardinal128 const &)T;
 #ifdef LITTLE_ENDIAN
-		return C128B.isZero() && xT.equalto(C128A);
+		return (U64[3] | U64[2]) == 0 && U64[1] == xT.U64A && U64[0] == xT.U64B;
 #else
-		return C128A.isZero() && xT.equalto(C128B);
+		return (U64[0] | U64[1]) == 0 && U64[2] == xT.U64A && U64[3] == xT.U64B;
 #endif
 	}
 	if (typeid(T) == typeid(Cardinal256)) {
@@ -322,10 +405,10 @@ TString UUIDToString(UUID const &Val) {
 	TString Ret(40, NullTChar);
 	Cardinal128 Value(Val);
 	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1,
-		_T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
-		Value.U32[0], Value.U16[2], Value.U16[3],
-		Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
-		Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
+							  _T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
+							  Value.U32[0], Value.U16[2], Value.U16[3],
+							  Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
+							  Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
 	if (result < 0)
 		FAIL(_T("Converting from GUID to string failed with error code %d"), errno);
 	return Ret;
@@ -337,9 +420,9 @@ UUID UUIDFromString(TString const &Str) {
 	// Work around VC++ missing support for "hhX"
 	int tail8[8];
 	int result = _stscanf_s(Str.c_str(), _T("%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X"),
-		&Value.U32[0], &Value.U16[2], &Value.U16[3],
-		&tail8[0], &tail8[1], &tail8[2], &tail8[3],
-		&tail8[4], &tail8[5], &tail8[6], &tail8[7]);
+							&Value.U32[0], &Value.U16[2], &Value.U16[3],
+							&tail8[0], &tail8[1], &tail8[2], &tail8[3],
+							&tail8[4], &tail8[5], &tail8[6], &tail8[7]);
 	if (result < 0)
 		FAIL(_T("Converting from string to GUID failed with error code %d"), errno);
 	if (result < 11)
@@ -357,7 +440,7 @@ TString HexInspect(void* Buf, size_t Len) {
 	unsigned char* ByteBuf = (unsigned char*)Buf;
 	for (size_t i = 0; i < Len; i++) {
 		HexBuf.append(TStringCast(_T(' ') << std::hex << std::uppercase << std::setfill(_T('0'))
-			<< std::setw(2) << ByteBuf[i]));
+								  << std::setw(2) << ByteBuf[i]));
 		if ((i & 15) == 15) HexBuf.append(_T("\n"));
 		else if ((i & 7) == 7) HexBuf.append(_T("\t"));
 	}
