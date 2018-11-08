@@ -122,6 +122,8 @@ struct Cardinal32 : public Cardinal {
 	Cardinal32(Cardinal32 const &_C) : U32(_C.U32) {}
 	Cardinal32(unsigned long const & _Value) : U32(_Value) {}
 	Cardinal32(long const & _Value) : S32(_Value) {}
+	Cardinal32(unsigned int const & _Value) : Cardinal32((unsigned long)_Value) {}
+	Cardinal32(int const & _Value) : Cardinal32((long)_Value) {}
 
 	Cardinal32& operator=(Cardinal32 const &_C)
 	{ return U32 = _C.U32, *this; }
@@ -170,6 +172,8 @@ struct Cardinal64 : public Cardinal {
 	Cardinal64(long long const & _Value) : S64(_Value) {}
 	Cardinal64(unsigned long const & _Value) : Cardinal64((unsigned long long)_Value) {}
 	Cardinal64(long const & _Value) : Cardinal64((long long)_Value) {}
+	Cardinal64(unsigned int const & _Value) : Cardinal64((unsigned long long)_Value) {}
+	Cardinal64(int const & _Value) : Cardinal64((long long)_Value) {}
 
 	Cardinal64& operator=(Cardinal64 const &_C)
 	{ return U64 = _C.U64, *this; }
@@ -181,7 +185,9 @@ struct Cardinal64 : public Cardinal {
 	virtual bool isZero(void) const override;
 
 	bool equalto(Cardinal64 const &T) const;
+#ifdef ARCH_64
 	operator size_t() const { return U64; }
+#endif
 
 	static Cardinal64 const& ZERO(void);
 };
