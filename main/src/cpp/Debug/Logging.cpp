@@ -131,6 +131,16 @@ void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...) {
 	}
 }
 
+thread_local TString __DynLogPfx;
+
+void SETDYNLOGPREFIX(TString const &Str) {
+	__DynLogPfx = Str;
+}
+
+void SETDYNLOGPREFIX(TString &&Str) {
+	__DynLogPfx = std::move(Str);
+}
+
 void __LOG_WRITE(FILE *Target, PCTCHAR Fmt, va_list params) {
 	_vftprintf(Target, Fmt, params);
 	DEBUG_DO(fflush(Target));

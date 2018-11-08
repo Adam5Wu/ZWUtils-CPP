@@ -52,6 +52,9 @@ extern TString const LOGTARGET_CONSOLE;
 void SETLOGTARGET(TString const &Name, FILE *xTarget);
 FILE * GETLOGTARGET(TString const &Name);
 
+void SETDYNLOGPREFIX(TString const &Str);
+void SETDYNLOGPREFIX(TString &&Str);
+
 //! Print a formatted debug string message to a log target
 void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
 
@@ -59,6 +62,7 @@ void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
 #define __TLOG(t, ...)	__LOG_DO(t, __VA_ARGS__)
 
 //-------------- LOGGING
+extern thread_local TString __DynLogPfx;
 
 #ifndef NLOG
 #define LOG_DO(x)	x
@@ -66,37 +70,25 @@ void __LOG_DO(TString const* Target, PCTCHAR Fmt, ...);
 #define LOG_DO(x)	;
 #endif
 
-#define _LOG(fmt, ...)												\
-LOG_DO({															\
-	TString __TS = __TimeStamp();									\
-	__LOG(_T("[%s] %s | ") fmt TNewLine,							\
-		__PTID(), __TS.c_str() __VAWRAP(__VA_ARGS__));				\
-})
-
-#define _LOGS(fmt, ...)												\
-LOG_DO({															\
-	SOURCEMARK														\
-	TString __TS = __TimeStamp();									\
-	__LOG(_T("@<%s>") TNewLine _T("[%s] %s | ") fmt TNewLine,		\
-		__SrcMark.c_str(), __PTID(), __TS.c_str()					\
-		__VAWRAP(__VA_ARGS__));										\
-})
-
 #define _TLOG(t,fmt, ...)											\
 LOG_DO({															\
 	TString __TS = __TimeStamp();									\
-	__TLOG(t, _T("[%s] %s | ") fmt TNewLine,						\
-		__PTID(), __TS.c_str() __VAWRAP(__VA_ARGS__));				\
+	__TLOG(t, _T("[%s] %s | %s") fmt TNewLine,						\
+		__PTID(), __TS.c_str(), __DynLogPfx.c_str()					\
+		__VAWRAP(__VA_ARGS__));										\
 })
 
 #define _TLOGS(t,fmt, ...)											\
 LOG_DO({															\
 	SOURCEMARK														\
 	TString __TS = __TimeStamp();									\
-	__TLOG(t, _T("@<%s>") TNewLine _T("[%s] %s | ") fmt TNewLine,	\
-		__SrcMark.c_str(), __PTID(), __TS.c_str()					\
-		__VAWRAP(__VA_ARGS__));										\
+	__TLOG(t, _T("@<%s>") TNewLine _T("[%s] %s | %s") fmt TNewLine,	\
+		__SrcMark.c_str(), __PTID(), __TS.c_str(),					\
+		__DynLogPfx.c_str() __VAWRAP(__VA_ARGS__));					\
 })
+
+#define _LOG(fmt, ...)	_TLOG(nullptr, fmt, __VA_ARGS__)
+#define _LOGS(fmt, ...)	_TLOGS(nullptr, fmt, __VA_ARGS__)
 
 #ifndef __LOGPFX__
 #define __LOGPFX__

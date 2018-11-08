@@ -35,10 +35,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iomanip>
 
+#define __GEN_HASHCOLLAPSE(v,bcnt)										\
+	__ARC_CARDINAL iRet(v);												\
+	__ARC_CARDINAL Ret(0L);												\
+	unsigned int icnt = std::min(bcnt, (unsigned int)sizeof(iRet.U8));	\
+	for (unsigned int i = 0; i < sizeof(U8); i++)						\
+		Ret.U8[i % icnt] ^= iRet.U8[i];									\
+	return (size_t)Ret
+
 // Cardinal32
 
-size_t Cardinal32::hashcode(void) const {
-	return std::hash<unsigned long>()(U32);
+size_t Cardinal32::hashcode(unsigned int bcnt) const {
+	size_t tRet = std::hash<unsigned long>()(U32);
+	if (bcnt == 0) return tRet;
+	__GEN_HASHCOLLAPSE(tRet, bcnt);
 }
 
 TString Cardinal32::toString(unsigned int bcnt) const {
@@ -135,8 +145,10 @@ Cardinal32 const& Cardinal32::ZERO(void) {
 
 // Cardinal64
 
-size_t Cardinal64::hashcode(void) const {
-	return std::hash<unsigned long long>()(U64);
+size_t Cardinal64::hashcode(unsigned int bcnt) const {
+	size_t tRet = std::hash<unsigned long long>()(U64);
+	if (bcnt == 0) return tRet;
+	__GEN_HASHCOLLAPSE(tRet, bcnt);
 }
 
 TString Cardinal64::toString(unsigned int bcnt) const {
@@ -218,8 +230,10 @@ Cardinal64 const& Cardinal64::ZERO(void) {
 
 // Cardinal128
 
-size_t Cardinal128::hashcode(void) const {
-	return std::hash<unsigned long long>()(U64A) ^ std::hash<unsigned long long>()(U64B);
+size_t Cardinal128::hashcode(unsigned int bcnt) const {
+	size_t tRet = std::hash<unsigned long long>()(U64A) ^ std::hash<unsigned long long>()(U64B);
+	if (bcnt == 0) return tRet;
+	__GEN_HASHCOLLAPSE(tRet, bcnt);
 }
 
 TString Cardinal128::toString(unsigned int bcnt) const {
@@ -309,9 +323,11 @@ Cardinal128 const& Cardinal128::ZERO(void) {
 
 // Cardinal256
 
-size_t Cardinal256::hashcode(void) const {
-	return std::hash<unsigned long long>()(U64[0]) ^ std::hash<unsigned long long>()(U64[1]) ^
+size_t Cardinal256::hashcode(unsigned int bcnt) const {
+	size_t tRet = std::hash<unsigned long long>()(U64[0]) ^ std::hash<unsigned long long>()(U64[1]) ^
 		std::hash<unsigned long long>()(U64[2]) ^ std::hash<unsigned long long>()(U64[3]);
+	if (bcnt == 0) return tRet;
+	__GEN_HASHCOLLAPSE(tRet, bcnt);
 }
 
 TString Cardinal256::toString(unsigned int bcnt) const {

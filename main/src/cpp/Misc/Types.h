@@ -44,6 +44,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "TString.h"
 
+//--------
+// Basic Types
+
 #ifdef WINDOWS
 #include <Windows.h>
 #else
@@ -57,6 +60,19 @@ typedef unsigned short UINT16;
 typedef unsigned int UINT32;
 typedef unsigned long long UINT64;
 #endif
+
+#ifdef ARCH_32
+typedef INT32	__ARC_INT;
+typedef UINT32	__ARC_UINT;
+#endif
+
+#ifdef ARCH_64
+typedef INT64	__ARC_INT;
+typedef UINT64	__ARC_UINT;
+#endif
+
+//--------
+// Class & template utilities
 
 #define ENFORCE_DERIVE(TBase, TDerived) \
 	static_assert(std::is_base_of<TBase, TDerived>::value, \
@@ -78,18 +94,11 @@ struct Has_##Func {												\
 	static const bool value = sizeof(_Probe<T>(nullptr)) > 1;	\
 }
 
-#ifdef ARCH_32
-typedef long			__ARC_INT;
-typedef unsigned long	__ARC_UINT;
-#endif
-
-#ifdef ARCH_64
-typedef long long			__ARC_INT;
-typedef unsigned long long	__ARC_UINT;
-#endif
+//--------
+// Cardinals
 
 struct Cardinal {
-	virtual size_t hashcode(void) const = 0;
+	virtual size_t hashcode(unsigned int bcnt = 0) const = 0;
 	virtual TString toString(unsigned int bcnt = 0) const = 0;
 	virtual size_t fromString(TString const &_S) = 0;
 	virtual bool equalto(Cardinal const &T) const = 0;
@@ -117,13 +126,14 @@ struct Cardinal32 : public Cardinal {
 	Cardinal32& operator=(Cardinal32 const &_C)
 	{ return U32 = _C.U32, *this; }
 
-	virtual size_t hashcode(void) const override;
+	virtual size_t hashcode(unsigned int bcnt = 0) const override;
 	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 
 	bool equalto(Cardinal32 const &T) const;
+	operator size_t() const { return U32; }
 
 	static Cardinal32 const& ZERO(void);
 };
@@ -158,17 +168,20 @@ struct Cardinal64 : public Cardinal {
 	Cardinal64(Cardinal64 const &_C) : U64(_C.U64) {}
 	Cardinal64(unsigned long long const & _Value) : U64(_Value) {}
 	Cardinal64(long long const & _Value) : S64(_Value) {}
+	Cardinal64(unsigned long const & _Value) : Cardinal64((unsigned long long)_Value) {}
+	Cardinal64(long const & _Value) : Cardinal64((long long)_Value) {}
 
 	Cardinal64& operator=(Cardinal64 const &_C)
 	{ return U64 = _C.U64, *this; }
 
-	virtual size_t hashcode(void) const override;
+	virtual size_t hashcode(unsigned int bcnt = 0) const override;
 	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
 	virtual bool isZero(void) const override;
 
 	bool equalto(Cardinal64 const &T) const;
+	operator size_t() const { return U64; }
 
 	static Cardinal64 const& ZERO(void);
 };
@@ -208,7 +221,7 @@ struct Cardinal128 : public Cardinal {
 	Cardinal128& operator=(Cardinal128 const &_C)
 	{ return U64A = _C.U64A, U64B = _C.U64B, *this; }
 
-	virtual size_t hashcode(void) const override;
+	virtual size_t hashcode(unsigned int bcnt = 0) const override;
 	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
@@ -268,7 +281,7 @@ struct Cardinal256 : public Cardinal {
 	Cardinal256& operator=(Cardinal256 const &_C)
 	{ return U64[0] = _C.U64[0], U64[1] = _C.U64[1], U64[2] = _C.U64[2], U64[3] = _C.U64[3], *this; }
 
-	virtual size_t hashcode(void) const override;
+	virtual size_t hashcode(unsigned int bcnt = 0) const override;
 	virtual TString toString(unsigned int bcnt = 0) const override;
 	virtual size_t fromString(TString const &_S) override;
 	virtual bool equalto(Cardinal const &T) const override;
@@ -293,6 +306,17 @@ inline bool operator !=(Cardinal256 const &A, Cardinal256 const &B) {
 	return !(A == B);
 }
 
+#ifdef ARCH_32
+typedef Cardinal32			__ARC_CARDINAL;
+#endif
+
+#ifdef ARCH_64
+typedef Cardinal64			__ARC_CARDINAL;
+#endif
+
+//--------
+// GUID / UUID utilities
+
 #ifdef WINDOWS
 typedef GUID UUID;
 #endif
@@ -301,6 +325,9 @@ TString UUIDToString(UUID const &Val);
 UUID UUIDFromString(TString const &Str);
 
 extern UUID const UUID_NULL;
+
+//--------
+// Misc utilities
 
 TString HexInspect(void* Buf, size_t Len);
 
@@ -314,6 +341,9 @@ UINT32 CountBits64(UINT64 Mask);
 #ifdef ARCH_64
 #define CountBits CountBits64
 #endif
+
+//--------
+// Atomic ordinals
 
 template<typename TOrdinal32>
 class TInterlockedOrdinal32 {
@@ -540,6 +570,9 @@ bool TInterlockedOrdinal64<TOrdinal64>::BitTestReset(unsigned int const &Bit) {
 
 #endif
 
+//--------
+// Castable base class
+
 template<class X>
 class TCastable {
 	typedef TCastable _this;
@@ -594,6 +627,9 @@ public:
 	}
 };
 
+//--------
+// Clonable base class
+
 // Forward declaration avoid circular header dependency
 template<class T> class IObjAllocator;
 template<class T> IObjAllocator<T>& DefaultObjAllocator(void);
@@ -616,6 +652,9 @@ static T* Cloneable::Clone(T const *xObj, IObjAllocator<T> &xAlloc) {
 	// Not a Cloneable derivative
 	return nullptr;
 }
+
+//--------
+// Object construction helper
 
 // For use in wrapper classes to determine how to construct wrapped instance
 class CONSTRUCTION {
