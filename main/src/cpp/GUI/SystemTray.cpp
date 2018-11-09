@@ -28,9 +28,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// [GUI] Explorer Tray Helper
+// [GUI] System Tray Helper
 
-#include "ExplorerTray.h"
+#include "SystemTray.h"
 
 #ifdef WINDOWS
 
@@ -44,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXPLORERTRAY_WMID		WM_USER
 #define EXPLORERTRAY_CLASSNAME	"__EXPTRAY_CLS__"
 
-class TExplorerTray : public TRunnable {
+class TSystemTray : public TRunnable {
 protected:
 	TIcon _Icon;
 	TString _ToolTip;
@@ -108,7 +108,7 @@ protected:
 public:
 	TString const Name;
 
-	TExplorerTray(TString const &xName, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems)
+	TSystemTray(TString const &xName, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems)
 		: Name(xName), _Icon(std::move(Icon)), _ToolTip(ToolTip), _MenuItems(std::move(MenuItems))
 		, _Window(NULL, TResource<HWND>::NullDealloc), _TrayID(++_InstCnt)
 	{}
@@ -168,7 +168,7 @@ public:
 	}
 };
 
-TInterlockedOrdinal32<UINT32> TExplorerTray::_InstCnt(0);
+TInterlockedOrdinal32<UINT32> TSystemTray::_InstCnt(0);
 
 static LRESULT CALLBACK __CallForwarder(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	LONG_PTR Inst;
@@ -187,22 +187,22 @@ static LRESULT CALLBACK __CallForwarder(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 		Inst = GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	}
 
-	return reinterpret_cast<TExplorerTray*>(Inst)->__WndProc(hwnd, msg, wParam, lParam);
+	return reinterpret_cast<TSystemTray*>(Inst)->__WndProc(hwnd, msg, wParam, lParam);
 }
 
-MRWorkerThread CreateExplorerTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems) {
+MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems) {
 	return {
 		CONSTRUCTION::EMPLACE, Name,
-		MRRunnable(DEFAULT_NEW(TExplorerTray, Name, std::move(Icon), ToolTip, std::move(MenuItems)),
+		MRRunnable(DEFAULT_NEW(TSystemTray, Name, std::move(Icon), ToolTip, std::move(MenuItems)),
 				   CONSTRUCTION::HANDOFF)
 	};
 }
 
-static ATOM ExplorerTray_WCls = 0;
+static ATOM SystemTray_WCls = 0;
 
-void ExplorerTray_GlobalInit(HINSTANCE hInstance) {
-	if (ExplorerTray_WCls) {
-		FAIL(_T("Explorer tray utility already initialized"));
+void SystemTray_GlobalInit(HINSTANCE hInstance) {
+	if (SystemTray_WCls) {
+		FAIL(_T("System tray utility already initialized"));
 	}
 
 	WNDCLASSEX winclass = { 0 };
@@ -211,15 +211,15 @@ void ExplorerTray_GlobalInit(HINSTANCE hInstance) {
 	winclass.lpszClassName = _T(EXPLORERTRAY_CLASSNAME);
 	winclass.lpfnWndProc = __CallForwarder;
 
-	ExplorerTray_WCls = RegisterClassEx(&winclass);
-	if (!ExplorerTray_WCls) {
+	SystemTray_WCls = RegisterClassEx(&winclass);
+	if (!SystemTray_WCls) {
 		SYSFAIL(_T("Unable to register explorer tray window class"));
 	}
 }
 
-void ExplorerTray_GlobalFInit(void) {
-	if (ExplorerTray_WCls) {
-		UnregisterClass((LPCTSTR)ExplorerTray_WCls, NULL);
+void SystemTray_GlobalFInit(void) {
+	if (SystemTray_WCls) {
+		UnregisterClass((LPCTSTR)SystemTray_WCls, NULL);
 	}
 }
 

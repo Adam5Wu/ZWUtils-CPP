@@ -31,13 +31,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**
  * @addtogroup GUI Graphic User Interface Utilities
  * @file
- * @brief Explorer Tray Helper
+ * @brief System Tray Helper
  * @author Zhenyu Wu
  * @date Nov 09, 2018: Initial Implementation
  **/
 
-#ifndef ZWUtils_GUIExplorerTray_H
-#define ZWUtils_GUIExplorerTray_H
+#ifndef ZWUtils_GUISystemTray_H
+#define ZWUtils_GUISystemTray_H
 
 #include "Misc/Global.h"
 
@@ -47,9 +47,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Resources.h"
 
-MRWorkerThread CreateExplorerTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems);
+MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems);
 
-void ExplorerTray_GlobalInit(HINSTANCE hInstance);
-void ExplorerTray_GlobalFInit(void);
+void SystemTray_GlobalInit(HINSTANCE hInstance);
+void SystemTray_GlobalFInit(void);
 
-#endif //ZWUtils_GUIExplorerTray_H
+#endif //ZWUtils_GUISystemTray_H
