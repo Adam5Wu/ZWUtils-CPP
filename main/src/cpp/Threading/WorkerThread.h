@@ -52,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SyncElements.h"
 #include "SyncObjects.h"
 
+#include <functional>
 #include <vector>
 
 class TWorkerThread;
@@ -198,7 +199,7 @@ public:
 	 **/
 	Exception* FatalException(bool Prune = false);
 
-	typedef std::function<void(TWorkerThread &, State const &) NOEXCEPT> TStateNotice;
+	typedef std::function<void(TWorkerThread &, State const &)> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;
 	/**
 	 * Register a notification callback when specified thread state is reached

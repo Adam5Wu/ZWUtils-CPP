@@ -56,7 +56,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ARCH_64
 #endif
 
+#if __cplusplus < 201103L
 #define NOEXCEPT throw()
+#else
+#define NOEXCEPT noexcept
+#endif
 
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
@@ -76,7 +80,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define __LINKER_SYMBOL(name)	name
 #endif
 
-// Visual Studio parser bug work-arounds
+ // Visual Studio parser bug work-arounds
 #define __EXPAND(x)		x
 #define __PAREN(...)	(__VA_ARGS__)
 #define __VAWRAP(...)	,##__VA_ARGS__

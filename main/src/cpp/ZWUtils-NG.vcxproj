@@ -515,6 +515,8 @@
     <ClCompile Include="Debug\Logging.cpp" />
     <ClCompile Include="Debug\StackWalker.cpp" />
     <ClCompile Include="Debug\SysError.cpp" />
+    <ClCompile Include="GUI\ExplorerTray.cpp" />
+    <ClCompile Include="GUI\Resources.cpp" />
     <ClCompile Include="JVMHost\JavaTransport.cpp" />
     <ClCompile Include="JVMHost\JVMLoader.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/D JRE_PLATFORM_PATHFRAG=\"$(TargetPlatformIdentifier)\\$(PlatformTarget)\" /bigobj</AdditionalOptions>
@@ -552,6 +554,8 @@
     <ClInclude Include="Debug\Logging.h" />
     <ClInclude Include="Debug\StackWalker.h" />
     <ClInclude Include="Debug\SysError.h" />
+    <ClInclude Include="GUI\ExplorerTray.h" />
+    <ClInclude Include="GUI\Resources.h" />
     <ClInclude Include="JVMHost\JavaTransport.h" />
     <ClInclude Include="JVMHost\JVMLoader.h" />
     <ClInclude Include="JVMHost\NativeChunk.h" />
