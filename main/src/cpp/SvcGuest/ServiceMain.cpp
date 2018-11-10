@@ -24,6 +24,7 @@
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_DEPENDS)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_USER)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_PRIVILEGES)
+#pragma __SERVICE_DEFSYMBOL_LINKPARAM(SERVICE_PROGRAMPATH)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(CONFIG_ServiceStatusQueryInterval)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(CONFIG_ServiceTerminationGraceTime)
 #pragma __SERVICE_DEFSYMBOL_LINKPARAM(ServiceMain_LoadModules)
@@ -264,10 +265,11 @@ static TString Service_GetDataDir(void) {
 	}
 	LOGVV(_T("+ Common application data directory '%s'"), PROGRAMDATA.c_str());
 
-	TString Ret = TStringCast(PROGRAMDATA.c_str() << _T('\\') << SERVICE_NAME);
-	if (CreateDirectory(Ret.c_str(), NULL) == 0) {
-		if (GetLastError() != ERROR_ALREADY_EXISTS) {
-			SYSERRLOG(_T("Unable to create service data directory '%s'"), Ret.c_str());
+	TString Ret = TStringCast(PROGRAMDATA.c_str() << _T('\\') << SERVICE_PROGRAMPATH);
+	int iRet = SHCreateDirectoryEx(NULL, Ret.c_str(), NULL);
+	if (iRet != ERROR_SUCCESS) {
+		if (iRet != ERROR_ALREADY_EXISTS) {
+			ERRLOG(iRet, _T("Unable to create service data directory '%s'"), Ret.c_str());
 			return EmptyTText;
 		}
 	} else {

@@ -79,8 +79,12 @@
     <ClCompile Include="Comm\NamedPipe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GUI\Resources.cpp" />
-    <ClCompile Include="GUI\SystemTray.cpp" />
+    <ClCompile Include="GUI\Resources.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI\SystemTray.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory\Allocator.h">
@@ -164,8 +168,12 @@
     <ClInclude Include="Comm\NamedPipe.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="GUI\Resources.h" />
-    <ClInclude Include="GUI\SystemTray.h" />
+    <ClInclude Include="GUI\Resources.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GUI\SystemTray.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SvcGuest\ServiceExport.def">

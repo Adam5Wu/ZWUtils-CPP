@@ -59,7 +59,7 @@ public:
 	}
 
 	virtual void SignalStart(void) override {
-		_ServThread->Start(TFixedBuffer(nullptr));
+		_ServThread->Start();
 	}
 
 	virtual void SignalStop(void) override {
@@ -115,7 +115,7 @@ protected:
 						MRRunnable(DEFAULT_NEW(TServRunnable, &_ServRec), CONSTRUCTION::HANDOFF))
 	{
 		// Automatically start the service thread
-		_ClientThread->Start(TFixedBuffer(nullptr));
+		_ClientThread->Start();
 	}
 
 public:
@@ -298,7 +298,7 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 	}
 
 	NPLOGV(_T("Stopped serving (%s)"), FullPath.c_str());
-	return TFixedBuffer(nullptr);
+	return {};
 }
 
 TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
@@ -428,7 +428,7 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 	}
 
 	NPLOGV(_T("Stopped serving"));
-	return TFixedBuffer(nullptr);
+	return {};
 }
 
 MRLocalCommServer INamedPipeServer::Create(TString const &xPath, DWORD BufferSize, FLocalCommClientConnect const &OnConnect,

@@ -18,6 +18,7 @@ extern "C" {
 	extern PCTCHAR const _DEF_SERVICE_DEPENDS = NullTStr;
 	extern PCTCHAR const _DEF_SERVICE_USER = _T("NT AUTHORITY\\System");
 	extern PCTCHAR const _DEF_SERVICE_PRIVILEGES = SE_CREATE_GLOBAL_NAME NullTStr;
+	extern PCTCHAR const _DEF_SERVICE_PROGRAMPATH = _T("ZWUtil\\SvcGuest");
 
 	//----------------------
 	// Service Configurations

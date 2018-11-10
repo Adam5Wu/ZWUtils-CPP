@@ -252,6 +252,8 @@ class _TTypedBuffer : public TAllocResource<T*> {
 	typedef _TTypedBuffer _this;
 
 protected:
+	size_t const _Size;
+
 	static void* Alloc(IAllocator &xAllocator, size_t xSize) {
 		if (!xSize) return nullptr;
 		void* NewBuf = xAllocator.Alloc(xSize);
@@ -263,26 +265,37 @@ protected:
 		xAllocator.Dealloc(xBuf);
 	}
 
-	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator()) : _TTypedBuffer(sizeof(T), xAllocator) {}
+	_TTypedBuffer(IAllocator &xAllocator = DefaultAllocator())
+		: _TTypedBuffer(sizeof(T), xAllocator) {}
+
 	_TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource<T*>([=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); },
-						   [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+						   [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }),
+		_Size(xSize) {}
 
-	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
-		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); }) {}
+	_TTypedBuffer(T *xBuffer, IAllocator &xAllocator = DefaultAllocator())
+		: _TTypedBuffer(xBuffer, sizeof(T), xAllocator) {}
+
 	_TTypedBuffer(T *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		TAllocResource<T*>(xBuffer, [=, &xAllocator](T* &X) {Dealloc(xAllocator, X); },
-						   [=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }) {}
+						   [=, &xAllocator] {return (T*)Alloc(xAllocator, xSize); }),
+		_Size(xSize) {}
 
 public:
-#if _MSC_VER <= 1900
-	// Older MS compilers are buggy at inheriting methods from template
 	//_TTypedBuffer(_this const &) = delete;
-	_TTypedBuffer(_this &&xBuffer) NOEXCEPT : TAllocResource<T*>(std::move(xBuffer)) {}
+	_TTypedBuffer(_this &&xBuffer) NOEXCEPT
+		: TAllocResource<T*>(std::move(xBuffer)), _Size(xBuffer._Size) {}
+
 	//_this& operator=(_this const &) = delete;
-	_this& operator=(_this &&xBuffer)
-	{ return TAllocResource<T*>::operator=(std::move(xBuffer)), *this; }
-#endif
+	_this& operator=(_this &&xBuffer) {
+		TAllocResource<T*>::operator=(std::move(xBuffer));
+		*const_cast<size_t*>(&_Size) = xBuffer._Size;
+		return *this;
+	}
+
+	size_t GetSize(void) const {
+		return _Size;
+	}
 
 	T* operator&(void) const {
 		return *_ObjPointer();
@@ -317,6 +330,9 @@ public:
 	T* operator->(void) const {
 		return *_ObjPointer();
 	}
+	T& operator[](size_t idx) const {
+		return (*_ObjPointer())[idx];
+	}
 };
 
 template<>
@@ -324,10 +340,9 @@ class TTypedBuffer<void> : public _TTypedBuffer<void> {
 	typedef TTypedBuffer _this;
 
 public:
-	TTypedBuffer(size_t const &xSize = 0, IAllocator &xAllocator = DefaultAllocator()) :
+	TTypedBuffer(void) : TTypedBuffer(0, DummyAllocator()) {}
+	TTypedBuffer(size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer(xSize, xAllocator) {}
-	TTypedBuffer(void *xBuffer, IAllocator &xAllocator = DefaultAllocator()) :
-		_TTypedBuffer(xBuffer, xAllocator) {}
 	TTypedBuffer(void *xBuffer, size_t const &xSize, IAllocator &xAllocator = DefaultAllocator()) :
 		_TTypedBuffer(xBuffer, xSize, xAllocator) {}
 

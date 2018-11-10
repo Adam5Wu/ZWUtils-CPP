@@ -41,9 +41,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Misc/Global.h"
 
+#ifdef WINDOWS
+
 #include "Misc/Types.h"
 #include "Misc/TString.h"
 #include "Threading/WorkerThread.h"
+
+#include <Windows.h>
 
 #include "Resources.h"
 
@@ -51,5 +55,7 @@ MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const
 
 void SystemTray_GlobalInit(HINSTANCE hInstance);
 void SystemTray_GlobalFInit(void);
+
+#endif
 
 #endif //ZWUtils_GUISystemTray_H

@@ -32,6 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Resources.h"
 
+#include "Debug/SysError.h"
+
+#include <Windows.h>
+#include <shellapi.h>
+
 #define DISP_NEMU_HBAR	"---"
 #define DISP_NEMU_VBAR	"|||"
 

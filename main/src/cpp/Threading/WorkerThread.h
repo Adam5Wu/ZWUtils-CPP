@@ -155,7 +155,7 @@ public:
 	/**
 	 * Start thread execution (if already started, will raise exception)
 	 **/
-	void Start(TFixedBuffer &&xInputData = TFixedBuffer(nullptr));
+	void Start(TFixedBuffer &&xInputData = {});
 
 	/**
 	 * Start thread execution, and self-free when finish

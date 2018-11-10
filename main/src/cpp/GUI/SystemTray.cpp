@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vector>
 
+#include <windowsx.h>
+
 #define EXPLORERTRAY_IDBASE		1000
 #define EXPLORERTRAY_WMID		WM_USER
 #define EXPLORERTRAY_CLASSNAME	"__EXPTRAY_CLS__"
@@ -71,9 +73,10 @@ protected:
 		notifyIconData.cbSize = sizeof(NOTIFYICONDATA);
 		notifyIconData.hWnd = *_Window;
 		notifyIconData.uID = EXPLORERTRAY_IDBASE + _TrayID;
-		notifyIconData.uCallbackMessage = EXPLORERTRAY_WMID;
+		notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_SHOWTIP;
 		notifyIconData.hIcon = *_Icon;
-		notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE;
+		notifyIconData.uCallbackMessage = EXPLORERTRAY_WMID;
+		notifyIconData.uVersion = NOTIFYICON_VERSION_4;
 		if (!_ToolTip.empty()) {
 			notifyIconData.uFlags |= NIF_TIP;
 			_tcscpy_s(notifyIconData.szTip, 128, _ToolTip.c_str());
@@ -81,12 +84,15 @@ protected:
 
 		if (!_MenuItems.empty()) {
 			for (size_t idx = 0; idx < _MenuItems.size(); idx++) {
-				_PopupMenu.AddMenuItem(idx, _MenuItems[idx].DispText);
+				_PopupMenu.AddMenuItem(idx + 1, _MenuItems[idx].DispText);
 			}
 		}
 
 		if (!Shell_NotifyIcon(NIM_ADD, &notifyIconData)) {
 			SYSFAIL(_T("Failed to add tray icon"));
+		}
+		if (!Shell_NotifyIcon(NIM_SETVERSION, &notifyIconData)) {
+			SYSFAIL(_T("Failed to set tray icon version"));
 		}
 	}
 
@@ -125,7 +131,7 @@ public:
 			}
 		}
 
-		return { nullptr };
+		return {};
 	}
 
 	virtual void StopNotify(TWorkerThread &WorkerThread) override {
@@ -142,25 +148,28 @@ public:
 			case EXPLORERTRAY_WMID:
 				LOGVV(_T("Tray activity message received! (%d:%d)"), wParam, lParam);
 
-				if ((lParam == WM_RBUTTONDOWN) && !_MenuItems.empty()) {
-					// Get current mouse position.
-					POINT curPoint;
-					GetCursorPos(&curPoint);
+				switch (LOWORD(lParam)) {
+					case WM_CONTEXTMENU:
+						if (!_MenuItems.empty()) {
+							SetForegroundWindow(hwnd);
+							LOGV(_T("Context menu triggered, tracking..."));
+							// TrackPopupMenu blocks the app until TrackPopupMenu returns
+							UINT clicked = TrackPopupMenuEx(*_PopupMenu, TPM_RETURNCMD | TPM_NONOTIFY,
+															GET_X_LPARAM(wParam), GET_Y_LPARAM(wParam),
+															hwnd, NULL);
 
-					LOGV(_T("Popup menu triggered, tracking..."));
-					// TrackPopupMenu blocks the app until TrackPopupMenu returns
-					UINT clicked = TrackPopupMenu(*_PopupMenu, TPM_RETURNCMD | TPM_NONOTIFY,
-												  curPoint.x, curPoint.y, 0, hwnd, NULL);
-
-					// Send benign message to window to make sure the menu goes away.
-					SendMessage(hwnd, WM_NULL, 0, 0);
-
-					auto &MenuItem = _MenuItems[clicked];
-					LOGV(_T("Popup menu selected '%s'"), MenuItem.DispText.c_str());
-					if (MenuItem.Callback) {
-						LOGV(_T("Processing callback..."));
-						MenuItem.Callback();
-					}
+							if (clicked) {
+								auto &MenuItem = _MenuItems[clicked - 1];
+								LOGV(_T("Context menu selected '%s'"), MenuItem.DispText.c_str());
+								if (MenuItem.Callback) {
+									LOGV(_T("Processing callback..."));
+									MenuItem.Callback();
+								}
+							} else {
+								LOGV(_T("Context menu cancelled"));
+							}
+						}
+						break;
 				}
 				return 0;
 		}

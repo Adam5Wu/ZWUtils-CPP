@@ -56,6 +56,7 @@ extern "C" {
 	extern PCTCHAR const SERVICE_DEPENDS;
 	extern PCTCHAR const SERVICE_USER;
 	extern PCTCHAR const SERVICE_PRIVILEGES;
+	extern PCTCHAR const SERVICE_PROGRAMPATH;
 
 	extern int CONFIG_ServiceStatusQueryInterval;
 	extern int CONFIG_ServiceTerminationGraceTime;
