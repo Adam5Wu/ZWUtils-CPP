@@ -620,7 +620,7 @@ void TestWorkerThread() {
 				_LOG(_T("Throwing exception..."));
 				FAIL(_T("Test!"));
 			}
-			return { nullptr };
+			return {};
 		}
 	};
 
@@ -638,7 +638,7 @@ void TestWorkerThread() {
 	_LOG(_T("*** Test WorkerThread (Exception during run)"));
 	{
 		MRWorkerThread B(TWorkerThread::Create(_T("TestB"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
-		B->Start(TFixedBuffer(DefaultAllocator().Alloc(100)));
+		B->Start({ 100 });
 		B->WaitFor();
 		_LOG(_T("Return data: %s"), TStringCast(B->ReturnData()).c_str());
 		if (B->FatalException() != nullptr) {
@@ -658,7 +658,7 @@ void TestWorkerThread() {
 
 	_LOG(_T("*** Test WorkerThread (Exception, Self-free)"));
 	{
-		TWorkerThread::Create(_T("TestD"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }, true)->Start(DefaultAllocator().Alloc(100));
+		TWorkerThread::Create(_T("TestD"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }, true)->Start({ DefaultAllocator().Alloc(100), 100 });
 		TDelayWaitable WaitASec(500);
 		WaitASec.WaitFor(FOREVER);
 		_LOG(_T("Expect the worker thread has terminated and destroyed by now..."));
@@ -669,7 +669,7 @@ void TestWorkerThread() {
 		TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 			_LOG(_T("Yee Hah!"));
 			DEFAULT_DESTROY(TWorkerThread, std::addressof(WorkerThread));
-			return { nullptr };
+			return {};
 		}
 	};
 
@@ -733,7 +733,7 @@ void TestWorkerThread() {
 			TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
 				_LOG(_T("Yee Hah!"));
 				Sleep(1000);
-				return nullptr;
+				return {};
 			}
 		};
 		{
@@ -792,7 +792,7 @@ void TestSyncObj_2(bool Robust) {
 						(*Ctr->Pickup())++;
 					}
 					_LOG(_T("Count of %d done!"), COUNT);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -830,14 +830,14 @@ void TestSyncObj_2(bool Robust) {
 			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
-			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
-			TestCount04->Start({ &X, NullAlloc }); TestCount05->Start({ &X, NullAlloc }); TestCount06->Start({ &X, NullAlloc }); TestCount07->Start({ &X, NullAlloc });
-			TestCount08->Start({ &X, NullAlloc }); TestCount09->Start({ &X, NullAlloc }); TestCount0A->Start({ &X, NullAlloc }); TestCount0B->Start({ &X, NullAlloc });
-			TestCount0C->Start({ &X, NullAlloc }); TestCount0D->Start({ &X, NullAlloc }); TestCount0E->Start({ &X, NullAlloc }); TestCount0F->Start({ &X, NullAlloc });
-			TestCount10->Start({ &X, NullAlloc }); TestCount11->Start({ &X, NullAlloc }); TestCount12->Start({ &X, NullAlloc }); TestCount13->Start({ &X, NullAlloc });
-			TestCount14->Start({ &X, NullAlloc }); TestCount15->Start({ &X, NullAlloc }); TestCount16->Start({ &X, NullAlloc }); TestCount17->Start({ &X, NullAlloc });
-			TestCount18->Start({ &X, NullAlloc }); TestCount19->Start({ &X, NullAlloc }); TestCount1A->Start({ &X, NullAlloc }); TestCount1B->Start({ &X, NullAlloc });
-			TestCount1C->Start({ &X, NullAlloc }); TestCount1D->Start({ &X, NullAlloc }); TestCount1E->Start({ &X, NullAlloc }); TestCount1F->Start({ &X, NullAlloc });
+			TestCount00->Start({ &X, sizeof(void*), NullAlloc }); TestCount01->Start({ &X, sizeof(void*), NullAlloc }); TestCount02->Start({ &X, sizeof(void*), NullAlloc }); TestCount03->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount04->Start({ &X, sizeof(void*), NullAlloc }); TestCount05->Start({ &X, sizeof(void*), NullAlloc }); TestCount06->Start({ &X, sizeof(void*), NullAlloc }); TestCount07->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount08->Start({ &X, sizeof(void*), NullAlloc }); TestCount09->Start({ &X, sizeof(void*), NullAlloc }); TestCount0A->Start({ &X, sizeof(void*), NullAlloc }); TestCount0B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount0C->Start({ &X, sizeof(void*), NullAlloc }); TestCount0D->Start({ &X, sizeof(void*), NullAlloc }); TestCount0E->Start({ &X, sizeof(void*), NullAlloc }); TestCount0F->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount10->Start({ &X, sizeof(void*), NullAlloc }); TestCount11->Start({ &X, sizeof(void*), NullAlloc }); TestCount12->Start({ &X, sizeof(void*), NullAlloc }); TestCount13->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount14->Start({ &X, sizeof(void*), NullAlloc }); TestCount15->Start({ &X, sizeof(void*), NullAlloc }); TestCount16->Start({ &X, sizeof(void*), NullAlloc }); TestCount17->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount18->Start({ &X, sizeof(void*), NullAlloc }); TestCount19->Start({ &X, sizeof(void*), NullAlloc }); TestCount1A->Start({ &X, sizeof(void*), NullAlloc }); TestCount1B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount1C->Start({ &X, sizeof(void*), NullAlloc }); TestCount1D->Start({ &X, sizeof(void*), NullAlloc }); TestCount1E->Start({ &X, sizeof(void*), NullAlloc }); TestCount1F->Start({ &X, sizeof(void*), NullAlloc });
 
 			WaitMultiple({
 				*TestCount00, *TestCount01, *TestCount02, *TestCount03,
@@ -867,7 +867,7 @@ void TestSyncObj_2(bool Robust) {
 						(*Ctr->Pickup())++;
 					}
 					_LOG(_T("Count of %d done!"), COUNT);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -905,14 +905,14 @@ void TestSyncObj_2(bool Robust) {
 			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
-			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
-			TestCount04->Start({ &X, NullAlloc }); TestCount05->Start({ &X, NullAlloc }); TestCount06->Start({ &X, NullAlloc }); TestCount07->Start({ &X, NullAlloc });
-			TestCount08->Start({ &X, NullAlloc }); TestCount09->Start({ &X, NullAlloc }); TestCount0A->Start({ &X, NullAlloc }); TestCount0B->Start({ &X, NullAlloc });
-			TestCount0C->Start({ &X, NullAlloc }); TestCount0D->Start({ &X, NullAlloc }); TestCount0E->Start({ &X, NullAlloc }); TestCount0F->Start({ &X, NullAlloc });
-			TestCount10->Start({ &X, NullAlloc }); TestCount11->Start({ &X, NullAlloc }); TestCount12->Start({ &X, NullAlloc }); TestCount13->Start({ &X, NullAlloc });
-			TestCount14->Start({ &X, NullAlloc }); TestCount15->Start({ &X, NullAlloc }); TestCount16->Start({ &X, NullAlloc }); TestCount17->Start({ &X, NullAlloc });
-			TestCount18->Start({ &X, NullAlloc }); TestCount19->Start({ &X, NullAlloc }); TestCount1A->Start({ &X, NullAlloc }); TestCount1B->Start({ &X, NullAlloc });
-			TestCount1C->Start({ &X, NullAlloc }); TestCount1D->Start({ &X, NullAlloc }); TestCount1E->Start({ &X, NullAlloc }); TestCount1F->Start({ &X, NullAlloc });
+			TestCount00->Start({ &X, sizeof(void*), NullAlloc }); TestCount01->Start({ &X, sizeof(void*), NullAlloc }); TestCount02->Start({ &X, sizeof(void*), NullAlloc }); TestCount03->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount04->Start({ &X, sizeof(void*), NullAlloc }); TestCount05->Start({ &X, sizeof(void*), NullAlloc }); TestCount06->Start({ &X, sizeof(void*), NullAlloc }); TestCount07->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount08->Start({ &X, sizeof(void*), NullAlloc }); TestCount09->Start({ &X, sizeof(void*), NullAlloc }); TestCount0A->Start({ &X, sizeof(void*), NullAlloc }); TestCount0B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount0C->Start({ &X, sizeof(void*), NullAlloc }); TestCount0D->Start({ &X, sizeof(void*), NullAlloc }); TestCount0E->Start({ &X, sizeof(void*), NullAlloc }); TestCount0F->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount10->Start({ &X, sizeof(void*), NullAlloc }); TestCount11->Start({ &X, sizeof(void*), NullAlloc }); TestCount12->Start({ &X, sizeof(void*), NullAlloc }); TestCount13->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount14->Start({ &X, sizeof(void*), NullAlloc }); TestCount15->Start({ &X, sizeof(void*), NullAlloc }); TestCount16->Start({ &X, sizeof(void*), NullAlloc }); TestCount17->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount18->Start({ &X, sizeof(void*), NullAlloc }); TestCount19->Start({ &X, sizeof(void*), NullAlloc }); TestCount1A->Start({ &X, sizeof(void*), NullAlloc }); TestCount1B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount1C->Start({ &X, sizeof(void*), NullAlloc }); TestCount1D->Start({ &X, sizeof(void*), NullAlloc }); TestCount1E->Start({ &X, sizeof(void*), NullAlloc }); TestCount1F->Start({ &X, sizeof(void*), NullAlloc });
 
 			WaitMultiple({
 				*TestCount00, *TestCount01, *TestCount02, *TestCount03,
@@ -942,7 +942,7 @@ void TestSyncObj_2(bool Robust) {
 						(*Ctr->Pickup())++;
 					}
 					_LOG(_T("Count of %d done!"), COUNT);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -980,14 +980,14 @@ void TestSyncObj_2(bool Robust) {
 			MRWorkerThread TestCount1F(CONSTRUCTION::EMPLACE, _T("CounterThread1F"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting... (takes about 5 seconds)"));
-			TestCount00->Start({ &X, NullAlloc }); TestCount01->Start({ &X, NullAlloc }); TestCount02->Start({ &X, NullAlloc }); TestCount03->Start({ &X, NullAlloc });
-			TestCount04->Start({ &X, NullAlloc }); TestCount05->Start({ &X, NullAlloc }); TestCount06->Start({ &X, NullAlloc }); TestCount07->Start({ &X, NullAlloc });
-			TestCount08->Start({ &X, NullAlloc }); TestCount09->Start({ &X, NullAlloc }); TestCount0A->Start({ &X, NullAlloc }); TestCount0B->Start({ &X, NullAlloc });
-			TestCount0C->Start({ &X, NullAlloc }); TestCount0D->Start({ &X, NullAlloc }); TestCount0E->Start({ &X, NullAlloc }); TestCount0F->Start({ &X, NullAlloc });
-			TestCount10->Start({ &X, NullAlloc }); TestCount11->Start({ &X, NullAlloc }); TestCount12->Start({ &X, NullAlloc }); TestCount13->Start({ &X, NullAlloc });
-			TestCount14->Start({ &X, NullAlloc }); TestCount15->Start({ &X, NullAlloc }); TestCount16->Start({ &X, NullAlloc }); TestCount17->Start({ &X, NullAlloc });
-			TestCount18->Start({ &X, NullAlloc }); TestCount19->Start({ &X, NullAlloc }); TestCount1A->Start({ &X, NullAlloc }); TestCount1B->Start({ &X, NullAlloc });
-			TestCount1C->Start({ &X, NullAlloc }); TestCount1D->Start({ &X, NullAlloc }); TestCount1E->Start({ &X, NullAlloc }); TestCount1F->Start({ &X, NullAlloc });
+			TestCount00->Start({ &X, sizeof(void*), NullAlloc }); TestCount01->Start({ &X, sizeof(void*), NullAlloc }); TestCount02->Start({ &X, sizeof(void*), NullAlloc }); TestCount03->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount04->Start({ &X, sizeof(void*), NullAlloc }); TestCount05->Start({ &X, sizeof(void*), NullAlloc }); TestCount06->Start({ &X, sizeof(void*), NullAlloc }); TestCount07->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount08->Start({ &X, sizeof(void*), NullAlloc }); TestCount09->Start({ &X, sizeof(void*), NullAlloc }); TestCount0A->Start({ &X, sizeof(void*), NullAlloc }); TestCount0B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount0C->Start({ &X, sizeof(void*), NullAlloc }); TestCount0D->Start({ &X, sizeof(void*), NullAlloc }); TestCount0E->Start({ &X, sizeof(void*), NullAlloc }); TestCount0F->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount10->Start({ &X, sizeof(void*), NullAlloc }); TestCount11->Start({ &X, sizeof(void*), NullAlloc }); TestCount12->Start({ &X, sizeof(void*), NullAlloc }); TestCount13->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount14->Start({ &X, sizeof(void*), NullAlloc }); TestCount15->Start({ &X, sizeof(void*), NullAlloc }); TestCount16->Start({ &X, sizeof(void*), NullAlloc }); TestCount17->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount18->Start({ &X, sizeof(void*), NullAlloc }); TestCount19->Start({ &X, sizeof(void*), NullAlloc }); TestCount1A->Start({ &X, sizeof(void*), NullAlloc }); TestCount1B->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount1C->Start({ &X, sizeof(void*), NullAlloc }); TestCount1D->Start({ &X, sizeof(void*), NullAlloc }); TestCount1E->Start({ &X, sizeof(void*), NullAlloc }); TestCount1F->Start({ &X, sizeof(void*), NullAlloc });
 
 			WaitMultiple({
 				*TestCount00, *TestCount01, *TestCount02, *TestCount03,
@@ -1011,7 +1011,7 @@ void TestSyncObj_2(bool Robust) {
 				TSyncInteger *X = (TSyncInteger*)&Arg;
 				auto SX = X->Pickup();
 				StopEvent.WaitFor();
-				return { nullptr };
+				return {};
 			}
 			void StopNotify(TWorkerThread &WorkerThread) override {
 				StopEvent.Set();
@@ -1024,7 +1024,7 @@ void TestSyncObj_2(bool Robust) {
 		_LOG(_T("--- Pickup (Failure with timeout & abort)"));
 		{
 			MRWorkerThread X(CONSTRUCTION::EMPLACE, _T("TestSyncLock"), MRRunnable(DEFAULT_NEW(TestSyncLock), CONSTRUCTION::HANDOFF));
-			X->Start({ &A, DummyAllocator() });
+			X->Start({ &A, sizeof(void*), DummyAllocator() });
 			// Wait for the thread to claim the lock
 			_LOG(_T("Waiting for locking thread to start..."));
 			Sleep(500);
@@ -1070,7 +1070,7 @@ void TestSyncObj_2(bool Robust) {
 						(*Ctr->Pickup())++;
 					}
 					_LOG(_T("Count of %d done!"), COUNT);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1092,10 +1092,10 @@ void TestSyncObj_2(bool Robust) {
 			MRWorkerThread TestCountF(CONSTRUCTION::EMPLACE, _T("CounterThreadF"), MRRunnable(DEFAULT_NEW(TestCount), CONSTRUCTION::HANDOFF));
 
 			_LOG(_T("--- Start Counting..."));
-			TestCount0->Start({ &X, NullAlloc }); TestCount1->Start({ &X, NullAlloc }); TestCount2->Start({ &X, NullAlloc }); TestCount3->Start({ &X, NullAlloc });
-			TestCount4->Start({ &X, NullAlloc }); TestCount5->Start({ &X, NullAlloc }); TestCount6->Start({ &X, NullAlloc }); TestCount7->Start({ &X, NullAlloc });
-			TestCount8->Start({ &X, NullAlloc }); TestCount9->Start({ &X, NullAlloc });	TestCountA->Start({ &X, NullAlloc });	TestCountB->Start({ &X, NullAlloc });
-			TestCountC->Start({ &X, NullAlloc }); TestCountD->Start({ &X, NullAlloc }); TestCountE->Start({ &X, NullAlloc }); TestCountF->Start({ &X, NullAlloc });
+			TestCount0->Start({ &X, sizeof(void*), NullAlloc }); TestCount1->Start({ &X, sizeof(void*), NullAlloc }); TestCount2->Start({ &X, sizeof(void*), NullAlloc }); TestCount3->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount4->Start({ &X, sizeof(void*), NullAlloc }); TestCount5->Start({ &X, sizeof(void*), NullAlloc }); TestCount6->Start({ &X, sizeof(void*), NullAlloc }); TestCount7->Start({ &X, sizeof(void*), NullAlloc });
+			TestCount8->Start({ &X, sizeof(void*), NullAlloc }); TestCount9->Start({ &X, sizeof(void*), NullAlloc }); TestCountA->Start({ &X, sizeof(void*), NullAlloc }); TestCountB->Start({ &X, sizeof(void*), NullAlloc });
+			TestCountC->Start({ &X, sizeof(void*), NullAlloc }); TestCountD->Start({ &X, sizeof(void*), NullAlloc }); TestCountE->Start({ &X, sizeof(void*), NullAlloc }); TestCountF->Start({ &X, sizeof(void*), NullAlloc });
 
 			WaitMultiple({ *TestCount0, *TestCount1, *TestCount2, *TestCount3,
 				*TestCount4, *TestCount5, *TestCount6, *TestCount7,
@@ -1153,7 +1153,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1172,7 +1172,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1181,8 +1181,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
@@ -1199,7 +1199,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1218,7 +1218,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1227,8 +1227,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
@@ -1245,7 +1245,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1264,7 +1264,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1273,8 +1273,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
@@ -1291,7 +1291,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1310,7 +1310,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1319,8 +1319,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
@@ -1337,7 +1337,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1356,7 +1356,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1365,8 +1365,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 		}
@@ -1422,7 +1422,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1445,7 +1445,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1454,8 +1454,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Benchmarking Comparison Queue (Upper-bound)..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 
@@ -1478,7 +1478,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Enqueue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return { nullptr };
+					return {};
 				}
 			};
 
@@ -1501,7 +1501,7 @@ void TestSyncQueue(bool Profiling) {
 
 					double TimeSpan = (double)EndTime.From(StartTime).GetValue(TimeUnit::NSEC) / (unsigned long long)TimeUnit::SEC;
 					_LOG(_T("Dequeue done! (%d ops in %.2f sec, %.2f ops/sec)"), COUNT, TimeSpan, COUNT / TimeSpan);
-					return nullptr;
+					return {};
 				}
 			};
 
@@ -1510,8 +1510,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread->Start({ &Queue, NullAlloc });
-			GetThread->Start({ &Queue, NullAlloc });
+			PutThread->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread->Start(TFixedBuffer::Unmanaged(&Queue));
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 			Queue.Deflate();
@@ -1519,8 +1519,8 @@ void TestSyncQueue(bool Profiling) {
 			MRWorkerThread PutThread2(CONSTRUCTION::EMPLACE, _T("QueuePutThread"), MRRunnable(DEFAULT_NEW(TestQueuePut), CONSTRUCTION::HANDOFF));
 			MRWorkerThread GetThread2(CONSTRUCTION::EMPLACE, _T("QueueGetThread"), MRRunnable(DEFAULT_NEW(TestQueueGet), CONSTRUCTION::HANDOFF));
 			_LOG(_T("--- Starting Parallel Producer & Consumer..."));
-			PutThread2->Start({ &Queue, NullAlloc });
-			GetThread2->Start({ &Queue, NullAlloc });
+			PutThread2->Start(TFixedBuffer::Unmanaged(&Queue));
+			GetThread2->Start(TFixedBuffer::Unmanaged(&Queue));
 			{
 				_LOG(_T("Sleep for 2 sec..."));
 				TDelayWaitable WaitASec(2000);
@@ -1642,12 +1642,12 @@ void TestSyncQueue(bool Profiling) {
 								} else {
 									FAIL(_T("Acquired iterator (concurrency violation)"));
 								}
-								return { nullptr };
+								return {};
 							}
 						};
 
 						MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), MRRunnable(DEFAULT_NEW(TestQueueIter), CONSTRUCTION::HANDOFF));
-						IterThread->Start({ &Queue, NullAlloc });
+						IterThread->Start(TFixedBuffer::Unmanaged(&Queue));
 						IterThread->WaitFor();
 						auto IterExcept = IterThread->FatalException(true);
 						if (IterExcept) throw IterExcept;
@@ -1677,12 +1677,12 @@ void TestSyncQueue(bool Profiling) {
 							_LOG(_T("Hold iterator for 3 second..."));
 							Sleep(3000);
 							_LOG(_T("Releasing iterator..."));
-							return { nullptr };
+							return {};
 						}
 					};
 
 					MRWorkerThread IterThread(CONSTRUCTION::EMPLACE, _T("QueueIterThread"), MRRunnable(DEFAULT_NEW(TestQueueIter), CONSTRUCTION::HANDOFF));
-					IterThread->Start({ &Queue, NullAlloc });
+					IterThread->Start(TFixedBuffer::Unmanaged(&Queue));
 					Sleep(1000);
 
 #ifdef __SDQ_CONCURRENT_CONST_ITERATORS
@@ -1769,7 +1769,7 @@ protected:
 			Sleep(100);
 		}
 		_LOG(_T("Sent %d messages"), Counter);
-		return { nullptr };
+		return {};
 	}
 };
 
@@ -1787,7 +1787,7 @@ protected:
 			Sleep(100);
 		}
 		_LOG(_T("Sent %d messages"), Counter);
-		return { nullptr };
+		return {};
 	}
 };
 
@@ -1811,7 +1811,7 @@ protected:
 			}
 		}
 		_LOG(_T("Received %d messages"), Counter);
-		return { nullptr };
+		return {};
 	}
 };
 

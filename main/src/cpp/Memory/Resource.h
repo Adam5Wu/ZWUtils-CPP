@@ -324,6 +324,14 @@ public:
 	{ return _TTypedBuffer<T>::operator=(std::move(xBuffer)), *this; }
 #endif
 
+	static _this ArrayOf(size_t const &Count, IAllocator &xAllocator = DefaultAllocator()) {
+		return { sizeof(T) * Count, xAllocator };
+	}
+
+	static _this Unmanaged(void *xBuffer, size_t const &xSize = 0) {
+		return { xBuffer, xSize, DummyAllocator() };
+	}
+
 	T& operator*(void) const {
 		return **_ObjPointer();
 	}
@@ -354,6 +362,16 @@ public:
 	_this& operator=(_this &&xBuffer)
 	{ return _TTypedBuffer<void>::operator=(std::move(xBuffer)), *this; }
 #endif
+
+	template<class T>
+	static _this Wrap(T *xBuffer, IAllocator &xAllocator = DefaultAllocator()) {
+		return { xBuffer, sizeof(T), xAllocator };
+	}
+
+	static _this Unmanaged(void *xBuffer, size_t const &xSize = 0) {
+		return { xBuffer, xSize, DummyAllocator() };
+	}
+
 };
 
 typedef TTypedBuffer<void> TFixedBuffer;

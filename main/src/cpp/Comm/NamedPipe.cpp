@@ -95,6 +95,12 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 	class TServRunnable : public TRunnable {
 		ManagedRef<TServRec> _ServRec;
 		TEvent _IntTermSignal;
+	protected:
+		bool __Handle_AsyncReadInitiate(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, THandle &ReadSignalHandle,  TWorkerThread & WorkerThread);
+		bool __Handle_AsyncReadCompletion(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, TEvent &ReadEvent, TWorkerThread &WorkerThread);
+		bool __Handle_AsyncWriteInitiate(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, THandle &WriteSignalHandle, TWorkerThread & WorkerThread);
+		bool __Handle_AsyncWriteCompletion(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, TEvent &WriteEvent, TWorkerThread & WorkerThread);
+
 	public:
 		explicit TServRunnable(TServRec *ServRec)
 			: _ServRec(ServRec), _IntTermSignal(true) {}
@@ -189,8 +195,7 @@ switch (ErrCode) {																\
 	default:																	\
 		NPERRLOG(ErrCode, _T("ERROR: Unexpected asynchronous error status"));	\
 }																				\
-WorkerThread.SignalTerminate();													\
-continue;
+WorkerThread.SignalTerminate();
 
 TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
 	TString FullPath = TStringCast(NAMEDPIPE_PATHPFX << _ServRec->_Path);
@@ -302,6 +307,71 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 	return {};
 }
 
+bool TNamedPipeEndPoint::TServRunnable::__Handle_AsyncReadInitiate(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, THandle &ReadSignalHandle, TWorkerThread & WorkerThread)
+{
+	AsyncRead.hEvent = *ReadSignalHandle;
+	InBuffer.SetSize(_ServRec->_BufferSize);
+	if (!ReadFile(*_ServRec->_Pipe, &InBuffer, _ServRec->_BufferSize, NULL, &AsyncRead)) {
+		DWORD ErrCode = GetLastError();
+		if (ErrCode != ERROR_IO_PENDING) {
+			__GEN_ASYNCERRROR_HANDLE;
+			return false;
+		} else {
+			NPLOGVV(_T("Waiting for incoming data..."));
+		}
+	}
+	// If read completed synchronously, just handle it later as async completed case
+	return true;
+}
+
+bool TNamedPipeEndPoint::TServRunnable::__Handle_AsyncReadCompletion(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, TEvent &ReadEvent, TWorkerThread &WorkerThread)
+{
+	DWORD cbRead;
+	if (!GetOverlappedResult(*_ServRec->_Pipe, &AsyncRead, &cbRead, FALSE)) {
+		DWORD ErrCode = GetLastError();
+		__GEN_ASYNCERRROR_HANDLE;
+		return false;
+	}
+	AsyncRead = { 0 };
+	ReadEvent.Reset();
+	InBuffer.SetSize(cbRead);
+	_ServRec->_InQueue.Push_Back(std::move(InBuffer), FOREVER, &_ServRec->_TermSignal);
+	return true;
+}
+
+bool TNamedPipeEndPoint::TServRunnable::__Handle_AsyncWriteInitiate(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, THandle &WriteSignalHandle, TWorkerThread & WorkerThread)
+{
+	AsyncWrite.hEvent = *WriteSignalHandle;
+	if (!WriteFile(*_ServRec->_Pipe, &OutBuffer, (DWORD)OutBuffer.GetSize(), NULL, &AsyncWrite)) {
+		DWORD ErrCode = GetLastError();
+		if (ErrCode != ERROR_IO_PENDING) {
+			__GEN_ASYNCERRROR_HANDLE;
+			return false;
+		} else {
+			NPLOGVV(_T("Waiting for outgoing write..."));
+		}
+	}
+	// If write completed synchronously, just handle it later as async completed case
+	return true;
+}
+
+bool TNamedPipeEndPoint::TServRunnable::__Handle_AsyncWriteCompletion(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, TEvent &WriteEvent, TWorkerThread & WorkerThread)
+{
+	DWORD cbWrite;
+	if (!GetOverlappedResult(*_ServRec->_Pipe, &AsyncWrite, &cbWrite, FALSE)) {
+		DWORD ErrCode = GetLastError();
+		__GEN_ASYNCERRROR_HANDLE;
+		return false;
+	}
+	if (cbWrite != OutBuffer.GetSize()) {
+		NPLOGV(_T("WARNING: Unexpected written data size (%d, expect %d)"), cbWrite, OutBuffer.GetSize());
+	}
+	OutBuffer.Deallocate();
+	AsyncWrite = { 0 };
+	WriteEvent.Reset();
+	return true;
+}
+
 TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
 	NPLOGV(_T("Starting serving..."));
 	TDynBuffer OutBuffer;
@@ -353,17 +423,8 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 
 		while (WorkerThread.CurrentState() == TWorkerThread::State::Running) {
 			if (!AsyncRead.hEvent) {
-				AsyncRead.hEvent = *ReadSignalHandle;
-				InBuffer.SetSize(_ServRec->_BufferSize);
-				if (!ReadFile(*_ServRec->_Pipe, &InBuffer, _ServRec->_BufferSize, NULL, &AsyncRead)) {
-					DWORD ErrCode = GetLastError();
-					if (ErrCode != ERROR_IO_PENDING) {
-						__GEN_ASYNCERRROR_HANDLE
-					} else {
-						NPLOGVV(_T("Waiting for incoming data..."));
-					}
-				}
-				// If read completed synchronously, just handle it later as async completed case
+				if (!__Handle_AsyncReadInitiate(InBuffer, AsyncRead, ReadSignalHandle, WorkerThread))
+					break;
 			}
 
 			WaitEvents[3] = AsyncWrite.hEvent ? *WriteWaitHandle : *OutRequest.WaitHandle();
@@ -375,43 +436,16 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 
 					case 2:
 						NPLOGVV(_T("Detected incoming activity"));
-						DWORD cbRead;
-						if (!GetOverlappedResult(*_ServRec->_Pipe, &AsyncRead, &cbRead, FALSE)) {
-							DWORD ErrCode = GetLastError();
-							__GEN_ASYNCERRROR_HANDLE
-						}
-						AsyncRead = { 0 };
-						ReadEvent.Reset();
-						InBuffer.SetSize(cbRead);
-						_ServRec->_InQueue.Push_Back(std::move(InBuffer), FOREVER, &_ServRec->_TermSignal);
+						__Handle_AsyncReadCompletion(InBuffer, AsyncRead, ReadEvent, WorkerThread);
 						break;
 
 					case 3:
 						if (AsyncWrite.hEvent) {
 							NPLOGVV(_T("Outgoing write finished"));
-							DWORD cbWrite;
-							if (!GetOverlappedResult(*_ServRec->_Pipe, &AsyncWrite, &cbWrite, FALSE)) {
-								DWORD ErrCode = GetLastError();
-								__GEN_ASYNCERRROR_HANDLE
-							}
-							if (cbWrite != OutBuffer.GetSize()) {
-								NPLOGV(_T("WARNING: Unexpected written data size (%d, expect %d)"), cbWrite, OutBuffer.GetSize());
-							}
-							OutBuffer.Deallocate();
-							AsyncWrite = { 0 };
-							WriteEvent.Reset();
+							__Handle_AsyncWriteCompletion(OutBuffer, AsyncWrite, WriteEvent, WorkerThread);
 						} else {
 							if (_ServRec->_OutQueue.Pop_Front(OutBuffer, FOREVER, &_ServRec->_TermSignal)) {
-								AsyncWrite.hEvent = *WriteSignalHandle;
-								if (!WriteFile(*_ServRec->_Pipe, &OutBuffer, (DWORD)OutBuffer.GetSize(), NULL, &AsyncWrite)) {
-									DWORD ErrCode = GetLastError();
-									if (ErrCode != ERROR_IO_PENDING) {
-										__GEN_ASYNCERRROR_HANDLE
-									} else {
-										NPLOGVV(_T("Waiting for outgoing write..."));
-									}
-								}
-								// If write completed synchronously, just handle it later as async completed case
+								__Handle_AsyncWriteInitiate(OutBuffer, AsyncWrite, WriteSignalHandle, WorkerThread);
 							}
 						}
 						break;
