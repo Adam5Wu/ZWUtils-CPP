@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXPLORERTRAY_CLASSNAME	"__EXPTRAY_CLS__"
 
 class TSystemTray : public TRunnable {
-protected:
+private:
 	TIcon _Icon;
 	TString _ToolTip;
 	std::vector<TMenuItem> _MenuItems;

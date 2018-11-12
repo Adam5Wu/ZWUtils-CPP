@@ -35,7 +35,7 @@ class TNamedPipeServer : public INamedPipeServer {
 		TInterlockedOrdinal32<unsigned int> _ClientCnt;
 		TEvent _IntTermSignal;
 	public:
-		TServRunnable(TServRec *ServRec)
+		explicit TServRunnable(TServRec *ServRec)
 			: _ServRec(ServRec), _IntTermSignal(true), _ClientCnt(0) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
@@ -96,7 +96,8 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 		ManagedRef<TServRec> _ServRec;
 		TEvent _IntTermSignal;
 	public:
-		TServRunnable(TServRec *ServRec) : _ServRec(ServRec), _IntTermSignal(true) {}
+		explicit TServRunnable(TServRec *ServRec)
+			: _ServRec(ServRec), _IntTermSignal(true) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
 
