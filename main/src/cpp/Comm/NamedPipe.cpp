@@ -36,7 +36,7 @@ class TNamedPipeServer : public INamedPipeServer {
 		TEvent _IntTermSignal;
 	public:
 		explicit TServRunnable(TServRec *ServRec)
-			: _ServRec(ServRec), _IntTermSignal(true), _ClientCnt(0) {}
+			: _ServRec(ServRec), _ClientCnt(0), _IntTermSignal(true) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
 
@@ -85,10 +85,10 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 		THandleWaitable &_TermSignal;
 
 		TServRec(TString && Name, THandle && Pipe, DWORD BufferSize, THandleWaitable &TermSignal)
-			: _Name(std::move(Name)), _Pipe(std::move(Pipe))
-			, _BufferSize(BufferSize), _TermSignal(TermSignal)
+			: _Name(std::move(Name)), _Pipe(std::move(Pipe)), _BufferSize(BufferSize)
 			, _InQueue(TStringCast(_Name << _T("-InQ")))
 			, _OutQueue(TStringCast(_Name << _T("-OutQ")))
+			, _TermSignal(TermSignal)
 		{}
 	};
 
