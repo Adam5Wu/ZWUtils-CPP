@@ -57,6 +57,7 @@ private:
 	UINT32 _TrayID;
 
 	bool _PollMessage;
+	bool _CallbackWIP;
 
 	static TInterlockedOrdinal32<UINT32> _InstCnt;
 
@@ -94,6 +95,8 @@ private:
 		if (!Shell_NotifyIcon(NIM_SETVERSION, &notifyIconData)) {
 			SYSFAIL(_T("Failed to set tray icon version"));
 		}
+		_PollMessage = true;
+		_CallbackWIP = false;
 	}
 
 	void FinalizeTray(void) {
@@ -150,10 +153,10 @@ public:
 
 				switch (LOWORD(lParam)) {
 					case WM_CONTEXTMENU:
-						if (!_MenuItems.empty()) {
+						if (!_MenuItems.empty() && !_CallbackWIP) {
 							SetForegroundWindow(hwnd);
 							LOGV(_T("Context menu triggered, tracking..."));
-							// TrackPopupMenu blocks the app until TrackPopupMenu returns
+							// TrackPopupMenu blocks until TrackPopupMenu returns
 							UINT clicked = TrackPopupMenuEx(*_PopupMenu, TPM_RETURNCMD | TPM_NONOTIFY,
 															GET_X_LPARAM(wParam), GET_Y_LPARAM(wParam),
 															hwnd, NULL);
@@ -163,7 +166,9 @@ public:
 								LOGV(_T("Context menu selected '%s'"), MenuItem.DispText.c_str());
 								if (MenuItem.Callback) {
 									LOGV(_T("Processing callback..."));
+									_CallbackWIP = true;
 									MenuItem.Callback();
+									_CallbackWIP = false;
 								}
 							} else {
 								LOGV(_T("Context menu cancelled"));

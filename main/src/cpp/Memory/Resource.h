@@ -203,9 +203,10 @@ public:
 	static void HandleDealloc_Standard(HANDLE &Res);
 	static void HandleDealloc_BestEffort(HANDLE &Res);
 
+	THandle(void) : THandle(Unmanaged(INVALID_HANDLE_VALUE)) {}
 	THandle(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
 		TAllocResource(xAlloc, xDealloc) {}
-	THandle(HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+	THandle(CONSTRUCTION::HANDOFF_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
 	THandle(CONSTRUCTION::VALIDATED_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(xResRef, xDealloc, xAlloc) {}
@@ -219,25 +220,31 @@ public:
 	{ TAllocResource::operator=(std::move(xHandle)); }
 #endif
 
-	static _this Dummy(HANDLE const &xHandle)
+	static _this Unmanaged(HANDLE const &xHandle)
 	{ return _this(CONSTRUCTION::VALIDATED, xHandle, NullDealloc); }
 };
 
 class TModule : public TAllocResource<HMODULE> {
+	typedef TModule _this;
+
 public:
 	static HMODULE ValidateHandle(HMODULE const &Ref);
 	static void HandleDealloc_Standard(HMODULE &Res);
 	static void HandleDealloc_BestEffort(HMODULE &Res);
 
+	TModule(void) : TModule(Unmanaged(NULL)) {}
 	TModule(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
 		TAllocResource(xAlloc, xDealloc) {}
-	TModule(HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+	TModule(CONSTRUCTION::HANDOFF_T const&, HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
 	TModule(CONSTRUCTION::VALIDATED_T const&, HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(xResRef, xDealloc, xAlloc) {}
 
-	static TModule GetLoaded(TString const &Name);
-	static TModule const MAIN;
+	static _this Unmanaged(HMODULE const &xModule)
+	{ return _this(CONSTRUCTION::VALIDATED, xModule, NullDealloc); }
+
+	static TModule GetLoaded(TString const &Name)
+	{ return Unmanaged(GetModuleHandle(Name.c_str())); }
 };
 
 #endif

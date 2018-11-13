@@ -114,7 +114,7 @@ public:
 	TWindow(TResAlloc const &xAlloc, TResDealloc const &xDealloc = Dealloc_HWND) :
 		TAllocResource(xAlloc, xDealloc) {}
 
-	TWindow(HWND const &hWND, TResDealloc const &xDealloc = Dealloc_HWND, TResAlloc const &xAlloc = NoAlloc) :
+	TWindow(CONSTRUCTION::HANDOFF_T &, HWND const &hWND, TResDealloc const &xDealloc = Dealloc_HWND, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(hWND, xDealloc, xAlloc) {}
 };
 
@@ -129,7 +129,7 @@ public:
 	TMenu(TResAlloc const &xAlloc, TResDealloc const &xDealloc = Dealloc_HMENU) :
 		TAllocResource(xAlloc, xDealloc) {}
 
-	TMenu(HMENU const &hMENU, TResDealloc const &xDealloc = Dealloc_HMENU, TResAlloc const &xAlloc = NoAlloc) :
+	TMenu(CONSTRUCTION::HANDOFF_T &, HMENU const &hMENU, TResDealloc const &xDealloc = Dealloc_HMENU, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(hMENU, xDealloc, xAlloc) {}
 
 	void AddMenuItem(size_t index, TString const & DispText);

@@ -139,7 +139,8 @@ protected:
 	 *       destroying a thread before starting it) will lead to undesired outcome (crash)
 	 **/
 	TWorkerThread(TString const &xName, MRRunnable &&xRunnable, bool xSelfFree = false, size_t xStackSize = 0) :
-		THandleWaitable(__CreateThread(xStackSize, xSelfFree), [&, xName](HANDLE &X) {__DestroyThread(xName, X); }),
+		THandleWaitable(CONSTRUCTION::HANDOFF, __CreateThread(xStackSize, xSelfFree),
+						[&, xName](HANDLE &X) {__DestroyThread(xName, X); }),
 		rRunnable(std::move(xRunnable)), Name(xName) {
 		__StateNotify(~_State);
 	}

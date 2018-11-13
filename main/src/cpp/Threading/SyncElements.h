@@ -165,8 +165,8 @@ protected:
 public:
 	THandleWaitable(TResAlloc const &xAlloc, TResDealloc const &xDealloc = THandle::HandleDealloc_Standard) :
 		THandle(xAlloc, xDealloc) {}
-	THandleWaitable(HANDLE const &xHandle, TResDealloc const &xDealloc = THandle::HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
-		THandle(xHandle, xDealloc, xAlloc) {}
+	THandleWaitable(CONSTRUCTION::HANDOFF_T const&, HANDLE const &xHandle, TResDealloc const &xDealloc = THandle::HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		THandle(CONSTRUCTION::HANDOFF, xHandle, xDealloc, xAlloc) {}
 
 	// Move construction
 	THandleWaitable(_this &&xHandleWaitable) NOEXCEPT :
@@ -231,7 +231,7 @@ protected:
 
 public:
 	TSemaphore(long Initial = 0, long Maximum = 0x7FFFFFFF, TString const &Name = EMPTY_TSTRING()) :
-		THandleWaitable(Create(Initial, Maximum, Name)) {}
+		THandleWaitable(CONSTRUCTION::HANDOFF, Create(Initial, Maximum, Name)) {}
 	TSemaphore(CONSTRUCTION::DEFER_T const&, long Initial = 0, long Maximum = 0x7FFFFFFF, TString const &Name = EMPTY_TSTRING()) :
 		THandleWaitable([=] { return Create(Initial, Maximum, Name); }) {}
 
@@ -256,7 +256,7 @@ protected:
 
 public:
 	TMutex(bool Acquired = false, TString const &Name = EMPTY_TSTRING()) :
-		THandleWaitable(Create(Acquired, Name)) {}
+		THandleWaitable(CONSTRUCTION::HANDOFF, Create(Acquired, Name)) {}
 	TMutex(CONSTRUCTION::DEFER_T const&, bool Acquired = false, TString const &Name = EMPTY_TSTRING()) :
 		THandleWaitable([=] { return Create(Acquired, Name); }) {}
 
@@ -292,7 +292,7 @@ protected:
 
 public:
 	TEvent(bool ManualReset = false, bool Initial = false, TString const &Name = EMPTY_TSTRING()) :
-		THandleWaitable(Create(ManualReset, Initial, Name)) {}
+		THandleWaitable(CONSTRUCTION::HANDOFF, Create(ManualReset, Initial, Name)) {}
 	TEvent(CONSTRUCTION::DEFER_T const&, bool ManualReset = false, bool Initial = false, TString const &Name = EMPTY_TSTRING()) :
 		THandleWaitable([=] { return Create(ManualReset, Initial, Name); }) {}
 

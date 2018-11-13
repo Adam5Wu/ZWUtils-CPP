@@ -72,11 +72,4 @@ void TModule::HandleDealloc_BestEffort(HMODULE &Res) {
 		SYSERRLOG(_T("Failed to release module"));
 }
 
-TModule TModule::GetLoaded(TString const &Name) {
-	return { GetModuleHandle(Name.c_str()), TModule::NullDealloc };
-}
-
-TModule const TModule::MAIN(CONSTRUCTION::VALIDATED, NULL, TModule::NullDealloc);
-
-
 #endif

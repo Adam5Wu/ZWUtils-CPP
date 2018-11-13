@@ -211,7 +211,7 @@ public:
 	TString const OptSymPath;
 
 	StackWalker_Impl(bool xOnlineSymServer, TString const &xOptSymPath) :
-		StackWalker_Impl(THandle::Dummy(GetCurrentProcess()), xOnlineSymServer, xOptSymPath) {}
+		StackWalker_Impl(THandle::Unmanaged(GetCurrentProcess()), xOnlineSymServer, xOptSymPath) {}
 
 	StackWalker_Impl(THandle &&xProcess, bool xOnlineSymServer, TString const &xOptSymPath) :
 		Process(std::move(xProcess)), OnlineSymServer(xOnlineSymServer), OptSymPath(xOptSymPath) {

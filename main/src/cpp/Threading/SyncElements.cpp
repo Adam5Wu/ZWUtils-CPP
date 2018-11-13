@@ -159,7 +159,7 @@ WaitResult THandleWaitable::WaitFor(WAITTIME Timeout) const {
 }
 
 THandle THandleWaitable::WaitHandle(void) {
-	return WaitOnly ? THandle::Dummy(Refer()) : DupWaitable();
+	return WaitOnly ? THandle::Unmanaged(Refer()) : DupWaitable();
 }
 
 THandleWaitable THandleWaitable::DupWaitable(void) {

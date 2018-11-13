@@ -441,7 +441,7 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 		SYSFAIL(_T("Unable to initiate service move transaction"));
 
 	{
-		THandle HMoveTXN(MoveTXN, [](HANDLE &X) {RollbackTransaction(X); });
+		THandle HMoveTXN(CONSTRUCTION::HANDOFF, MoveTXN, [](HANDLE &X) {RollbackTransaction(X); });
 
 		HKEY _KEY = nullptr;
 		LPCTSTR RegHandleName = _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Svchost");

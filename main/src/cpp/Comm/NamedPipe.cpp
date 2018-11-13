@@ -478,14 +478,16 @@ MRLocalCommEndPoint INamedPipeClient::Connect(TString const &xPath, DWORD Buffer
 	TString FullPath = TStringCast(NAMEDPIPE_PATHPFX << xPath);
 	LOGVV(_T("Connecting to %s"), FullPath.c_str());
 
+	TString ClientName = TStringCast(NAMEDPIPE_CLIENT_NAMEPFX << _T('<') << xPath << _T('>'));
 	HANDLE hPipe = CreateFile(FullPath.c_str(), GENERIC_READ | GENERIC_WRITE,
 							  0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 	if (hPipe == INVALID_HANDLE_VALUE) {
 		SYSFAIL(_T("Failed to connect to pipe <%s>"), xPath.c_str());
 	}
-	TString ClientName = TStringCast(NAMEDPIPE_CLIENT_NAMEPFX << _T('<') << xPath << _T('>'));
 	return {
-		DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName), { hPipe }, BufferSize, TermSignal),
+		DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
+					{ CONSTRUCTION::HANDOFF, hPipe },
+					BufferSize, TermSignal),
 		CONSTRUCTION::HANDOFF
 	};
 }

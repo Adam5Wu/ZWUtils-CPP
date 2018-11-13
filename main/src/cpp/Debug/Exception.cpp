@@ -135,7 +135,7 @@ std::deque<TString> STException::TraceStack(int PopFrame) {
 
 	std::deque<TString> StrTrace;
 	if (!LocalStackTrace(
-		THandle::Dummy(GetCurrentThread()), CurContext,
+		THandle::Unmanaged(GetCurrentThread()), CurContext,
 		[&](TStackWalker::CallstackEntry const& Entry) {
 			if (PopFrame-- < 0) StrTrace.emplace_back(TStackWalker::FormatEntry(Entry));
 			return true;
@@ -242,7 +242,7 @@ void SEHException::Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr) 
 	std::deque<TString> StrTrace;
 	CONTEXT ExcContext = *ExcPtr->ContextRecord;
 	if (!LocalStackTrace(
-		THandle::Dummy(GetCurrentThread()), ExcContext,
+		THandle::Unmanaged(GetCurrentThread()), ExcContext,
 		[&](TStackWalker::CallstackEntry const &Entry) {
 			return StrTrace.emplace_back(TStackWalker::FormatEntry(Entry)), true;
 		})) {
