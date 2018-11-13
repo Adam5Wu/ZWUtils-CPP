@@ -61,19 +61,15 @@ typedef std::vector<TMenuItem> TMenuItems;
 
 class TIcon : public TAllocResource<HICON> {
 protected:
-	static void FreeResource(HICON &X) {
+	static void FreeIconResource(HICON &X) {
 		if (!DestroyIcon(X))
 			SYSFAIL(_T("Unable to destroy icon resource"));
-	}
-
-	static bool IsIntResource(LPCTSTR value) {
-		return (__ARC_UINT)value <= 0xFFFF;
 	}
 
 	static HICON __LoadIcon(HMODULE Module, LPCTSTR Name) {
 		HICON Ret = LoadIcon(Module, Name);
 		if (Ret == NULL) {
-			if (IsIntResource(Name)) {
+			if (IS_INTRESOURCE(Name)) {
 				SYSFAIL(_T("Unable to load icon resource #%d"), (__ARC_UINT)Name);
 			} else {
 				SYSFAIL(_T("Unable to load icon resource '%s'"), Name);
@@ -82,9 +78,28 @@ protected:
 		return Ret;
 	}
 
+	static HICON __LoadIconImage(HMODULE Module, LPCTSTR Name, int cx, int cy) {
+		UINT LoadFlags = 0;
+		if (cx * cy == 0)  LoadFlags |= LR_DEFAULTSIZE;
+		if (!IS_INTRESOURCE(Name)) LoadFlags |= LR_LOADFROMFILE;
+		HANDLE Ret = LoadImage(Module, Name, IMAGE_ICON, cx, cy, LoadFlags);
+		if (Ret == NULL) {
+			if (IS_INTRESOURCE(Name)) {
+				SYSFAIL(_T("Unable to load icon resource #%d (%dx%x%d)"), (__ARC_UINT)Name, cx, cy);
+			} else {
+				SYSFAIL(_T("Unable to load icon resource '%s' (%dx%x%d)"), Name, cx, cy);
+			}
+		}
+		return (HICON)Ret;
+	}
+
 public:
 	TIcon(TModule const &Module, LPCTSTR Name) :
-		TAllocResource(__LoadIcon(*Module, Name), FreeResource)
+		TAllocResource(__LoadIcon(*Module, Name), FreeIconResource)
+	{}
+
+	TIcon(TModule const &Module, LPCTSTR Name, int cx, int cy) :
+		TAllocResource(__LoadIconImage(*Module, Name, cx, cy), FreeIconResource)
 	{}
 };
 
