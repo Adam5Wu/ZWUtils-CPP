@@ -85,7 +85,12 @@ private:
 
 		if (!_MenuItems.empty()) {
 			for (size_t idx = 0; idx < _MenuItems.size(); idx++) {
-				_PopupMenu.AddMenuItem(idx + 1, _MenuItems[idx].DispText);
+				if (!_MenuItems[idx].DispText.empty()) {
+					_PopupMenu.AddMenuItem(idx + 1, _MenuItems[idx].DispText);
+					if (idx == 0) {
+						SetMenuDefaultItem(*_PopupMenu, (UINT)idx + 1, FALSE);
+					}
+				}
 			}
 		}
 
@@ -141,6 +146,15 @@ public:
 		PostMessage(*_Window, WM_CLOSE, 0, 0);
 	}
 
+	void __MakeCallback(std::function<void(void)> FCallback) {
+		if (FCallback) {
+			LOGV(_T("Processing callback..."));
+			_CallbackWIP = true;
+			FCallback();
+			_CallbackWIP = false;
+		}
+	}
+
 	LRESULT __WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		switch (msg) {
 			case WM_CLOSE:
@@ -149,7 +163,7 @@ public:
 				return 0;
 
 			case EXPLORERTRAY_WMID:
-				LOGVV(_T("Tray activity message received! (%d:%d)"), wParam, lParam);
+				LOGVV(_T("Tray activity message received! (%d / %X)"), LOWORD(lParam), LOWORD(lParam));
 
 				switch (LOWORD(lParam)) {
 					case WM_CONTEXTMENU:
@@ -164,17 +178,19 @@ public:
 							if (clicked) {
 								auto &MenuItem = _MenuItems[clicked - 1];
 								LOGV(_T("Context menu selected '%s'"), MenuItem.DispText.c_str());
-								if (MenuItem.Callback) {
-									LOGV(_T("Processing callback..."));
-									_CallbackWIP = true;
-									MenuItem.Callback();
-									_CallbackWIP = false;
-								}
+								__MakeCallback(MenuItem.Callback);
 							} else {
 								LOGV(_T("Context menu cancelled"));
 							}
 						}
 						break;
+
+					case WM_LBUTTONDBLCLK:
+						if (!_MenuItems.empty() && !_CallbackWIP) {
+							auto &MenuItem = _MenuItems[0];
+							LOGV(_T("Double click triggers context menu '%s'"), MenuItem.DispText.c_str());
+							__MakeCallback(MenuItem.Callback);
+						}
 				}
 				return 0;
 		}

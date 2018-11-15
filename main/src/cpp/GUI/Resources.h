@@ -101,6 +101,12 @@ public:
 	TIcon(TModule const &Module, LPCTSTR Name, int cx, int cy) :
 		TAllocResource(__LoadIconImage(*Module, Name, cx, cy), FreeIconResource)
 	{}
+
+	TIcon(CONSTRUCTION::HANDOFF_T const &, HICON const &hIcon, TResDealloc const &xDealloc = FreeIconResource, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(hIcon, xDealloc, xAlloc) {}
+
+	static TIcon Unmanaged(HICON const &hIcon)
+	{ return { CONSTRUCTION::HANDOFF, hIcon, NullDealloc }; }
 };
 
 class TWindow : public TAllocResource<HWND> {
@@ -114,8 +120,11 @@ public:
 	TWindow(TResAlloc const &xAlloc, TResDealloc const &xDealloc = Dealloc_HWND) :
 		TAllocResource(xAlloc, xDealloc) {}
 
-	TWindow(CONSTRUCTION::HANDOFF_T &, HWND const &hWND, TResDealloc const &xDealloc = Dealloc_HWND, TResAlloc const &xAlloc = NoAlloc) :
+	TWindow(CONSTRUCTION::HANDOFF_T const &, HWND const &hWND, TResDealloc const &xDealloc = Dealloc_HWND, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(hWND, xDealloc, xAlloc) {}
+
+	static TWindow Unmanaged(HWND const &hWND)
+	{ return { CONSTRUCTION::HANDOFF, hWND, NullDealloc }; }
 };
 
 class TMenu : public TAllocResource<HMENU> {
@@ -129,10 +138,13 @@ public:
 	TMenu(TResAlloc const &xAlloc, TResDealloc const &xDealloc = Dealloc_HMENU) :
 		TAllocResource(xAlloc, xDealloc) {}
 
-	TMenu(CONSTRUCTION::HANDOFF_T &, HMENU const &hMENU, TResDealloc const &xDealloc = Dealloc_HMENU, TResAlloc const &xAlloc = NoAlloc) :
+	TMenu(CONSTRUCTION::HANDOFF_T const &, HMENU const &hMENU, TResDealloc const &xDealloc = Dealloc_HMENU, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(hMENU, xDealloc, xAlloc) {}
 
 	void AddMenuItem(size_t index, TString const & DispText);
+
+	static TMenu Unmanaged(HMENU const &hMENU)
+	{ return { CONSTRUCTION::HANDOFF, hMENU, NullDealloc }; }
 };
 
 class TPopupMenu : public TMenu {
@@ -148,6 +160,37 @@ public:
 
 	TPopupMenu(TResAlloc const &xAlloc = Alloc_PopupMenu, TResDealloc const &xDealloc = Dealloc_HMENU) :
 		TMenu(xAlloc, xDealloc) {}
+};
+
+class TDC : public TAllocResource<HDC> {
+protected:
+	static void FreeDCResource(HWND WND, HDC &X) {
+		if (!ReleaseDC(WND, X))
+			SYSFAIL(_T("Unable to release DC resource"));
+	}
+
+	static HDC AllocDCResource(HWND WND) {
+		HDC Ret = GetDC(WND);
+		if (Ret == NULL) {
+			SYSFAIL(_T("Failed to allocate DC resource"));
+		}
+		return Ret;
+	}
+
+public:
+	TDC(TWindow &Window) :
+		TAllocResource(AllocDCResource(*Window),
+					   std::bind(FreeDCResource, *Window, std::placeholders::_1)) {}
+
+	TDC(CONSTRUCTION::DEFER_T &, TWindow &Window) :
+		TAllocResource(std::bind(AllocDCResource, *Window),
+					   std::bind(FreeDCResource, *Window, std::placeholders::_1)) {}
+
+	TDC(CONSTRUCTION::HANDOFF_T const &, HDC const &hDC, HWND const &hWND) :
+		TAllocResource(hDC, hWND ? (TResDealloc)std::bind(FreeDCResource, hWND, std::placeholders::_1) : NullDealloc, NoAlloc) {}
+
+	static TDC Unmanaged(HDC const &hDC)
+	{ return { CONSTRUCTION::HANDOFF, hDC, NULL }; }
 };
 
 #endif
