@@ -45,6 +45,9 @@ public:
 	virtual void SignalStop(void) {
 		FAIL(_T("Abstract Function"));
 	}
+	virtual bool isServing(void) const {
+		FAIL(_T("Abstract Function"));
+	}
 };
 
 #endif //ZWUtils_LocalComm_H

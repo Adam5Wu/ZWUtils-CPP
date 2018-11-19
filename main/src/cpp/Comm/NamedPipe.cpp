@@ -21,27 +21,27 @@ class TNamedPipeServer : public INamedPipeServer {
 		FLocalCommClientConnect _OnConnect;
 		THandleWaitable &_TermSignal;
 		TString const _DACL;
+		TEvent _IntTermSignal;
 
 		TServRec(TString const &Path, DWORD BufferSize, FLocalCommClientConnect const &OnConnect,
 				 THandleWaitable &TermSignal, TString const &DACL)
 			: _Name(TStringCast(NAMEDPIPE_SERVER_NAMEPFX << _T('<') << Path << _T('>')))
 			, _Path(Path), _BufferSize(BufferSize), _OnConnect(OnConnect)
-			, _TermSignal(TermSignal), _DACL(DACL)
+			, _TermSignal(TermSignal), _DACL(DACL), _IntTermSignal(true)
 		{}
 	};
 
 	class TServRunnable : public TRunnable {
 		ManagedRef<TServRec> _ServRec;
 		TInterlockedOrdinal32<unsigned int> _ClientCnt;
-		TEvent _IntTermSignal;
 	public:
 		explicit TServRunnable(TServRec *ServRec)
-			: _ServRec(ServRec), _ClientCnt(0), _IntTermSignal(true) {}
+			: _ServRec(ServRec), _ClientCnt(0) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
 
 		virtual void StopNotify(TWorkerThread &WorkerThread) override {
-			_IntTermSignal.Set();
+			_ServRec->_IntTermSignal.Set();
 		}
 	};
 
@@ -66,6 +66,10 @@ public:
 		_ServThread->SignalTerminate();
 	}
 
+	virtual bool isServing(void) const override {
+		return _ServThread->CurrentState() <= TWorkerThread::State::Running;
+	}
+
 };
 
 typedef TSyncBlockingDeque<TDynBuffer> TCommBufferQueue;
@@ -83,18 +87,18 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 		TCommBufferQueue _InQueue;
 		TCommBufferQueue _OutQueue;
 		THandleWaitable &_TermSignal;
+		TEvent _IntTermSignal;
 
 		TServRec(TString && Name, THandle && Pipe, DWORD BufferSize, THandleWaitable &TermSignal)
 			: _Name(std::move(Name)), _Pipe(std::move(Pipe)), _BufferSize(BufferSize)
 			, _InQueue(TStringCast(_Name << _T("-InQ")))
 			, _OutQueue(TStringCast(_Name << _T("-OutQ")))
-			, _TermSignal(TermSignal)
+			, _TermSignal(TermSignal), _IntTermSignal(true)
 		{}
 	};
 
 	class TServRunnable : public TRunnable {
 		ManagedRef<TServRec> _ServRec;
-		TEvent _IntTermSignal;
 	protected:
 		bool __Handle_AsyncReadInitiate(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, THandle &ReadSignalHandle,  TWorkerThread & WorkerThread);
 		bool __Handle_AsyncReadCompletion(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, TEvent &ReadEvent, TWorkerThread &WorkerThread);
@@ -103,12 +107,12 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 
 	public:
 		explicit TServRunnable(TServRec *ServRec)
-			: _ServRec(ServRec), _IntTermSignal(true) {}
+			: _ServRec(ServRec) {}
 
 		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override;
 
 		virtual void StopNotify(TWorkerThread &WorkerThread) override {
-			_IntTermSignal.Set();
+			_ServRec->_IntTermSignal.Set();
 		}
 	};
 
@@ -130,12 +134,12 @@ public:
 
 	virtual bool Send(TDynBuffer && Buffer, DWORD Timeout = FOREVER) override {
 		return isConnected() && _ServRec->_OutQueue.Push_Back(std::move(Buffer), Timeout,
-															  &_ServRec->_TermSignal);
+															  &_ServRec->_IntTermSignal);
 	}
 
 	virtual bool Receive(TDynBuffer & Buffer, DWORD Timeout = FOREVER) override {
 		return isConnected() && _ServRec->_InQueue.Pop_Front(Buffer, Timeout,
-															 &_ServRec->_TermSignal);
+															 &_ServRec->_IntTermSignal);
 	}
 
 	virtual THandleWaitable ReceiveWaitable(void) override {
@@ -143,11 +147,11 @@ public:
 	}
 
 	virtual bool isConnected(void) const {
-		return _ClientThread->CurrentState() == TWorkerThread::State::Running;
+		return _ClientThread->CurrentState() <= TWorkerThread::State::Running;
 	}
 
 	virtual bool Disconnect(void) {
-		return _ClientThread->SignalTerminate() == TWorkerThread::State::Running;
+		return _ClientThread->SignalTerminate() <= TWorkerThread::State::Running;
 	}
 
 };
@@ -164,15 +168,15 @@ public:
 #define NPSYSERRFAIL(e, s, ...)	SYSERRFAIL(e, NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
 #define NPLOGEXCEPTIONV(e, s, ...)	LOGEXCEPTIONV(e, NPLogHeader s, _ServRec->_Name.c_str(), __VA_ARGS__)
 
-#define __GEN_CANCEL_PIPE_IO(__X,__O)								\
-if (!CancelIoEx(__X, __O)) {										\
-	DWORD ErrCode = GetLastError();									\
-	switch (ErrCode) {												\
-		case ERROR_NOT_FOUND:										\
-			break;													\
-		default:													\
-			NPERRLOG(ErrCode, _T("Error cancelling IO operation"));	\
-	}																\
+#define __GEN_CANCEL_PIPE_IO(__X,__O)									\
+if (!CancelIoEx(__X, __O)) {											\
+	DWORD ErrCode = GetLastError();										\
+	switch (ErrCode) {													\
+		case ERROR_NOT_FOUND:											\
+			break;														\
+		default:														\
+			NPERRLOG(ErrCode, _T("Error cancelling IO operation"));		\
+	}																	\
 }
 
 #define __GEN_TERMSIGNAL_HANDLE										\
@@ -212,14 +216,13 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 					SECURITY_ATTRIBUTES SA = { 0 };
 					SA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
+					TInitResource<int> SD_RAII(0, [&](int &) { LocalFree(SA.lpSecurityDescriptor); });
 					if (!_ServRec->_DACL.empty()) {
-						// Prepare DACL that allow users read access
 						PSECURITY_DESCRIPTOR pSD;
+						// Prepare DACL that allow users read access
 						if (!ConvertStringSecurityDescriptorToSecurityDescriptor(_ServRec->_DACL.c_str(), SDDL_REVISION_1, &pSD, nullptr)) {
 							NPSYSFAIL(_T("Unable to create security descriptor"));
 						}
-						TInitResource<PSECURITY_DESCRIPTOR> SD_RAII(pSD, [](PSECURITY_DESCRIPTOR &X) { LocalFree(X); });
-
 						SA.lpSecurityDescriptor = pSD;
 					}
 
@@ -264,7 +267,7 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 					case ERROR_IO_PENDING:
 					{
 						NPLOGVV(_T("Waiting for client to connect"));
-						auto WaitResult = WaitMultiple({ _ServRec->_TermSignal, _IntTermSignal, ConnectEvent }, false);
+						auto WaitResult = WaitMultiple({ _ServRec->_TermSignal, _ServRec->_IntTermSignal, ConnectEvent }, false);
 						if ((WaitResult >= WaitResult::Signaled_0) && (WaitResult <= WaitResult::Signaled_MAX)) {
 							auto SlotIdx = WaitSlot_Signaled(WaitResult);
 							switch (SlotIdx) {
@@ -303,6 +306,8 @@ TFixedBuffer TNamedPipeServer::TServRunnable::Run(TWorkerThread &WorkerThread, T
 		NPLOGEXCEPTIONV(e, _T("Named pipe server failed"));
 	}
 
+	// Set internal termination signal
+	_ServRec->_IntTermSignal.Set();
 	NPLOGV(_T("Stopped serving (%s)"), FullPath.c_str());
 	return {};
 }
@@ -379,7 +384,7 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 	THandleWaitable OutRequest = _ServRec->_OutQueue.ContentWaitable();
 
 	THandle ExtTermWaitHandle = _ServRec->_TermSignal.WaitHandle();
-	THandle IntTermWaitHandle = _IntTermSignal.WaitHandle();
+	THandle IntTermWaitHandle = _ServRec->_IntTermSignal.WaitHandle();
 
 	TEvent ReadEvent(true);
 	THandle ReadWaitHandle = ReadEvent.WaitHandle();
@@ -462,6 +467,7 @@ TFixedBuffer TNamedPipeEndPoint::TServRunnable::Run(TWorkerThread &WorkerThread,
 		NPLOGEXCEPTIONV(e, _T("Named pipe endpoint failed"));
 	}
 
+	_ServRec->_IntTermSignal.Set();
 	NPLOGV(_T("Stopped serving"));
 	return {};
 }
