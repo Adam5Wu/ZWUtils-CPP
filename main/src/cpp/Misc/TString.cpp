@@ -49,11 +49,6 @@ WString const& EMPTY_WSTRING(void) {
 	return __IoFU;
 }
 
-TString const& EMPTY_TSTRING(void) {
-	static TString const __IoFU(EmptyTText);
-	return __IoFU;
-}
-
 CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &ErrMessage) {
 	ErrMessage.clear();
 

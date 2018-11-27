@@ -101,31 +101,37 @@ typedef std::wstring WString;
 typedef std::wstringstream WStringStream;
 
 #ifdef UNICODE
-typedef WString TString;
-typedef WStringStream TStringStream;
+#define TString WString
+#define TStringStream WStringStream
 #else
-typedef CString TString;
-typedef CStringStream TStringStream;
+#define TString CString
+#define TStringStream CStringStream
 #endif
 
 CString const& EMPTY_CSTRING(void);
 WString const& EMPTY_WSTRING(void);
-TString const& EMPTY_TSTRING(void);
 
 #define CStringCast(exp) dynamic_cast<CStringStream&>(CStringStream() << exp).str()
 #define WStringCast(exp) dynamic_cast<WStringStream&>(WStringStream() << exp).str()
-#define TStringCast(exp) dynamic_cast<TStringStream&>(TStringStream() << exp).str()
+
+#ifdef UNICODE
+#define EMPTY_TSTRING	EMPTY_WSTRING
+#define TStringCast		WStringCast
+#else
+#define EMPTY_TSTRING	EMPTY_CSTRING
+#define TStringCast		CStringCast
+#endif
 
 //! @ingroup Utilities
 //! Convert wide string to a given code page, with soft-fault tolorance
-CString WStringtoCString(unsigned int CodePage, WString const &Str, WString &ErrMessage);
+CString WStringtoCString(unsigned int CodePage, WString const &Str, TString &ErrMessage);
 
 //! @ingroup Utilities
 //! Convert string of a given code page to wide string
 WString CStringtoWString(unsigned int CodePage, CString const &Str);
 
 CString WStringtoUTF8(WString const &Str);
-CString WStringtoUTF8(WString const &Str, WString &ErrMessage);
+CString WStringtoUTF8(WString const &Str, TString &ErrMessage);
 WString UTF8toWString(CString const &Str);
 
 #ifdef UNICODE

@@ -407,10 +407,10 @@ Cardinal256 const& Cardinal256::ZERO(void) {
 	return __IoFU;
 }
 
-TString UUIDToString(UUID const &Val) {
-	TString Ret(40, NullTChar);
+WString UUIDToWString(UUID const &Val) {
+	WString Ret(40, NullWChar);
 	Cardinal128 Value(Val);
-	int result = _sntprintf_s((PTCHAR)Ret.data(), 36 + 1, 36 + 1,
+	int result = _snwprintf_s((PWCHAR)Ret.data(), 36 + 1, 36 + 1,
 							  _T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
 							  Value.U32[0], Value.U16[2], Value.U16[3],
 							  Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
@@ -420,15 +420,47 @@ TString UUIDToString(UUID const &Val) {
 	return Ret;
 }
 
-UUID UUIDFromString(TString const &Str) {
+UUID UUIDFromWString(WString const &Str) {
 	Cardinal128 Value;
 
 	// Work around VC++ missing support for "hhX"
 	int tail8[8];
-	int result = _stscanf_s(Str.c_str(), _T("%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X"),
-							&Value.U32[0], &Value.U16[2], &Value.U16[3],
-							&tail8[0], &tail8[1], &tail8[2], &tail8[3],
-							&tail8[4], &tail8[5], &tail8[6], &tail8[7]);
+	int result = swscanf_s(Str.c_str(), _T("%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X"),
+						   &Value.U32[0], &Value.U16[2], &Value.U16[3],
+						   &tail8[0], &tail8[1], &tail8[2], &tail8[3],
+						   &tail8[4], &tail8[5], &tail8[6], &tail8[7]);
+	if (result < 0)
+		FAIL(_T("Converting from string to GUID failed with error code %d"), errno);
+	if (result < 11)
+		FAIL(_T("Converting from string to GUID failed strating from %d"), result + 1);
+	// Work around VC++ missing support for "hhX"
+	for (int i = 0; i < 8; i++)
+		Value.U8[8 + i] = tail8[i];
+	return Value.toGUID();
+}
+
+CString UUIDToCString(UUID const &Val) {
+	CString Ret(40, NullAChar);
+	Cardinal128 Value(Val);
+	int result = _snprintf_s((PCHAR)Ret.data(), 36 + 1, 36 + 1,
+							 "%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X",
+							 Value.U32[0], Value.U16[2], Value.U16[3],
+							 Value.U8[8], Value.U8[9], Value.U8[10], Value.U8[11],
+							 Value.U8[12], Value.U8[13], Value.U8[14], Value.U8[15]);
+	if (result < 0)
+		FAIL(_T("Converting from GUID to string failed with error code %d"), errno);
+	return Ret;
+}
+
+UUID UUIDFromCString(CString const &Str) {
+	Cardinal128 Value;
+
+	// Work around VC++ missing support for "hhX"
+	int tail8[8];
+	int result = sscanf_s(Str.c_str(), "%8X-%4hX-%4hX-%2X%2X-%2X%2X%2X%2X%2X%2X",
+						  &Value.U32[0], &Value.U16[2], &Value.U16[3],
+						  &tail8[0], &tail8[1], &tail8[2], &tail8[3],
+						  &tail8[4], &tail8[5], &tail8[6], &tail8[7]);
 	if (result < 0)
 		FAIL(_T("Converting from string to GUID failed with error code %d"), errno);
 	if (result < 11)

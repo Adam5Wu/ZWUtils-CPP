@@ -327,8 +327,18 @@ typedef Cardinal64			__ARC_CARDINAL;
 typedef GUID UUID;
 #endif
 
-TString UUIDToString(UUID const &Val);
-UUID UUIDFromString(TString const &Str);
+WString UUIDToWString(UUID const &Val);
+CString UUIDToCString(UUID const &Val);
+UUID UUIDFromWString(WString const &Str);
+UUID UUIDFromCString(CString const &Str);
+
+#ifdef UNICODE
+#define UUIDToTString	UUIDToWString
+#define UUIDFromTString	UUIDFromWString
+#else
+#define UUIDToTString	UUIDToCString
+#define UUIDFromTString	UUIDFromCString
+#endif
 
 extern UUID const UUID_NULL;
 
