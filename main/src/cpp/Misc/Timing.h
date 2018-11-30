@@ -117,6 +117,14 @@ public:
 		return GetValue(Resolution) < TS.GetValue(Resolution);
 	}
 
+	bool Positive(void) const {
+		return Value.S64 > 0;
+	}
+
+	bool Negative(void) const {
+		return Value.S64 > 0;
+	}
+
 	bool operator==(_this const &TS) const {
 		return Same(TS);
 	}

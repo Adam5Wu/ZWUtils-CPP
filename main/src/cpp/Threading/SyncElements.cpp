@@ -142,7 +142,7 @@ WaitResult WaitMultiple(TWaitables const &Waitables, bool WaitAll, WAITTIME Time
 
 WaitResult WaitSingle(HANDLE HWait, WAITTIME Timeout, bool WaitAPC, bool WaitMsg) {
 	if (WaitMsg) {
-		return WaitMultiple({ HWait }, true, Timeout, WaitAPC, WaitMsg);
+		return WaitMultiple({ HWait }, false, Timeout, WaitAPC, WaitMsg);
 	} else {
 		DWORD Ret = WaitForSingleObjectEx(HWait, Timeout, WaitAPC);
 		return __FilterWaitResult(Ret, 1, true);
