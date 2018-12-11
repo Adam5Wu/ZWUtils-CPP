@@ -206,6 +206,8 @@ public:
 		return this;
 	}
 
+	static THandleWaitable Create(THandle &Handle);
+
 };
 
 WaitResult WaitSingle(THandleWaitable &Waitable,

@@ -168,6 +168,10 @@ THandleWaitable THandleWaitable::DupWaitable(void) {
 	return Ret;
 }
 
+THandleWaitable THandleWaitable::Create(THandle &Handle) {
+	return { CONSTRUCTION::HANDOFF, DupWaitHandle(*Handle) };
+}
+
 // --- TSemaphore
 HANDLE DupSemSignalHandle(HANDLE const &sHandle, HANDLE const &sProcess = GetCurrentProcess(),
 						  HANDLE const &tProcess = GetCurrentProcess(), BOOL Inheritable = FALSE) {
