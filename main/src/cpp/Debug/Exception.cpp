@@ -251,7 +251,7 @@ void SEHException::Translator(unsigned int ExcCode, PEXCEPTION_POINTERS ExcPtr) 
 	throw SEHException(_T("<SEH Exception Translator>"), ExcPtr->ExceptionRecord, std::move(StrTrace));
 }
 
-bool SEHTranslation = false;
+thread_local bool SEHTranslation = false;
 
 bool ControlSEHTranslation(bool Enable) {
 	if (Enable) {

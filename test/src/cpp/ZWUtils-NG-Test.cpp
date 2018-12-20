@@ -648,6 +648,30 @@ void TestWorkerThread() {
 		}
 	}
 
+	class TestSEHRunnable : public TRunnable {
+	protected:
+		TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
+			_LOG(_T("Yee Hah!"));
+			int a = 0;
+			int b = 1 / a;
+			FAIL(_T("Should not reach!"));
+			return {};
+		}
+	};
+
+	_LOG(_T("*** Test WorkerThread (SEHException during run)"));
+	{
+		MRWorkerThread C(TWorkerThread::Create(_T("TestB"), { DEFAULT_NEW(TestSEHRunnable), CONSTRUCTION::HANDOFF }), CONSTRUCTION::HANDOFF);
+		C->Start();
+		C->WaitFor();
+		_LOG(_T("Return data: %s"), TStringCast(C->ReturnData()).c_str());
+		if (C->FatalException() != nullptr) {
+			_LOG(_T("Thread crashed - %s"), C->FatalException()->Why().c_str());
+		} else {
+			FAIL(_T("Expect thread crash, found no fatal exception"));
+		}
+	}
+
 	_LOG(_T("*** Test WorkerThread (Normal, Self-free)"));
 	{
 		TWorkerThread::Create(_T("TestC"), { DEFAULT_NEW(TestRunnable), CONSTRUCTION::HANDOFF }, true)->Start();
@@ -1459,7 +1483,7 @@ void TestSyncQueue(bool Profiling) {
 			GetThread->WaitFor();
 			_LOG(_T("--- Finished All Queue Operation..."));
 
-		}
+				}
 
 		{
 			typedef TSyncBlockingDeque<int> TSyncIntQueue;
@@ -1735,7 +1759,7 @@ void TestSyncQueue(bool Profiling) {
 					_LOG(_T("---- #2 Serialized iteration finished..."));
 				}
 				_LOG(_T("Releasing push-pop lock (expect getting to crash soon)..."));
-			}
+				}
 			GetThread2->WaitFor();
 			auto GetExcept = GetThread2->FatalException();
 			if (GetExcept) {
@@ -1746,9 +1770,9 @@ void TestSyncQueue(bool Profiling) {
 			GetThread2->WaitFor();
 #endif
 			_LOG(_T("--- Finished All Queue Operation..."));
-		}
-	}
-}
+			}
+				}
+			}
 
 #include "Comm/NamedPipe.h"
 
