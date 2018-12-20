@@ -492,12 +492,6 @@ static DWORD __DbgSvcMain(void) {
 
 UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv) {
 	LOGV(_T("* Debug service main function for '%s'"), lpszArgv[0]);
-#ifdef _DEBUG
-	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
-	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
-	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF);
-#endif
-
 	if (dwArgc > 1) {
 		TString DispToken(lpszArgv[1]);
 		for (UINT32 i = 2; i < dwArgc; i++)

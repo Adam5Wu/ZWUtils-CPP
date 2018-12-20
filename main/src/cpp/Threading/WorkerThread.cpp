@@ -56,6 +56,7 @@ public:
 typedef ManagedRef<TThreadRecord> MRThreadRecord;
 
 static DWORD WINAPI _ThreadProc(LPVOID PThreadRecord) {
+	ControlSEHTranslation(true);
 	MRThreadRecord ThreadRecord((TThreadRecord*)PThreadRecord, CONSTRUCTION::HANDOFF);
 	return (*ThreadRecord)();
 }

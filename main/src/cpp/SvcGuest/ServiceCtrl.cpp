@@ -568,9 +568,13 @@ static void MoveServiceGroup(LPCTSTR ServiceName, LPCTSTR ServiceSrcGrp, LPCTSTR
 
 void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int nCmdShow) {
 	ControlSEHTranslation(true);
+#ifdef _DEBUG
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF);
+#endif
 
 	BOOL HasConsole = false;
-
 	DEBUGV_DO(HasConsole = AllocConsole());
 	if (HasConsole) {
 		FILE *conin, *conout, *conerr;
