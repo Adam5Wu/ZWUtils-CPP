@@ -256,7 +256,7 @@ static BOOL DirectoryExists(LPCTSTR szPath) {
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-static TString Service_GetDataDir(void) {
+TString Service_GetDataDir(void) {
 	TString PROGRAMDATA(MAX_PATH, NullTChar);
 	HRESULT ShResult = SHGetFolderPath(NULL, CSIDL_COMMON_APPDATA, NULL, 0, (LPTSTR)PROGRAMDATA.data());
 	if (!SUCCEEDED(ShResult)) {
