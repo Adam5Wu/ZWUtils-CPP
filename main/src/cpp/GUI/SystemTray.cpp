@@ -131,11 +131,11 @@ public:
 		TInitResource<int> Tray_RAII(0, [&](int&) { FinalizeTray(); });
 		InitializeTray();
 
-		MSG messages;
+		MSG WINMSG;
 		while (_PollMessage && (WorkerThread.CurrentState() == TWorkerThread::State::Running)) {
-			if (GetMessage(&messages, NULL, 0, 0)) {
-				TranslateMessage(&messages);
-				DispatchMessage(&messages);
+			if (GetMessage(&WINMSG, NULL, 0, 0)) {
+				TranslateMessage(&WINMSG);
+				DispatchMessage(&WINMSG);
 			}
 		}
 

@@ -121,17 +121,17 @@ public:
 #define LOGEXCEPTIONV(e,fmt,...)							\
 DEBUGV_DO_OR({												\
 	_LOG(fmt, __VA_ARGS__);									\
-	e.Show();												\
+	(e).Show();												\
 }, {														\
-	_LOG(fmt _T(" - %s"), __VA_ARGS__, e.Why().c_str());	\
+	_LOG(fmt _T(" - %s"), __VA_ARGS__, (e).Why().c_str());	\
 })
 
 #define LOGEXCEPTIONVV(e,fmt,...)							\
 DEBUGVV_DO_OR({												\
 	_LOG(fmt, __VA_ARGS__);									\
-	e.Show();												\
+	(e).Show();												\
 }, {														\
-	_LOG(fmt _T(" - %s"), __VA_ARGS__, e.Why().c_str());	\
+	_LOG(fmt _T(" - %s"), __VA_ARGS__, (e).Why().c_str());	\
 })
 
 class STDException : public Exception {

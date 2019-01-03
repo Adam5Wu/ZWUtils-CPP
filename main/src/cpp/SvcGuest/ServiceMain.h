@@ -76,5 +76,6 @@ UINT32 ServiceMain_DebugRun(UINT32 dwArgc, PCTCHAR *lpszArgv);
 
 void ServiceMain_ServiceStopNotify(void);
 THandleWaitable &ServiceMain_TermSignal(void);
+TString Service_GetDataDir(void);
 
 #endif //ZWUtils_ServiceMain_H
