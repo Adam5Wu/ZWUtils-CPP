@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define __MANAGEDOBJ_LITE
 
- // Project global control 
+// Project global control 
 #include "Misc/Global.h"
 
 #include "Misc/TString.h"
@@ -70,9 +70,7 @@ public:
 	void _AddRef(void) {
 		++_RefCount;
 	}
-	bool _RemoveRef(void) {
-		return --_RefCount == 0;
-	}
+	bool _RemoveRef(void);
 	long RefCount(void) const {
 		return ~_RefCount;
 	}

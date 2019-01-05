@@ -69,6 +69,9 @@ protected:
 		return _Alloc.Destroy(_RelObj(_Obj.Exchange(xObj))), nullptr;
 	}
 
+	void _EnforceCompatibleAllocator(IObjAllocator<T> &xAlloc);
+	T* _EnforceAllocatorTransfer(IObjAllocator<T> &xAlloc, T *xObj);
+
 public:
 	ManagedRef(IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
 		_Alloc(xAlloc) {}
@@ -104,9 +107,23 @@ public:
 	// Hence we seal this class and do not allow further derivation
 	~ManagedRef(void) { _Alloc.Destroy(_RelObj(_Obj.Exchange(nullptr))); }
 
-	_this& operator=(_this const &xMR);
-	_this& operator=(_this &&xMR);
+	_this& operator=(_this const &xMR) {
+		_EnforceCompatibleAllocator(xMR._Alloc);
+		return _RefObj(&xMR), *this;
+	}
 
+	_this& operator=(_this &&xMR) {
+		T* TransObj = _EnforceAllocatorTransfer(xMR._Alloc, &xMR);
+		return Assign(TransObj), xMR.Drop(), *this;
+	}
+
+	// This assignment operator is provided as a short-hand of move assignment of a pointer-constructed
+	//  ManagedRef instance with default allocator
+	T* operator=(T *xObj) override {
+		return &operator=(_this(xObj));
+	}
+
+	// Assign and Drop function provides a backdoor to bypass reference counting
 	T* Drop(void) override {
 		return _Obj.Exchange(nullptr);
 	}
@@ -142,16 +159,15 @@ T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
 }
 
 template<class T>
-ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef const &xMR) {
-	if (_Alloc != xMR._Alloc) FAIL(_T("Incompatible allocator"));
-	return Assign(&xMR), *this;
+void ManagedRef<T>::_EnforceCompatibleAllocator(IObjAllocator<T> &xAlloc) {
+	if (_Alloc != xAlloc) FAIL(_T("Incompatible allocator"));
 }
 
 template<class T>
-ManagedRef<T>& ManagedRef<T>:: operator=(ManagedRef &&xMR) {
-	T* TransObj = _Alloc.Transfer(&xMR, xMR._Alloc);
-	if (!TransObj) FAIL(_T("Incompatible allocator"));
-	return Assign(TransObj), xMR.Drop(), *this;
+T* ManagedRef<T>::_EnforceAllocatorTransfer(IObjAllocator<T> &xAlloc, T *xObj) {
+	T* TransObj = _Alloc.Transfer(xObj, xAlloc);
+	if (!TransObj) FAIL(_T("Failed to transfer object across allocator"));
+	return TransObj;
 }
 
 #endif

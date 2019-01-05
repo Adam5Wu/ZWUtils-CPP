@@ -100,7 +100,7 @@ public:
 		return _ObjExchange(nullptr);
 	}
 
-	T* operator=(T *xObj) {
+	virtual T* operator=(T *xObj) {
 		return Assign(xObj), xObj;
 	}
 

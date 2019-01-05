@@ -33,9 +33,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ManagedObj.h"
 
 #include "Debug/Logging.h"
+#include "Debug/Exception.h"
 
 ManagedObj::~ManagedObj(void) {
+#ifndef NDEBUG
 	if (RefCount()) {
 		LOGV(_T("WARNING: Destruction of %s"), this->toString().c_str());
 	}
+#endif
+}
+
+bool ManagedObj::_RemoveRef(void) {
+#ifndef NDEBUG
+	if (RefCount() <= 0) {
+		FAIL(_T("Invalid reference count!"));
+	}
+#endif
+	return --_RefCount == 0;
 }

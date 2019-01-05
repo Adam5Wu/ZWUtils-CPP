@@ -359,7 +359,7 @@ static DWORD ServiceInit(ServiceMode Mode) {
 	}
 	if (InitError) return InitError;
 
-	ServiceRunning.Assign(DEFAULT_NEW(TLockable::TLock, ServiceWaitLock().Lock()));
+	ServiceRunning = TLockable::MRLock(CONSTRUCTION::EMPLACE, ServiceWaitLock().Lock());
 	// Start each service module
 	return _ServiceStart();
 }
