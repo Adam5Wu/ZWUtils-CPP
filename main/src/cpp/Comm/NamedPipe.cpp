@@ -100,7 +100,7 @@ class TNamedPipeEndPoint : public ILocalCommEndPoint {
 	class TServRunnable : public TRunnable {
 		ManagedRef<TServRec> _ServRec;
 	protected:
-		bool __Handle_AsyncReadInitiate(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, THandle &ReadSignalHandle,  TWorkerThread & WorkerThread);
+		bool __Handle_AsyncReadInitiate(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, THandle &ReadSignalHandle, TWorkerThread & WorkerThread);
 		bool __Handle_AsyncReadCompletion(TDynBuffer &InBuffer, OVERLAPPED &AsyncRead, TEvent &ReadEvent, TWorkerThread &WorkerThread);
 		bool __Handle_AsyncWriteInitiate(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, THandle &WriteSignalHandle, TWorkerThread & WorkerThread);
 		bool __Handle_AsyncWriteCompletion(TDynBuffer &OutBuffer, OVERLAPPED &AsyncWrite, TEvent &WriteEvent, TWorkerThread & WorkerThread);
@@ -485,15 +485,22 @@ MRLocalCommEndPoint INamedPipeClient::Connect(TString const &xPath, DWORD Buffer
 	LOGVV(_T("Connecting to %s"), FullPath.c_str());
 
 	TString ClientName = TStringCast(NAMEDPIPE_CLIENT_NAMEPFX << _T('<') << xPath << _T('>'));
-	HANDLE hPipe = CreateFile(FullPath.c_str(), GENERIC_READ | GENERIC_WRITE,
-							  0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	if (hPipe == INVALID_HANDLE_VALUE) {
+	THandle PipeHandle(
+		[&] {
+			HANDLE Ret = CreateFile(FullPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+									0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+			if (Ret == INVALID_HANDLE_VALUE) {
+				SYSFAIL(_T("Failed to connect to pipe <%s>"), xPath.c_str());
+			}
+			return Ret;
+		});
+	DWORD PipeMode = PIPE_READMODE_MESSAGE;
+	if (!SetNamedPipeHandleState(*PipeHandle, &PipeMode, NULL, NULL)) {
 		SYSFAIL(_T("Failed to connect to pipe <%s>"), xPath.c_str());
 	}
 	return {
 		DEFAULT_NEW(TNamedPipeEndPoint, std::move(ClientName),
-					{ CONSTRUCTION::HANDOFF, hPipe },
-					BufferSize, TermSignal),
+					std::move(PipeHandle), BufferSize, TermSignal),
 		CONSTRUCTION::HANDOFF
 	};
 }
