@@ -20,6 +20,10 @@ extern "C" {
 	extern PCTCHAR const _DEF_SERVICE_PRIVILEGES = SE_CREATE_GLOBAL_NAME NullTStr;
 	extern PCTCHAR const _DEF_SERVICE_PROGRAMPATH = _T("ZWUtil\\SvcGuest");
 
+	extern bool const _DEF_SERVICE_AUTOSTART = false;
+	extern bool const _DEF_SERVICE_CRASHRESTART = false;
+	extern DWORD const _DEF_SERVICE_RESTARTDELAY = (DWORD)Convert(1, TimeUnit::MIN, TimeUnit::MSEC);
+
 	//----------------------
 	// Service Configurations
 

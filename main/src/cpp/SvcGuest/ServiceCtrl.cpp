@@ -95,7 +95,7 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 							 bool AutoStart, LPCTSTR DependOn = nullptr, LPCTSTR ServiceDLL = nullptr,
 							 int CrashRestart = 0, LPCTSTR RunAccount = nullptr, LPCTSTR RunPassword = nullptr,
 							 LPCTSTR Privileges = nullptr, DWORD ServiceSecurity = SERVICE_SID_TYPE_NONE,
-							 DWORD RestartDelay = Convert(1, TimeUnit::MIN, TimeUnit::MSEC)) {
+							 DWORD RestartDelay = (DWORD)Convert(1, TimeUnit::MIN, TimeUnit::MSEC)) {
 	// Update svchost group membership
 	UpdateSvchostGroup(
 		ServiceGrp,
@@ -588,7 +588,9 @@ void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int 
 		TString Cmdline = lpszCmdLine;
 		if (Cmdline.compare(_T(SERVICECTRL_INSTALL)) == 0) {
 			InstallAsService(SERVICE_NAME, SERVICE_DISPNAME, SERVICE_DESC, SERVICE_GROUP,
-							 true, SERVICE_DEPENDS, nullptr, 2, SERVICE_USER, nullptr, SERVICE_PRIVILEGES);
+							 SERVICE_AUTOSTART, SERVICE_DEPENDS, nullptr,
+							 SERVICE_CRASHRESTART, SERVICE_USER, nullptr,
+							 SERVICE_PRIVILEGES, SERVICE_RESTARTDELAY);
 		} else if (Cmdline.compare(_T(SERVICECTRL_UNINSTALL)) == 0) {
 			if (ControlQueryService(SERVICE_NAME) != SERVICE_STOPPED)
 				FAIL(_T("Please stop service before uninstall"));

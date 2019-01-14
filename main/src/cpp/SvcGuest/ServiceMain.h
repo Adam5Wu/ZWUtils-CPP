@@ -58,6 +58,10 @@ extern "C" {
 	extern PCTCHAR const SERVICE_PRIVILEGES;
 	extern PCTCHAR const SERVICE_PROGRAMPATH;
 
+	extern bool const SERVICE_AUTOSTART;
+	extern bool const SERVICE_CRASHRESTART;
+	extern DWORD const SERVICE_RESTARTDELAY;
+
 	extern int CONFIG_ServiceStatusQueryInterval;
 	extern int CONFIG_ServiceTerminationGraceTime;
 
