@@ -408,7 +408,7 @@ Cardinal256 const& Cardinal256::ZERO(void) {
 }
 
 WString UUIDToWString(UUID const &Val) {
-	WString Ret(40, NullWChar);
+	WString Ret(36, NullWChar);
 	Cardinal128 Value(Val);
 	int result = _snwprintf_s((PWCHAR)Ret.data(), 36 + 1, 36 + 1,
 							  _T("%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X"),
@@ -440,7 +440,7 @@ UUID UUIDFromWString(WString const &Str) {
 }
 
 CString UUIDToCString(UUID const &Val) {
-	CString Ret(40, NullAChar);
+	CString Ret(36, NullAChar);
 	Cardinal128 Value(Val);
 	int result = _snprintf_s((PCHAR)Ret.data(), 36 + 1, 36 + 1,
 							 "%08X-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X",
