@@ -41,10 +41,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_NativeChunk_H
 #define ZWUtils_NativeChunk_H
 
+ // Project global control
 #include "Misc/Global.h"
+
 #include "Misc/Types.h"
 #include "Misc/Units.h"
+
 #include "Debug/Exception.h"
+
 #include "Memory/Resource.h"
 #include "Memory/ManagedRef.h"
 

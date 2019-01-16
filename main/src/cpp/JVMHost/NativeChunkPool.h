@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_NativeChunkPool_H
 #define ZWUtils_NativeChunkPool_H
 
+ // Project global control
 #include "Misc/Global.h"
 
 #include "NativeChunk.h"

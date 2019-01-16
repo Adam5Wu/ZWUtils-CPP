@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Exception.h"
 
 #include "Logging.h"
+
 #include "Memory/ObjAllocator.h"
 
 #define ExceptSourceNone	_T("(unknown source)")
@@ -256,12 +257,12 @@ thread_local bool SEHTranslation = false;
 bool ControlSEHTranslation(bool Enable) {
 	if (Enable) {
 		if (!SEHTranslation) {
-			LOG(_T("! Enabling SEH translation..."));
+			LOGVV(_T("! Enabling SEH translation..."));
 			return _set_se_translator(SEHException::Translator), SEHTranslation = true;
 		}
 	} else {
 		if (SEHTranslation) {
-			LOG(_T("! Disabling SEH translation..."));
+			LOGVV(_T("! Disabling SEH translation..."));
 			return _set_se_translator(nullptr), SEHTranslation = false, true;
 		}
 	}

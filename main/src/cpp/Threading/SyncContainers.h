@@ -425,24 +425,48 @@ public:
 	/**
 	 * Put an object into the queue-front
 	 **/
-	size_type Push_Front(T const &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
-	size_type Push_Front(T &&entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Front(T const &entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Push_Front(entry, _Timeout, AbortEvent);
+	}
+	size_type Push_Front(T &&entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Push_Front(std::move(entry), _Timeout, AbortEvent);
+	}
+	size_type Push_Front(T const &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Front(T &&entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Put an object into the queue-back
 	 **/
-	size_type Push_Back(T const &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
-	size_type Push_Back(T &&entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Back(T const &entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Push_Back(entry, _Timeout, AbortEvent);
+	}
+	size_type Push_Back(T &&entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Push_Back(std::move(entry), _Timeout, AbortEvent);
+	}
+	size_type Push_Back(T const &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
+	size_type Push_Back(T &&entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Try get an object from the queue-front with given timeout
 	 **/
-	bool Pop_Front(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	bool Pop_Front(T &entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Pop_Front(entry, _Timeout, AbortEvent);
+	}
+	bool Pop_Front(T &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Try get an object from the queue-back with given timeout
 	 **/
-	bool Pop_Back(T &entry, WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	bool Pop_Back(T &entry, WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return Pop_Back(entry, _Timeout, AbortEvent);
+	}
+	bool Pop_Back(T &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
 
 	/**
 	 * Return the instantaneous length of the queue
@@ -465,7 +489,11 @@ public:
 	/**
 	 * Try waiting for queue to become empty and hold lock on the queue
 	 **/
-	TLock DrainAndLock(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr);
+	TLock DrainAndLock(WAITTIME const &Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+		WAITTIME _Timeout = Timeout;
+		return DrainAndLock(_Timeout, AbortEvent);
+	}
+	TLock DrainAndLock(WAITTIME &Timeout, THandleWaitable *AbortEvent = nullptr);
 
 	WaitResult WaitFor(WAITTIME Timeout) const override {
 		return ContentWait.WaitFor(Timeout);
@@ -812,7 +840,7 @@ typename TSyncBlockingDeque<T>::__Locked_Iterator<Iter> TSyncBlockingDeque<T>::_
 	auto Queue = const_cast<_this*>(this)->__Accessor_Pickup_Safe();
 	__SyncLock_RAII_C;
 	return { ((*Queue).*IterGetter)(), LockRef };
-}
+	}
 
 #endif
 
@@ -879,7 +907,7 @@ typename TSyncBlockingDeque<T>::TQueueAccessor TSyncBlockingDeque<T>::__Accessor
 	if (__Cleanup) SDQFAIL(DESTRUCTION_MESSAGE);
 	return Queue;
 #endif
-}
+	}
 
 template<class T>
 typename TSyncBlockingDeque<T>::TQueueAccessor TSyncBlockingDeque<T>::__Accessor_Pickup_Gated(
@@ -906,8 +934,8 @@ typename TSyncBlockingDeque<T>::TQueueAccessor TSyncBlockingDeque<T>::__Accessor
 #else
 		if (auto Queue = SyncDeque.TryPickup(__SDQ_SYNCSPIN)) return Queue;
 #endif
+		}
 	}
-}
 
 template<class T>
 TSyncBlockingDeque<T>::~TSyncBlockingDeque(void) {
@@ -933,7 +961,7 @@ TSyncBlockingDeque<T>::~TSyncBlockingDeque(void) {
 		if (long Count = ~PopHold) {
 			SDQLOG(_T("WARNING: There are %d unreleased pop hold"), Count);
 		}
-	}
+}
 
 	PushWait.Set();
 	PopWait.Set();
@@ -1070,25 +1098,25 @@ typename TSyncBlockingDeque<T>::const_reverse_iterator TSyncBlockingDeque<T>::cr
 
 template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Front(
-	T const &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	T const &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Push(Front, entry);
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Front(
-	T &&entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	T &&entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Push(Front, std::move(entry));
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
-	T const &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	T const &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Push(Back, entry);
 }
 
 template<class T>
 typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
-	T &&entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+	T &&entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Push(Back, std::move(entry));
 }
 
@@ -1114,17 +1142,17 @@ typename TSyncBlockingDeque<T>::size_type TSyncBlockingDeque<T>::Push_Back(
 	}
 
 template<class T>
-bool TSyncBlockingDeque<T>::Pop_Front(T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+bool TSyncBlockingDeque<T>::Pop_Front(T &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Pop(Front);
 }
 
 template<class T>
-bool TSyncBlockingDeque<T>::Pop_Back(T &entry, WAITTIME Timeout, THandleWaitable *AbortEvent) {
+bool TSyncBlockingDeque<T>::Pop_Back(T &entry, WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	__Impl_Pop(Back);
 }
 
 template<class T>
-typename TLockable::TLock TSyncBlockingDeque<T>::DrainAndLock(WAITTIME Timeout, THandleWaitable *AbortEvent) {
+typename TLockable::TLock TSyncBlockingDeque<T>::DrainAndLock(WAITTIME &Timeout, THandleWaitable *AbortEvent) {
 	TimeStamp EntryTS = Timeout == FOREVER ? TimeStamp::Null : TimeStamp::Now();
 	auto _Lock = Lock_Push();
 	while (true) {

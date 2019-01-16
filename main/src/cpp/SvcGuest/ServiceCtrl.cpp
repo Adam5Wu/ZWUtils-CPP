@@ -8,9 +8,11 @@
 #include "ServiceMain.h"
 
 #include "Misc/Timing.h"
+
 #include "Debug/Logging.h"
 #include "Debug/Exception.h"
 #include "Debug/SysError.h"
+
 #include "Memory/Resource.h"
 
 #include <Windows.h>
@@ -93,9 +95,9 @@ static void UpdateSvchostGroup(LPCTSTR ServiceGrp, std::function<bool(TString &)
 
 static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTSTR ServiceDesc, LPCTSTR ServiceGrp,
 							 bool AutoStart, LPCTSTR DependOn = nullptr, LPCTSTR ServiceDLL = nullptr,
-							 int CrashRestart = 0, LPCTSTR RunAccount = nullptr, LPCTSTR RunPassword = nullptr,
-							 LPCTSTR Privileges = nullptr, DWORD ServiceSecurity = SERVICE_SID_TYPE_NONE,
-							 DWORD RestartDelay = (DWORD)Convert(1, TimeUnit::MIN, TimeUnit::MSEC)) {
+							 int CrashRestart = 0, DWORD RestartDelay = (DWORD)Convert(1, TimeUnit::MIN, TimeUnit::MSEC),
+							 LPCTSTR Privileges = nullptr, LPCTSTR RunAccount = nullptr, LPCTSTR RunPassword = nullptr,
+							 DWORD ServiceSecurity = SERVICE_SID_TYPE_NONE) {
 	// Update svchost group membership
 	UpdateSvchostGroup(
 		ServiceGrp,
@@ -164,12 +166,12 @@ static void InstallAsService(LPCTSTR ServiceName, LPCTSTR ServiceDispName, LPCTS
 			SYSFAIL(_T("Failed to set service SID info"));
 	}
 	if (CrashRestart != 0) {
-		LOGVV(_T("* Crash restart %s times with %s delay"),
-			  CrashRestart > 0 ? TStringCast(CrashRestart).c_str() : _T("INFINITE"),
-			  TimeSpan(RestartDelay, TimeUnit::MSEC).toString(TimeUnit::MIN).c_str());
+		LOGV(_T("* Crash restart %s times with %s delay"),
+			 CrashRestart > 0 ? TStringCast(CrashRestart).c_str() : _T("INFINITE"),
+			 TimeSpan(RestartDelay, TimeUnit::MSEC).toString(TimeUnit::MIN).c_str());
 
 		SERVICE_FAILURE_ACTIONS FailureActions{ 0 };
-		FailureActions.dwResetPeriod = (int)Convert(1, TimeUnit::DAY, TimeUnit::SEC);
+		FailureActions.dwResetPeriod = (DWORD)Convert(1, TimeUnit::DAY, TimeUnit::SEC);
 		FailureActions.cActions = std::max(CrashRestart, 0) + 1;
 
 		TTypedBuffer<SC_ACTION> ServiceAction(sizeof(SC_ACTION)*FailureActions.cActions);
@@ -589,8 +591,8 @@ void CALLBACK ServiceCtrlW(HWND hwnd, HINSTANCE hinst, LPCWSTR lpszCmdLine, int 
 		if (Cmdline.compare(_T(SERVICECTRL_INSTALL)) == 0) {
 			InstallAsService(SERVICE_NAME, SERVICE_DISPNAME, SERVICE_DESC, SERVICE_GROUP,
 							 SERVICE_AUTOSTART, SERVICE_DEPENDS, nullptr,
-							 SERVICE_CRASHRESTART, SERVICE_USER, nullptr,
-							 SERVICE_PRIVILEGES, SERVICE_RESTARTDELAY);
+							 SERVICE_CRASHRESTART, SERVICE_RESTARTDELAY,
+							 SERVICE_USER, nullptr, SERVICE_PRIVILEGES);
 		} else if (Cmdline.compare(_T(SERVICECTRL_UNINSTALL)) == 0) {
 			if (ControlQueryService(SERVICE_NAME) != SERVICE_STOPPED)
 				FAIL(_T("Please stop service before uninstall"));

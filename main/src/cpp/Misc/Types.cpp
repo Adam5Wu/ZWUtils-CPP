@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // [Utilities] Various extended type support
 
 #include "Types.h"
+
 #include "Debug/Exception.h"
 
 #include <iomanip>

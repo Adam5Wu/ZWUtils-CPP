@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Misc/Types.h"
 #include "Misc/TString.h"
+
 #include "Threading/WorkerThread.h"
 
 #include <vector>

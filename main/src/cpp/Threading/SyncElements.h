@@ -45,11 +45,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Misc/TString.h"
 #include "Misc/Types.h"
 
-#include "Memory/Resource.h"
-
 #include "Debug/Debug.h"
 #include "Debug/Logging.h"
 #include "Debug/Exception.h"
+
+#include "Memory/Resource.h"
+
+#include "System/SysTypes.h"
 
 #ifdef WINDOWS
 #include <Windows.h>

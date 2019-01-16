@@ -39,10 +39,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_ServiceMain_H
 #define ZWUtils_ServiceMain_H
 
+ // Project global control 
 #include "Misc/Global.h"
 
 #include "Misc/Types.h"
 #include "Misc/TString.h"
+
 #include "Threading/SyncElements.h"
 
 #include <functional>
@@ -59,7 +61,7 @@ extern "C" {
 	extern PCTCHAR const SERVICE_PROGRAMPATH;
 
 	extern bool const SERVICE_AUTOSTART;
-	extern bool const SERVICE_CRASHRESTART;
+	extern int const SERVICE_CRASHRESTART;
 	extern DWORD const SERVICE_RESTARTDELAY;
 
 	extern int CONFIG_ServiceStatusQueryInterval;

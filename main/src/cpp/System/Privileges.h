@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2017, Zhenyu Wu; 2012 - 2017, NEC Labs America Inc.
+Copyright (c) 2005 - 2019, Zhenyu Wu; 2012 - 2019, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,48 +28,39 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// [Utilities] Logging support
+/**
+ * @addtogroup System System Level Function Interfaces
+ * @file
+ * @brief Privilege access
+ * @author Zhenyu Wu
+ * @date Jan 15, 2019: Extracted from application projects
+ **/
 
-#include "Resource.h"
+#ifndef ZWUtils_SysPriv_H
+#define ZWUtils_SysPriv_H
 
-#include "Debug/SysError.h"
+ // Project global control
+#include "Misc/Global.h"
+
+#include "Misc/Types.h"
+
+#include "Memory/Resource.h"
+
+#include "SysTypes.h"
 
 #ifdef WINDOWS
 
-// --- THandle
+#include <Windows.h>
 
-HANDLE THandle::ValidateHandle(HANDLE const &Ref) {
-	if (Ref == INVALID_HANDLE_VALUE)
-		FAIL(_T("Cannot assign invalid handle"));
-	return Ref;
-}
+class TPrivilege : protected TAllocResource<DWORD> {
+public:
+	TString const Name;
+	LUID const PrivID;
 
-void THandle::HandleDealloc_Standard(HANDLE &Res) {
-	if (!CloseHandle(Res))
-		SYSFAIL(_T("Failed to release handle"));
-}
+	TPrivilege(TString const &xName, bool Enable = true);
+	TPrivilege(THandle const &hTokenAdjust, TString const &xName, bool Enable = true);
+};
 
-void THandle::HandleDealloc_BestEffort(HANDLE &Res) {
-	if (!CloseHandle(Res))
-		SYSERRLOG(_T("Failed to release handle"));
-}
+#endif //WINDOWS
 
-// --- TModule
-
-HMODULE TModule::ValidateHandle(HMODULE const &Ref) {
-	if (Ref == NULL)
-		FAIL(_T("Cannot assign invalid module"));
-	return Ref;
-}
-
-void TModule::HandleDealloc_Standard(HMODULE &Res) {
-	if (!FreeLibrary(Res))
-		SYSFAIL(_T("Failed to release module"));
-}
-
-void TModule::HandleDealloc_BestEffort(HMODULE &Res) {
-	if (!FreeLibrary(Res))
-		SYSERRLOG(_T("Failed to release module"));
-}
-
-#endif
+#endif //ZWUtils_SysPriv_H

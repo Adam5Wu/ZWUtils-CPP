@@ -514,7 +514,7 @@
     <ClCompile Include="Debug\StackWalker.cpp" />
     <ClCompile Include="Debug\SysError.cpp" />
     <ClCompile Include="GUI\SystemTray.cpp" />
-    <ClCompile Include="GUI\Resources.cpp" />
+    <ClCompile Include="GUI\GUITypes.cpp" />
     <ClCompile Include="JVMHost\JavaTransport.cpp" />
     <ClCompile Include="JVMHost\JVMLoader.cpp">
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/D JRE_PLATFORM_PATHFRAG=\"$(TargetPlatformIdentifier)\\$(PlatformTarget)\" /bigobj</AdditionalOptions>
@@ -536,10 +536,13 @@
     <ClCompile Include="Misc\TString.cpp" />
     <ClCompile Include="Misc\Types.cpp" />
     <ClCompile Include="Misc\Units.cpp" />
-    <ClCompile Include="Memory\Resource.cpp" />
     <ClCompile Include="SvcGuest\ServiceCtrl.cpp" />
     <ClCompile Include="SvcGuest\ServiceMain.cpp" />
     <ClCompile Include="SvcGuest\ServiceStubs.cpp" />
+    <ClCompile Include="System\Privileges.cpp" />
+    <ClCompile Include="System\Registry.cpp" />
+    <ClCompile Include="System\SysRes.cpp" />
+    <ClCompile Include="System\SysTypes.cpp" />
     <ClCompile Include="Threading\SyncElements.cpp" />
     <ClCompile Include="Threading\SyncObjects.cpp" />
     <ClCompile Include="Threading\WorkerThread.cpp" />
@@ -553,7 +556,7 @@
     <ClInclude Include="Debug\StackWalker.h" />
     <ClInclude Include="Debug\SysError.h" />
     <ClInclude Include="GUI\SystemTray.h" />
-    <ClInclude Include="GUI\Resources.h" />
+    <ClInclude Include="GUI\GUITypes.h" />
     <ClInclude Include="JVMHost\JavaTransport.h" />
     <ClInclude Include="JVMHost\JVMLoader.h" />
     <ClInclude Include="JVMHost\NativeChunk.h" />
@@ -570,6 +573,10 @@
     <ClInclude Include="Misc\Types.h" />
     <ClInclude Include="Misc\Units.h" />
     <ClInclude Include="SvcGuest\ServiceMain.h" />
+    <ClInclude Include="System\Privileges.h" />
+    <ClInclude Include="System\Registry.h" />
+    <ClInclude Include="System\SysRes.h" />
+    <ClInclude Include="System\SysTypes.h" />
     <ClInclude Include="Threading\SyncObjects.h" />
     <ClInclude Include="Threading\SyncElements.h" />
     <ClInclude Include="Threading\SyncContainers.h" />

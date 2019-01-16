@@ -36,16 +36,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * @date Nov 09, 2018: Initial Implementation
  **/
 
-#ifndef ZWUtils_GUIResources_H
-#define ZWUtils_GUIResources_H
+#ifndef ZWUtils_GUITypes_H
+#define ZWUtils_GUITypes_H
 
+ // Project global control
 #include "Misc/Global.h"
 
 #ifdef WINDOWS
 
-#include "Misc/Types.h"
 #include "Debug/SysError.h"
+
 #include "Memory/Resource.h"
+
+#include "System/SysTypes.h"
 
 #include <Windows.h>
 #include <shellapi.h>
@@ -66,41 +69,9 @@ protected:
 			SYSFAIL(_T("Unable to destroy icon resource"));
 	}
 
-	static HICON __LoadIcon(HMODULE Module, LPCTSTR Name) {
-		HICON Ret = LoadIcon(Module, Name);
-		if (Ret == NULL) {
-			if (IS_INTRESOURCE(Name)) {
-				SYSFAIL(_T("Unable to load icon resource #%d"), (__ARC_UINT)Name);
-			} else {
-				SYSFAIL(_T("Unable to load icon resource '%s'"), Name);
-			}
-		}
-		return Ret;
-	}
-
-	static HICON __LoadIconImage(HMODULE Module, LPCTSTR Name, int cx, int cy) {
-		UINT LoadFlags = 0;
-		if (cx * cy == 0)  LoadFlags |= LR_DEFAULTSIZE;
-		if (!IS_INTRESOURCE(Name)) LoadFlags |= LR_LOADFROMFILE;
-		HANDLE Ret = LoadImage(Module, Name, IMAGE_ICON, cx, cy, LoadFlags);
-		if (Ret == NULL) {
-			if (IS_INTRESOURCE(Name)) {
-				SYSFAIL(_T("Unable to load icon resource #%d (%dx%x%d)"), (__ARC_UINT)Name, cx, cy);
-			} else {
-				SYSFAIL(_T("Unable to load icon resource '%s' (%dx%x%d)"), Name, cx, cy);
-			}
-		}
-		return (HICON)Ret;
-	}
-
 public:
-	TIcon(TModule const &Module, LPCTSTR Name) :
-		TAllocResource(__LoadIcon(*Module, Name), FreeIconResource)
-	{}
-
-	TIcon(TModule const &Module, LPCTSTR Name, int cx, int cy) :
-		TAllocResource(__LoadIconImage(*Module, Name, cx, cy), FreeIconResource)
-	{}
+	TIcon(TModule const &Module, LPCTSTR Name);
+	TIcon(TModule const &Module, LPCTSTR Name, int cx, int cy);
 
 	TIcon(CONSTRUCTION::HANDOFF_T const &, HICON const &hIcon, TResDealloc const &xDealloc = FreeIconResource, TResAlloc const &xAlloc = NoAlloc) :
 		TAllocResource(hIcon, xDealloc, xAlloc) {}
@@ -149,17 +120,9 @@ public:
 
 class TPopupMenu : public TMenu {
 public:
-	static HMENU Alloc_PopupMenu(void) {
-		HMENU hMenu = CreatePopupMenu();
-		if (hMenu == NULL)
-			SYSFAIL(_T("Unable to create popup menu instance"));
-		return hMenu;
-	}
-
 	using TMenu::TMenu;
 
-	TPopupMenu(TResAlloc const &xAlloc = Alloc_PopupMenu, TResDealloc const &xDealloc = Dealloc_HMENU) :
-		TMenu(xAlloc, xDealloc) {}
+	TPopupMenu(TResDealloc const &xDealloc = Dealloc_HMENU);
 };
 
 class TDC : public TAllocResource<HDC> {
@@ -169,22 +132,9 @@ protected:
 			SYSFAIL(_T("Unable to release DC resource"));
 	}
 
-	static HDC AllocDCResource(HWND WND) {
-		HDC Ret = GetDC(WND);
-		if (Ret == NULL) {
-			SYSFAIL(_T("Failed to allocate DC resource"));
-		}
-		return Ret;
-	}
-
 public:
-	TDC(TWindow &Window) :
-		TAllocResource(AllocDCResource(*Window),
-					   std::bind(FreeDCResource, *Window, std::placeholders::_1)) {}
-
-	TDC(CONSTRUCTION::DEFER_T &, TWindow &Window) :
-		TAllocResource(std::bind(AllocDCResource, *Window),
-					   std::bind(FreeDCResource, *Window, std::placeholders::_1)) {}
+	TDC(TWindow &Window);
+	TDC(CONSTRUCTION::DEFER_T &, TWindow &Window);
 
 	TDC(CONSTRUCTION::HANDOFF_T const &, HDC const &hDC, HWND const &hWND) :
 		TAllocResource(hDC, hWND ? (TResDealloc)std::bind(FreeDCResource, hWND, std::placeholders::_1) : NullDealloc, NoAlloc) {}
@@ -195,4 +145,4 @@ public:
 
 #endif
 
-#endif //ZWUtils_GUIResources_H
+#endif //ZWUtils_GUITypes_H

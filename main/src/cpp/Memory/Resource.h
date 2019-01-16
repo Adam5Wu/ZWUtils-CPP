@@ -193,62 +193,6 @@ public:
 
 };
 
-#ifdef WINDOWS
-
-class THandle : public TAllocResource<HANDLE> {
-	typedef THandle _this;
-
-public:
-	static HANDLE ValidateHandle(HANDLE const &Ref);
-	static void HandleDealloc_Standard(HANDLE &Res);
-	static void HandleDealloc_BestEffort(HANDLE &Res);
-
-	THandle(void) : THandle(Unmanaged(INVALID_HANDLE_VALUE)) {}
-	THandle(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
-		TAllocResource(xAlloc, xDealloc) {}
-	THandle(CONSTRUCTION::HANDOFF_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
-		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
-	THandle(CONSTRUCTION::VALIDATED_T const&, HANDLE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
-		TAllocResource(xResRef, xDealloc, xAlloc) {}
-
-#if _MSC_VER <= 1900
-	// Older MS compilers are buggy at inheriting methods from template
-	THandle(_this const &) = delete;
-	THandle(_this &&xHandle) NOEXCEPT : TAllocResource(std::move(xHandle)) {}
-	_this& operator=(_this const &) = delete;
-	_this& operator=(_this &&xHandle)
-	{ TAllocResource::operator=(std::move(xHandle)); }
-#endif
-
-	static _this Unmanaged(HANDLE const &xHandle)
-	{ return _this(CONSTRUCTION::VALIDATED, xHandle, NullDealloc); }
-};
-
-class TModule : public TAllocResource<HMODULE> {
-	typedef TModule _this;
-
-public:
-	static HMODULE ValidateHandle(HMODULE const &Ref);
-	static void HandleDealloc_Standard(HMODULE &Res);
-	static void HandleDealloc_BestEffort(HMODULE &Res);
-
-	TModule(void) : TModule(Unmanaged(NULL)) {}
-	TModule(TResAlloc const &xAlloc, TResDealloc const &xDealloc = HandleDealloc_Standard) :
-		TAllocResource(xAlloc, xDealloc) {}
-	TModule(CONSTRUCTION::HANDOFF_T const&, HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
-		TAllocResource(ValidateHandle(xResRef), xDealloc, xAlloc) {}
-	TModule(CONSTRUCTION::VALIDATED_T const&, HMODULE const &xResRef, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
-		TAllocResource(xResRef, xDealloc, xAlloc) {}
-
-	static _this Unmanaged(HMODULE const &xModule)
-	{ return _this(CONSTRUCTION::VALIDATED, xModule, NullDealloc); }
-
-	static TModule GetLoaded(TString const &Name)
-	{ return Unmanaged(GetModuleHandle(Name.c_str())); }
-};
-
-#endif
-
 //---------------------
 // Fixed size buffers
 

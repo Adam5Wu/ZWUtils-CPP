@@ -45,7 +45,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Exception.h"
 
 #include "Misc/Types.h"
-#include "Memory/Resource.h"
+
+#include "System/SysTypes.h"
 
 #include <functional>
 

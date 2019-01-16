@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
+Copyright (c) 2005 - 2019, Zhenyu Wu; 2012 - 2019, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,30 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/**
- * @addtogroup GUI Graphic User Interface Utilities
- * @file
- * @brief System Tray Helper
- * @author Zhenyu Wu
- * @date Nov 09, 2018: Initial Implementation
- **/
+// [System] Basic Types
 
-#ifndef ZWUtils_GUISystemTray_H
-#define ZWUtils_GUISystemTray_H
+#include "SysTypes.h"
 
- // Project global control
-#include "Misc/Global.h"
+#include "Debug/SysError.h"
 
 #ifdef WINDOWS
 
-#include "Misc/TString.h"
+// --- TModule
 
-#include "Threading/WorkerThread.h"
+HMODULE TModule::ValidateHandle(HMODULE const &Ref) {
+	if (Ref == NULL)
+		FAIL(_T("Cannot assign invalid module"));
+	return Ref;
+}
 
-#include "GUITypes.h"
+void TModule::HandleDealloc_Standard(HMODULE &Res) {
+	if (!FreeLibrary(Res))
+		SYSFAIL(_T("Failed to release module"));
+}
 
-MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems);
-
-void SystemTray_GlobalInit(HINSTANCE hInstance);
-void SystemTray_GlobalFInit(void);
+void TModule::HandleDealloc_BestEffort(HMODULE &Res) {
+	if (!FreeLibrary(Res))
+		SYSERRLOG(_T("Failed to release module"));
+}
 
 #endif
-
-#endif //ZWUtils_GUISystemTray_H

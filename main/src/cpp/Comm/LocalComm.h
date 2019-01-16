@@ -12,10 +12,10 @@ class ILocalCommEndPoint {
 public:
 	virtual ~ILocalCommEndPoint(void) {}
 
-	virtual bool Send(TDynBuffer &&Buffer, DWORD Timeout = FOREVER) {
+	virtual bool Send(TDynBuffer &&Buffer, WAITTIME Timeout = FOREVER) {
 		FAIL(_T("Abstract Function"));
 	}
-	virtual bool Receive(TDynBuffer &Buffer, DWORD Timeout = FOREVER) {
+	virtual bool Receive(TDynBuffer &Buffer, WAITTIME Timeout = FOREVER) {
 		FAIL(_T("Abstract Function"));
 	}
 	virtual THandleWaitable ReceiveWaitable(void) {

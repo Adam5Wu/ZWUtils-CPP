@@ -8,7 +8,9 @@
 #include "Debug/Logging.h"
 #include "Debug/Exception.h"
 #include "Debug/SysError.h"
+
 #include "Misc/Timing.h"
+
 #include "Threading/SyncObjects.h"
 
 #include <Shlobj.h>

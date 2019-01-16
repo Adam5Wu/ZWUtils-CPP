@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005 - 2018, Zhenyu Wu; 2012 - 2018, NEC Labs America Inc.
+Copyright (c) 2005 - 2019, Zhenyu Wu; 2012 - 2019, NEC Labs America Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,32 +29,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /**
- * @addtogroup GUI Graphic User Interface Utilities
+ * @addtogroup System System Level Function Interfaces
  * @file
- * @brief System Tray Helper
+ * @brief Registry access
  * @author Zhenyu Wu
- * @date Nov 09, 2018: Initial Implementation
+ * @date Jan 15, 2019: Extracted from application projects
  **/
 
-#ifndef ZWUtils_GUISystemTray_H
-#define ZWUtils_GUISystemTray_H
+#ifndef ZWUtils_SysReg_H
+#define ZWUtils_SysReg_H
 
  // Project global control
 #include "Misc/Global.h"
 
-#ifdef WINDOWS
-
 #include "Misc/TString.h"
 
-#include "Threading/WorkerThread.h"
+#include "SysTypes.h"
 
-#include "GUITypes.h"
+#ifdef WINDOWS
 
-MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems);
+#include <Windows.h>
 
-void SystemTray_GlobalInit(HINSTANCE hInstance);
-void SystemTray_GlobalFInit(void);
+class TRegistry : public TAllocResource<HKEY>, public TGenericHandle<HKEY> {
+public:
+	TRegistry(TRegistry const &Base, TString const &Name, REGSAM samDesired = KEY_ALL_ACCESS, bool createIfNeeded = false);
 
-#endif
+	TRegistry(CONSTRUCTION::HANDOFF_T const &, HKEY const &hKey, TResDealloc const &xDealloc = HandleDealloc_Standard, TResAlloc const &xAlloc = NoAlloc) :
+		TAllocResource(hKey, xDealloc, xAlloc) {}
 
-#endif //ZWUtils_GUISystemTray_H
+	INT32 GetInt32(TString const &Name, INT32 Default);
+	INT64 GetInt64(TString const &Name, INT64 Default);
+	TString GetString(TString const &Name, TString const &Default);
+
+	void SetInt32(TString const &Name, INT32 Value);
+	void SetInt64(TString const &Name, INT64 Value);
+	void SetString(TString const &Name, TString const &Value);
+
+	static TRegistry Unmanaged(HKEY const &hKey)
+	{ return { CONSTRUCTION::HANDOFF, hKey, NullDealloc }; }
+};
+
+#endif //WINDOWS
+
+#endif //ZWUtils_SysReg_H

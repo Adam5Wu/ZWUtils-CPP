@@ -41,8 +41,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ZWUtils_JavaTransport_H
 #define ZWUtils_JavaTransport_H
 
+ // Project global control
 #include "Misc/Global.h"
+
 #include "Misc/TString.h"
+
 #include "Debug/Exception.h"
 
 #include "JVMLoader.h"

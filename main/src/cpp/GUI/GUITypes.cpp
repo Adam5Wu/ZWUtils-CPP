@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // [GUI] Elemental GUI Resources
 
-#include "Resources.h"
+#include "GUITypes.h"
 
 #include "Debug/SysError.h"
 
@@ -41,6 +41,42 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DISP_NEMU_VBAR	"|||"
 
 #ifdef WINDOWS
+
+static HICON __LoadIcon(HMODULE Module, LPCTSTR Name) {
+	HICON Ret = LoadIcon(Module, Name);
+	if (Ret == NULL) {
+		if (IS_INTRESOURCE(Name)) {
+			SYSFAIL(_T("Unable to load icon resource #%d"), (__ARC_UINT)Name);
+		} else {
+			SYSFAIL(_T("Unable to load icon resource '%s'"), Name);
+		}
+	}
+	return Ret;
+}
+
+static HICON __LoadIconImage(HMODULE Module, LPCTSTR Name, int cx, int cy) {
+	UINT LoadFlags = 0;
+	if (cx * cy == 0)  LoadFlags |= LR_DEFAULTSIZE;
+	if (!IS_INTRESOURCE(Name)) LoadFlags |= LR_LOADFROMFILE;
+	HANDLE Ret = LoadImage(Module, Name, IMAGE_ICON, cx, cy, LoadFlags);
+	if (Ret == NULL) {
+		if (IS_INTRESOURCE(Name)) {
+			SYSFAIL(_T("Unable to load icon resource #%d (%dx%x%d)"), (__ARC_UINT)Name, cx, cy);
+		} else {
+			SYSFAIL(_T("Unable to load icon resource '%s' (%dx%x%d)"), Name, cx, cy);
+		}
+	}
+	return (HICON)Ret;
+}
+
+TIcon::TIcon(TModule const &Module, LPCTSTR Name) :
+	TAllocResource(__LoadIcon(*Module, Name), FreeIconResource)
+{}
+
+TIcon::TIcon(TModule const &Module, LPCTSTR Name, int cx, int cy) :
+	TAllocResource(__LoadIconImage(*Module, Name, cx, cy), FreeIconResource)
+{}
+
 
 void TMenu::AddMenuItem(size_t index, TString const & DispText) {
 	BOOL iRet;
@@ -55,5 +91,36 @@ void TMenu::AddMenuItem(size_t index, TString const & DispText) {
 		SYSFAIL(_T("Failed to append menu item '%s'"), DispText.c_str());
 	}
 }
+
+
+static HMENU __Alloc_PopupMenu(void) {
+	HMENU hMenu = CreatePopupMenu();
+	if (hMenu == NULL)
+		SYSFAIL(_T("Unable to create popup menu instance"));
+	return hMenu;
+}
+
+TPopupMenu::TPopupMenu(TResDealloc const &xDealloc) :
+	TMenu(__Alloc_PopupMenu, xDealloc)
+{}
+
+
+static HDC __AllocDCResource(HWND WND) {
+	HDC Ret = GetDC(WND);
+	if (Ret == NULL) {
+		SYSFAIL(_T("Failed to allocate DC resource"));
+	}
+	return Ret;
+}
+
+TDC::TDC(TWindow &Window) :
+	TAllocResource(__AllocDCResource(*Window),
+				   std::bind(FreeDCResource, *Window, std::placeholders::_1))
+{}
+
+TDC::TDC(CONSTRUCTION::DEFER_T &, TWindow &Window) :
+	TAllocResource(std::bind(__AllocDCResource, *Window),
+				   std::bind(FreeDCResource, *Window, std::placeholders::_1))
+{}
 
 #endif

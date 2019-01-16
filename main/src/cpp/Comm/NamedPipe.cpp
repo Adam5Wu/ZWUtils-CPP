@@ -132,12 +132,12 @@ protected:
 public:
 	TString const Name;
 
-	virtual bool Send(TDynBuffer && Buffer, DWORD Timeout = FOREVER) override {
+	virtual bool Send(TDynBuffer && Buffer, WAITTIME Timeout = FOREVER) override {
 		return isConnected() && _ServRec->_OutQueue.Push_Back(std::move(Buffer), Timeout,
 															  &_ServRec->_IntTermSignal);
 	}
 
-	virtual bool Receive(TDynBuffer & Buffer, DWORD Timeout = FOREVER) override {
+	virtual bool Receive(TDynBuffer & Buffer, WAITTIME Timeout = FOREVER) override {
 		return isConnected() && _ServRec->_InQueue.Pop_Front(Buffer, Timeout,
 															 &_ServRec->_IntTermSignal);
 	}

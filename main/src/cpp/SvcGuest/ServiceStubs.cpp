@@ -1,6 +1,4 @@
 
-#include "Misc/Global.h"
-
 #include "Misc/Types.h"
 #include "Misc/TString.h"
 #include "Misc/Timing.h"
@@ -21,7 +19,7 @@ extern "C" {
 	extern PCTCHAR const _DEF_SERVICE_PROGRAMPATH = _T("ZWUtil\\SvcGuest");
 
 	extern bool const _DEF_SERVICE_AUTOSTART = false;
-	extern bool const _DEF_SERVICE_CRASHRESTART = false;
+	extern int const _DEF_SERVICE_CRASHRESTART = 0;
 	extern DWORD const _DEF_SERVICE_RESTARTDELAY = (DWORD)Convert(1, TimeUnit::MIN, TimeUnit::MSEC);
 
 	//----------------------
