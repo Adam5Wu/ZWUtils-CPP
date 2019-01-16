@@ -154,6 +154,10 @@ public:
 		return _ClientThread->SignalTerminate() <= TWorkerThread::State::Running;
 	}
 
+	virtual THandle const& Handle(void) const override {
+		return _ServRec->_Pipe;
+	}
+
 };
 
 #define NPLogHeader _T("{%s} ")

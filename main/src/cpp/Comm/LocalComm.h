@@ -27,6 +27,9 @@ public:
 	virtual bool Disconnect(void) {
 		FAIL(_T("Abstract Function"));
 	}
+	virtual THandle const& Handle(void) const {
+		FAIL(_T("Abstract Function"));
+	}
 };
 
 typedef ManagedRef<ILocalCommEndPoint> MRLocalCommEndPoint;
