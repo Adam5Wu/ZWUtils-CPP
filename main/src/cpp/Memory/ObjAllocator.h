@@ -46,6 +46,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <functional>
 
+class IAllocator;
+
 template<class T>
 /**
  * @ingroup Utilities
@@ -89,6 +91,21 @@ public:
 	* Transfer ownership of an object from another allocator
 	**/
 	virtual T* Transfer(T *Obj, _this &OAlloc);
+
+	/**
+	* Adopt ownership of an object bond to another raw allocator
+	**/
+	virtual T* Adopt(T *Obj, IAllocator &OAlloc);
+
+	/**
+	* Drop ownership of an object from this allocator, if bond to raw allocator could be maintained
+	**/
+	virtual T* Drop(T *Obj);
+
+	/**
+	* Get an raw buffer allocator that is compatible with this allocator
+	**/
+	virtual IAllocator &RAWAllocator(void) const;
 };
 
 #define RLAMBDANEW(cls, ...) [&](void *__X) {return new (__X) cls (__VA_ARGS__);}
@@ -125,15 +142,23 @@ public:
 
 	T* Create(TNew const &xNew) override {
 		TTypedBuffer<T> ObjMem(_Alloc);
-		auto Ret = xNew(&ObjMem);
+		auto *Ret = xNew(&ObjMem);
 		return ObjMem.Invalidate(), Ret;
 	}
 	void Destroy(T *Obj) override {
 		_DefDestroy(Obj), _Alloc.Dealloc(Obj);
 	}
 	T* Transfer(T *Obj, IObjAllocator<T> &OAlloc) override {
-		auto rAlloc = dynamic_cast<_this*>(std::addressof(OAlloc));
-		return rAlloc ? (_Alloc == rAlloc->_Alloc ? Obj : nullptr) : nullptr;
+		return Adopt(OAlloc.Drop(Obj), OAlloc.RAWAllocator());
+	}
+	T* Adopt(T *Obj, IAllocator &OAlloc) override {
+		return (T*)_Alloc.Transfer(Obj, OAlloc);
+	}
+	T* Drop(T *Obj) override {
+		return Obj;
+	}
+	IAllocator& RAWAllocator(void) const override {
+		return _Alloc;
 	}
 };
 
@@ -164,6 +189,9 @@ public:
 	T* Transfer(T *Obj, IObjAllocator<T> &OAlloc) {
 		return dynamic_cast<_this*>(std::addressof(OAlloc)) ? Obj : nullptr;
 	}
+	T* Adopt(T *Obj, IAllocator &OAlloc) override;
+	T* Drop(T *Obj) override;
+	IAllocator& RAWAllocator(void) const override;
 };
 
 #include "Debug/Exception.h"
@@ -184,8 +212,38 @@ T* IObjAllocator<T>::Transfer(T *Obj, _this &OAlloc) {
 }
 
 template<class T>
+T* IObjAllocator<T>::Adopt(T *Obj, IAllocator &OAlloc) {
+	FAIL(_T("Abstract function"));
+}
+
+template<class T>
+T* IObjAllocator<T>::Drop(T *Obj) {
+	FAIL(_T("Abstract function"));
+}
+
+template<class T>
+IAllocator& IObjAllocator<T>::RAWAllocator(void) const {
+	FAIL(_T("Abstract function"));
+}
+
+template<class T>
 T* ExtObjAllocator<T>::Create(TNew const &xNew) {
-	FAIL(_T("Should not reach"));
+	FAIL(_T("Not supported"));
+}
+
+template<class T>
+T* ExtObjAllocator<T>::Adopt(T *Obj, IAllocator &OAlloc) {
+	FAIL(_T("Not supported"));
+}
+
+template<class T>
+T* ExtObjAllocator<T>::Drop(T *Obj) {
+	FAIL(_T("Not supported"));
+}
+
+template<class T>
+IAllocator& ExtObjAllocator<T>::RAWAllocator(void) const {
+	FAIL(_T("Not supported"));
 }
 
 #endif

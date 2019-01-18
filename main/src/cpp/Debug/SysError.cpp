@@ -138,8 +138,10 @@ PCTCHAR __ModuleFormatCtxAndDecodeSysError(HMODULE Module, unsigned int ErrCode,
 
 // --- SystemError
 
-SystemError* SystemError::MakeClone(IObjAllocator<void> &_Alloc) const {
-	return DEFAULT_NEW(SystemError, *this);
+SystemError* SystemError::MakeClone(IAllocator &xAlloc) const {
+	CascadeObjAllocator<_this> _Alloc(xAlloc);
+	auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+	return _Alloc.Drop(iRet);
 }
 
 #define FSystemErrorMessage _T("%s (Error %0.8X: %s)")

@@ -51,51 +51,54 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template<class T>
 class ManagedRef final : public Reference<T> {
 	typedef ManagedRef _this;
+	typedef std::remove_const_t<T> _NCT;
+	typedef std::add_const_t<T> _ACT;
+	typedef IObjAllocator<_NCT> TObjAllocator;
 
 private:
 	TInterlockedOrdinal<T*> _Obj = nullptr;
-	IObjAllocator<T> &_Alloc;
+	TObjAllocator &_Alloc;
 
 protected:
 	static T* _RefObj(T *xObj);
 	static T* _RelObj(T *xObj);
-	static T* _DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc);
+	static T* _DupObj(_ACT *xObj, bool ForceClone, TObjAllocator &xAlloc);
 
 	T* _ObjPointer(void) const override {
 		return ~_Obj;
 	}
 
 	T* _ObjExchange(T *xObj) override {
-		return _Alloc.Destroy(_RelObj(_Obj.Exchange(xObj))), nullptr;
+		return _Alloc.Destroy((_NCT*)_RelObj(_Obj.Exchange(xObj))), nullptr;
 	}
 
-	void _EnforceCompatibleAllocator(IObjAllocator<T> &xAlloc);
-	T* _EnforceAllocatorTransfer(IObjAllocator<T> &xAlloc, T *xObj);
+	void _EnforceCompatibleAllocator(TObjAllocator &xAlloc);
+	T* _EnforceAllocatorTransfer(TObjAllocator &xAlloc, T *xObj);
 
 public:
-	ManagedRef(IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+	ManagedRef(TObjAllocator &xAlloc = DefaultObjAllocator<_NCT>()) :
 		_Alloc(xAlloc) {}
 
-	ManagedRef(CONSTRUCTION::EMPLACE_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+	ManagedRef(CONSTRUCTION::EMPLACE_T const&, TObjAllocator &xAlloc = DefaultObjAllocator<_NCT>()) :
 		_Obj(_RefObj(xAlloc.Create())), _Alloc(xAlloc) {}
 
 	template<typename... Params>
-	ManagedRef(IObjAllocator<T> &xAlloc, Params&&... xParams) :
+	ManagedRef(TObjAllocator &xAlloc, Params&&... xParams) :
 		_Alloc(xAlloc) {
 		_Obj = _RefObj(xAlloc.Create(RLAMBDANEW(T, std::forward<Params>(xParams)...)));
 	}
 
 	template<typename... Params>
 	ManagedRef(CONSTRUCTION::EMPLACE_T const&, Params&&... xParams) :
-		ManagedRef(DefaultObjAllocator<T>(), std::forward<Params>(xParams)...) {}
+		ManagedRef(DefaultObjAllocator<_NCT>(), std::forward<Params>(xParams)...) {}
 
-	ManagedRef(T *xObj, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+	ManagedRef(T *xObj, TObjAllocator &xAlloc = DefaultObjAllocator<_NCT>()) :
 		_Obj(_DupObj(xObj, false, xAlloc)), _Alloc(xAlloc) {}
 
-	ManagedRef(T *xObj, CONSTRUCTION::CLONE_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+	ManagedRef(_ACT *xObj, CONSTRUCTION::CLONE_T const&, TObjAllocator &xAlloc = DefaultObjAllocator<_NCT>()) :
 		_Obj(_DupObj(xObj, true, xAlloc)), _Alloc(xAlloc) {}
 
-	ManagedRef(T *xObj, CONSTRUCTION::HANDOFF_T const&, IObjAllocator<T> &xAlloc = DefaultObjAllocator<T>()) :
+	ManagedRef(T *xObj, CONSTRUCTION::HANDOFF_T const&, TObjAllocator &xAlloc = DefaultObjAllocator<_NCT>()) :
 		_Obj(_RefObj(xObj)), _Alloc(xAlloc) {}
 
 	// Copy constructor
@@ -105,7 +108,7 @@ public:
 
 	// Note: For performance reasons, we do not have a virtual destructor
 	// Hence we seal this class and do not allow further derivation
-	~ManagedRef(void) { _Alloc.Destroy(_RelObj(_Obj.Exchange(nullptr))); }
+	~ManagedRef(void) { _ObjExchange(nullptr); }
 
 	_this& operator=(_this const &xMR) {
 		_EnforceCompatibleAllocator(xMR._Alloc);
@@ -147,25 +150,25 @@ T* ManagedRef<T>::_RelObj(T *xObj) {
 }
 
 template<class T>
-T* ManagedRef<T>::_DupObj(T *xObj, bool ForceClone, IObjAllocator<T> &xAlloc) {
+T* ManagedRef<T>::_DupObj(_ACT *xObj, bool ForceClone, TObjAllocator &xAlloc) {
 	if (xObj == nullptr) return nullptr;
 	if (!ForceClone) {
 		if (auto MRef = ManagedObj::Cast(xObj))
-			return MRef->_AddRef(), xObj;
+			return MRef->_AddRef(), (T*)xObj;
 	}
-	auto iRet = Cloneable::Clone(xObj, xAlloc);
+	auto *iRet = Cloneable::Clone(xObj, xAlloc);
 	if (iRet == nullptr) FAIL(_T("Not a Cloneable derivative"))
 	return iRet;
 }
 
 template<class T>
-void ManagedRef<T>::_EnforceCompatibleAllocator(IObjAllocator<T> &xAlloc) {
+void ManagedRef<T>::_EnforceCompatibleAllocator(TObjAllocator &xAlloc) {
 	if (_Alloc != xAlloc) FAIL(_T("Incompatible allocator"));
 }
 
 template<class T>
-T* ManagedRef<T>::_EnforceAllocatorTransfer(IObjAllocator<T> &xAlloc, T *xObj) {
-	T* TransObj = _Alloc.Transfer(xObj, xAlloc);
+T* ManagedRef<T>::_EnforceAllocatorTransfer(TObjAllocator &xAlloc, T *xObj) {
+	T* TransObj = _Alloc.Transfer((_NCT*)xObj, xAlloc);
 	if (!TransObj) FAIL(_T("Failed to transfer object across allocator"));
 	return TransObj;
 }

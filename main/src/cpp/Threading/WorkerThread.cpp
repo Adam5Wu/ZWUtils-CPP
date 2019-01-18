@@ -250,18 +250,15 @@ DWORD TWorkerThread::__CallForwarder(void) {
 			WTLOGV(_T("Running"));
 			try {
 				rReturnData = rRunnable->Run(*this, rInputData);
+			} catch (_ECR_ e) {
+				rException = { &e, CONSTRUCTION::CLONE };
+				DEBUG_DO(if (dynamic_cast<TWorkThreadSelfDestruct const *>(&e) == nullptr) {
+					WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
+					e.Show();
+				});
 			} catch (std::exception &e) {
-				Exception *ZWE = dynamic_cast<Exception*>(&e);
-				if (ZWE != nullptr) {
-					rException = { ZWE, CONSTRUCTION::CLONE };
-					DEBUG_DO(if (dynamic_cast<TWorkThreadSelfDestruct*>(ZWE) == nullptr) {
-						WTLOG(_T("WARNING: Abnormal termination due to unhanded ZWUtils Exception"));
-						ZWE->Show();
-					});
-				} else {
-					WTLOG(_T("WARNING: Abnormal termination due to unhanded std::exception - %S"), e.what());
-					rException = { STDException::Wrap(std::move(e)), CONSTRUCTION::HANDOFF };
-				}
+				WTLOG(_T("WARNING: Abnormal termination due to unhanded std::exception - %S"), e.what());
+				rException = { STDException::Wrap(std::move(e)), CONSTRUCTION::HANDOFF };
 			}
 			// Fall through...
 
@@ -339,7 +336,7 @@ void* TWorkerThread::ReturnData(void) {
 	return &rReturnData;
 }
 
-Exception* TWorkerThread::FatalException(bool Prune) {
+Exception const* TWorkerThread::FatalException(bool Prune) {
 	State iCurState = CurrentState();
 	if (iCurState != State::Terminated)
 		WTFAIL(_T("Could not get fatal exception while in state '%s'"), STR_State(iCurState));
@@ -404,8 +401,10 @@ THandle TWorkerThread::WaitHandle(void) {
 
 // --- TWorkerThreadException
 
-TWorkerThreadException* TWorkerThreadException::MakeClone(IObjAllocator<void> &_Alloc) const {
-	return DEFAULT_NEW(TWorkerThreadException, *this);
+TWorkerThreadException* TWorkerThreadException::MakeClone(IAllocator &xAlloc) const {
+	CascadeObjAllocator<_this> _Alloc(xAlloc);
+	auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+	return _Alloc.Drop(iRet);
 }
 
 TString const& TWorkerThreadException::Why(void) const {

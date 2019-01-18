@@ -647,6 +647,7 @@ public:
 // Clonable base class
 
 // Forward declaration avoid circular header dependency
+class IAllocator;
 template<class T> class IObjAllocator;
 template<class T> IObjAllocator<T>& DefaultObjAllocator(void);
 
@@ -654,7 +655,7 @@ class Cloneable : public TCastable<Cloneable> {
 	typedef Cloneable _this;
 
 protected:
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const;
+	virtual _this* MakeClone(IAllocator &xAlloc) const;
 
 public:
 	template<class T>
@@ -663,8 +664,11 @@ public:
 
 template<class T>
 static T* Cloneable::Clone(T const *xObj, IObjAllocator<T> &xAlloc) {
-	if (auto Ref = Cast(xObj))
-		return dynamic_cast<T*>(Ref->MakeClone((IObjAllocator<void> &)xAlloc));
+	if (auto *Ref = Cast(xObj)) {
+		auto &RAWAlloc = xAlloc.RAWAllocator();
+		auto *iRet = dynamic_cast<T*>(Ref->MakeClone(RAWAlloc));
+		return xAlloc.Adopt(iRet, RAWAlloc);
+	}
 	// Not a Cloneable derivative
 	return nullptr;
 }

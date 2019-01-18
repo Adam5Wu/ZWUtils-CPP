@@ -198,7 +198,7 @@ public:
 	 * @note Must be called AFTER worker thread goes to wtsTerminated
 	 * @note The caller does *NOT* own the retrieved exception unless it is pruned!
 	 **/
-	Exception* FatalException(bool Prune = false);
+	Exception const* FatalException(bool Prune = false);
 
 	typedef std::function<void(TWorkerThread &, State const &)> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;
@@ -242,7 +242,7 @@ public:
 	TWorkerThreadException(_this const &xException)
 		: Exception(xException), WorkerThreadName(xException.WorkerThreadName) {}
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+	virtual _this* MakeClone(IAllocator &xAlloc) const override;
 
 	TString const& Why(void) const override;
 };

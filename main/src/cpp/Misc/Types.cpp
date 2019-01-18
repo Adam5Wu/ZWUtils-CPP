@@ -502,7 +502,7 @@ UINT32 CountBits64(UINT64 Mask) {
 }
 
 // --- Clonable
-Cloneable* Cloneable::MakeClone(IObjAllocator<void> &_Alloc) const {
+Cloneable* Cloneable::MakeClone(IAllocator &xAlloc) const {
 	FAIL(_T("Abstract function"));
 }
 

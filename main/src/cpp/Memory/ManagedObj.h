@@ -52,7 +52,7 @@ class ManagedObj : public TCastable<ManagedObj> {
 
 private:
 	typedef TInterlockedOrdinal32<long> TSyncCounter;
-	TSyncCounter _RefCount;
+	mutable TSyncCounter _RefCount;
 
 protected:
 	ManagedObj(long xRefCount = 0) : _RefCount(xRefCount) {}
@@ -67,10 +67,10 @@ protected:
 	virtual void __Pre_Destroy(void) {}
 
 public:
-	void _AddRef(void) {
+	void _AddRef(void) const {
 		++_RefCount;
 	}
-	bool _RemoveRef(void);
+	bool _RemoveRef(void) const;
 	long RefCount(void) const {
 		return ~_RefCount;
 	}

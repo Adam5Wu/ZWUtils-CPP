@@ -95,7 +95,7 @@ public:
 
 	virtual ~Exception(void);
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+	virtual _this* MakeClone(IAllocator &xAlloc) const override;
 
 	/**
 	 * Returns a description of the exception
@@ -155,7 +155,7 @@ public:
 	STDException(_this const &xException)
 		: Exception(xException), Object(xException.Object) {}
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+	virtual _this* MakeClone(IAllocator &xAlloc) const override;
 
 	static STDException *Wrap(std::exception &&xException);
 };
@@ -189,7 +189,7 @@ public:
 	STException(_this const &xException)
 		: Exception(xException), rStackTrace(xException.rStackTrace) {}
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+	virtual _this* MakeClone(IAllocator &xAlloc) const override;
 
 	void Show(void) const override;
 	void ShowStack(void) const;

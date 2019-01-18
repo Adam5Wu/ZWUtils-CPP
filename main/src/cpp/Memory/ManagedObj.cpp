@@ -43,7 +43,7 @@ ManagedObj::~ManagedObj(void) {
 #endif
 }
 
-bool ManagedObj::_RemoveRef(void) {
+bool ManagedObj::_RemoveRef(void) const {
 #ifndef NDEBUG
 	if (RefCount() <= 0) {
 		FAIL(_T("Invalid reference count!"));

@@ -523,8 +523,10 @@ public:
 	TSyncBlockingDequeException(_this const &xException)
 		: Exception(xException), ContainerName(xException.ContainerName) {}
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override {
-		return DEFAULT_NEW(_this, *this);
+	virtual _this* MakeClone(IAllocator &xAlloc) const override {
+		CascadeObjAllocator<_this> _Alloc(xAlloc);
+		auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+		return _Alloc.Drop(iRet);
 	}
 
 	TString const& Why(void) const override {

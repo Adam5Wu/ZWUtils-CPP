@@ -208,7 +208,7 @@ public:
 	SystemError(_this const &xException)
 		: Exception(xException), ErrorCode(xException.ErrorCode) {}
 
-	virtual _this* MakeClone(IObjAllocator<void> &_Alloc) const override;
+	virtual _this* MakeClone(IAllocator &xAlloc) const override;
 
 	virtual TString const& ErrorMessage(void) const;
 	TString const& Why(void) const override;

@@ -66,8 +66,10 @@ Exception::~Exception(void) {
 #endif
 }
 
-Exception* Exception::MakeClone(IObjAllocator<void> &_Alloc) const {
-	return DEFAULT_NEW(Exception, *this);
+Exception* Exception::MakeClone(IAllocator &xAlloc) const {
+	CascadeObjAllocator<_this> _Alloc(xAlloc);
+	auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+	return _Alloc.Drop(iRet);
 }
 
 TString const& Exception::Why(void) const {
@@ -87,8 +89,10 @@ void Exception::Show(void) const {
 // --- STDException
 LPTSTR STDException::STR_STD_EXCEPTION_WRAP = _T("Wrapped std::exception");
 
-STDException* STDException::MakeClone(IObjAllocator<void> &_Alloc) const {
-	return DEFAULT_NEW(STDException, *this);
+STDException* STDException::MakeClone(IAllocator &xAlloc) const {
+	CascadeObjAllocator<_this> _Alloc(xAlloc);
+	auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+	return _Alloc.Drop(iRet);
 }
 
 STDException* STDException::Wrap(std::exception &&xException) {
@@ -97,8 +101,10 @@ STDException* STDException::Wrap(std::exception &&xException) {
 }
 
 // --- STException
-STException* STException::MakeClone(IObjAllocator<void> &_Alloc) const {
-	return DEFAULT_NEW(STException, *this);
+STException* STException::MakeClone(IAllocator &xAlloc) const {
+	CascadeObjAllocator<_this> _Alloc(xAlloc);
+	auto *iRet = _Alloc.Create(RLAMBDANEW(_this, *this));
+	return _Alloc.Drop(iRet);
 }
 
 TString STException::ExtractTopFrame(std::deque<TString> &xStackTrace) {
