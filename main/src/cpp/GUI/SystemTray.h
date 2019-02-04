@@ -50,7 +50,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "GUITypes.h"
 
-MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems);
+#include <functional>
+#include <Windows.h>
+
+typedef std::function<void(WPARAM State)> FWinStationStateNotify;
+MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip,
+								TMenuItems && MenuItems, FWinStationStateNotify const &WTSStateNotify);
 
 void SystemTray_GlobalInit(HINSTANCE hInstance);
 void SystemTray_GlobalFInit(void);

@@ -43,6 +43,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <windowsx.h>
 
+#include <wtsapi32.h>
+#pragma comment(lib, "Wtsapi32")
+
 #define EXPLORERTRAY_IDBASE		1000
 #define EXPLORERTRAY_WMID		WM_USER
 #define EXPLORERTRAY_CLASSNAME	"__EXPTRAY_CLS__"
@@ -52,6 +55,7 @@ private:
 	TIcon _Icon;
 	TString _ToolTip;
 	std::vector<TMenuItem> _MenuItems;
+	FWinStationStateNotify _WTSStateNotify;
 
 	TWindow _Window;
 	TPopupMenu _PopupMenu;
@@ -101,12 +105,16 @@ private:
 		if (!Shell_NotifyIcon(NIM_SETVERSION, &notifyIconData)) {
 			SYSFAIL(_T("Failed to set tray icon version"));
 		}
+
+		WTSRegisterSessionNotification(*_Window, NOTIFY_FOR_THIS_SESSION);
 		_PollMessage = true;
 		_CallbackWIP = false;
 	}
 
 	void FinalizeTray(void) {
 		if (_Window.Allocated()) {
+			WTSUnRegisterSessionNotification(*_Window);
+
 			NOTIFYICONDATA notifyIconData = { 0 };
 			notifyIconData.cbSize = sizeof(NOTIFYICONDATA);
 			notifyIconData.hWnd = *_Window;
@@ -123,8 +131,10 @@ private:
 public:
 	TString const Name;
 
-	TSystemTray(TString const &xName, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems)
-		: Name(xName), _Icon(std::move(Icon)), _ToolTip(ToolTip), _MenuItems(std::move(MenuItems))
+	TSystemTray(TString const &xName, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems,
+				FWinStationStateNotify const &WTSStateNotify)
+		: Name(xName), _Icon(std::move(Icon)), _ToolTip(ToolTip)
+		, _MenuItems(std::move(MenuItems)), _WTSStateNotify(WTSStateNotify)
 		, _Window(NULL, TResource<HWND>::NullDealloc), _TrayID(++_InstCnt)
 	{}
 
@@ -161,6 +171,11 @@ public:
 			case WM_CLOSE:
 				LOGV(_T("Tray removal message received!"));
 				_PollMessage = false;
+				return 0;
+
+			case WM_WTSSESSION_CHANGE:
+				LOGV(_T("WinStation session change: %d"), wParam);
+				if (_WTSStateNotify) _WTSStateNotify(wParam);
 				return 0;
 
 			case EXPLORERTRAY_WMID:
@@ -221,10 +236,11 @@ static LRESULT CALLBACK __CallForwarder(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 	return reinterpret_cast<TSystemTray*>(Inst)->__WndProc(hwnd, msg, wParam, lParam);
 }
 
-MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip, TMenuItems && MenuItems) {
+MRWorkerThread CreateSystemTray(TString const &Name, TIcon &&Icon, TString const &ToolTip,
+								TMenuItems && MenuItems, FWinStationStateNotify const &WTSStateNotify) {
 	return {
 		CONSTRUCTION::EMPLACE, Name,
-		MRRunnable(DEFAULT_NEW(TSystemTray, Name, std::move(Icon), ToolTip, std::move(MenuItems)),
+		MRRunnable(DEFAULT_NEW(TSystemTray, Name, std::move(Icon), ToolTip, std::move(MenuItems), WTSStateNotify),
 				   CONSTRUCTION::HANDOFF)
 	};
 }
