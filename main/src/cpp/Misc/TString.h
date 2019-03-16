@@ -142,6 +142,9 @@ WString UTF8toWString(CString const &Str);
 #define UTF8toTString
 #endif
 
+void TrimString(CString &Str);
+void TrimString(WString &Str);
+
 #ifdef WINDOWS
 TCHAR const* ACP_LOCALE(void);
 #endif

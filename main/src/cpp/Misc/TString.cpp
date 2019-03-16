@@ -189,6 +189,30 @@ WString UTF8toWString(CString const &Str) {
 	return std::move(CStringtoWString(CP_UTF8, Str));
 }
 
+void TrimString(CString &Str) {
+	Str.erase(Str.begin(),
+			  std::find_if(Str.begin(), Str.end(),
+						   [](int ch) {
+							   return !isspace(ch) && isprint(ch);
+						   }));
+	Str.erase(std::find_if(Str.rbegin(), Str.rend(),
+						   [](int ch) {
+							   return !isspace(ch) && isprint(ch);
+						   }).base(), Str.end());
+}
+
+void TrimString(WString &Str) {
+	Str.erase(Str.begin(),
+				  std::find_if(Str.begin(), Str.end(),
+							   [](int ch) {
+								   return !iswspace(ch) && iswprint(ch);
+							   }));
+	Str.erase(std::find_if(Str.rbegin(), Str.rend(),
+							   [](int ch) {
+								   return !iswspace(ch) && iswprint(ch);
+							   }).base(), Str.end());
+}
+
 #ifdef WINDOWS
 
 TCHAR const* ACP_LOCALE(void) {

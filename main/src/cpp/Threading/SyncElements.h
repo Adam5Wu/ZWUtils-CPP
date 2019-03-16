@@ -509,7 +509,93 @@ public:
 
 #endif
 
-class __ClockRunner;
+typedef std::function<void(TimeStamp const &DueTS)> TAlarmCallback;
+
+#include "Memory/ManagedRef.h"
+
+class TAlarmClock;
+typedef ManagedRef<TAlarmClock> MRAlarmClock;
+
+/**
+* @ingroup Threading
+* @brief Alarm clock
+*
+* Provide ability to schedule event with a duration or at a deadline
+* @note: NOT threadsafe, if desired wrap around with TSyncObj<>
+**/
+class TAlarmClock {
+protected:
+	/**
+	 * We do not allow direct construction of this object, because the current declaration
+	 *  is just the interface. The implementation is a bit more complicated, but we do not
+	 *  want to expose the complications here
+	 * To get an usable instance of this object, call the Create() functions
+	 **/
+	TAlarmClock(void) {}
+
+public:
+	virtual ~TAlarmClock(void) {}
+
+	/**
+	 * Set trigger for a duration
+	 **/
+	void Arm(TimeSpan const &Duration, TAlarmCallback const &Callback) {
+		return Arm(TimeStamp::Now(Duration), Callback);
+	}
+
+	/**
+	 * Set trigger for a fixed time point
+	 **/
+	virtual void Arm(TimeStamp const &Clock, TAlarmCallback const &Callback) = 0;
+
+	/**
+	 * Check if clock is armed
+	 **/
+	virtual bool Armed(void) const = 0;
+
+	/**
+	 * Force firing of scheduled event even if time is not due
+	 * WaitFor controls whether return after actual callback finish
+	 * Returns:
+	 *  - False if this call is too late (i.e. already disarmed)
+	 *  - Otherwise true (firing of event is guaranteed if WaitFor is true)
+	 *  - (Again) NOT threadsafe, concurrent access must be serialized
+	 **/
+	virtual bool Fire(bool WaitFor) = 0;
+
+	/**
+	 * Disarm the clock, scheduled event ignored if time is not due
+	 * Returns:
+	 *  - False if this call is too late (i.e. already disarmed)
+	 *  - Otherwise true (no-firing of event is guaranteed if WaitFor is true)
+	 *  - (Again) NOT threadsafe, concurrent access must be serialized
+	 **/
+	virtual bool Disarm(bool WaitFor) = 0;
+
+	/**
+	 * Create an unarmed clock
+	 **/
+	static MRAlarmClock Create(void);
+
+	/**
+	 * Create an armed clock with a duration
+	 **/
+	static MRAlarmClock Create(TimeSpan const &Duration, TAlarmCallback const &Callback) {
+		auto AlarmClock = Create();
+		AlarmClock->Arm(Duration, Callback);
+		return std::move(AlarmClock);
+	}
+
+	/**
+	 * Create an armed clock at a deadline
+	 **/
+	static MRAlarmClock Create(TimeStamp const &Clock, TAlarmCallback const &Callback) {
+		auto AlarmClock = Create();
+		AlarmClock->Arm(Clock, Callback);
+		return std::move(AlarmClock);
+	}
+
+};
 
 /**
 * @ingroup Threading
@@ -518,62 +604,57 @@ class __ClockRunner;
 * Provide ability to wait for a duration or fixed time point
 * @note: Not threadsafe, if desired wrap around with TSyncObj<>
 **/
-class TAlarmClock : public THandleWaitable {
-	friend class __ClockRunner;
+class TWaitableAlarmClock : public THandleWaitable {
 protected:
-	TEvent _HEvent, _WEvent;
-	WaitResult _WRet;
+	TEvent _WaitEvent;
+	WaitResult _WaitRet;
+	MRAlarmClock _Alarm;
 
-	struct ClockRet {
-		TimeStamp ExitTS;
-		TimeSpan Remainder;
-		WaitResult Result;
-	} _ClockRet;
-
-	static HANDLE __GetWaitHandle(TEvent &Event) {
-		THandle iRet = Event.WaitHandle();
+	HANDLE __GetEventWaitHandle(void) {
+		THandle iRet = _WaitEvent.WaitHandle();
 		return *iRet, *iRet.Drop();
 	}
 
 public:
-	TAlarmClock(void) : THandleWaitable([&] { return __GetWaitHandle(_HEvent); }),
-		_HEvent(CONSTRUCTION::DEFER, true, true), _WEvent(CONSTRUCTION::DEFER) {}
+	TWaitableAlarmClock(void) : THandleWaitable([&] { return __GetEventWaitHandle(); }),
+		_WaitEvent(CONSTRUCTION::DEFER, true, true), _WaitRet(WaitResult::Abandoned),
+		_Alarm(TAlarmClock::Create()) {
+	}
 
-	TAlarmClock(TimeSpan const &Duration) : TAlarmClock() {
+	TWaitableAlarmClock(TimeSpan const &Duration) : TWaitableAlarmClock() {
 		Arm(Duration);
 	}
 
-	TAlarmClock(TimeStamp const &Clock) : TAlarmClock() {
+	TWaitableAlarmClock(TimeStamp const &Clock) : TWaitableAlarmClock() {
 		Arm(Clock);
 	}
 
-	~TAlarmClock(void) { Disarm(true); }
+	~TWaitableAlarmClock(void) {
+		Disarm();
+	}
 
-	/**
-	 * Set trigger for a duration
-	 **/
 	void Arm(TimeSpan const &Duration) {
 		return Arm(TimeStamp::Now(Duration));
 	}
 
-	/**
-	 * Set trigger for a fixed time point
-	 **/
+	bool Armed(void) const {
+		return _Alarm->Armed();
+	}
+
+	WaitResult Status(void) const {
+		return _WaitRet;
+	}
+
 	void Arm(TimeStamp const &Clock);
 
-	/**
-	 * Check if clock is armed
-	 **/
-	bool Armed(void) const;
+	bool Fire(void);
 
-	/**
-	 * Disarm the clock (release all waiters)
-	 **/
-	bool Disarm(bool WaitFor = false);
+	bool Disarm(void);
 
 	/**
 	* Wait for a given amount of time or until signaled
 	**/
+
 	WaitResult WaitFor(WAITTIME Timeout = FOREVER) const override;
 };
 

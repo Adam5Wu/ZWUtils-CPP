@@ -106,10 +106,14 @@ public:
 	};
 	static PCTCHAR STR_State(State const &xState);
 
+	typedef std::function<void(void)> TAPCFunc;
+
 private:
 	HANDLE __CreateThread(size_t StackSize, bool xSelfFree);
 	void __DestroyThread(TString const &Name, HANDLE &X);
+
 	DWORD __CallForwarder(void);
+	void __APCForwarder(TString const &Name, TAPCFunc const &APCFunc);
 
 protected:
 	MRRunnable rRunnable;
@@ -199,6 +203,11 @@ public:
 	 * @note The caller does *NOT* own the retrieved exception unless it is pruned!
 	 **/
 	Exception const* FatalException(bool Prune = false);
+
+	/**
+	 * Queue an APC function to the worker thread
+	 **/
+	void QueueAPC(TString const &Name, TAPCFunc const &Func);
 
 	typedef std::function<void(TWorkerThread &, State const &)> TStateNotice;
 	typedef TAllocResource<TString> TNotificationStub;

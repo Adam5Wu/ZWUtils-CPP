@@ -337,13 +337,14 @@ void TestManagedObj() {
 
 	_LOG(_T("--- Clonable Object"));
 	class TestCObj : public Cloneable {
+		typedef TestCObj _this;
 	protected:
 		TString const Name;
-		IObjAllocator<TestCObj> & _Alloc = DefaultObjAllocator<TestCObj>();
-		Cloneable* MakeClone(IObjAllocator<void> &xAlloc) const override {
+		Cloneable* MakeClone(IAllocator &xAlloc) const override {
 			_LOG(_T("CObj '%s' Cloning..."), Name.c_str());
-			return ((IObjAllocator<TestCObj>&)xAlloc).Transfer(_Alloc.Create(
-				[&](void *X) {return new (X)TestCObj(Name); }), _Alloc);
+			CascadeObjAllocator<_this> _Alloc(xAlloc);
+			auto *iRet = _Alloc.Create(RLAMBDANEW(_this, Name));
+			return _Alloc.Drop(iRet);
 		}
 	public:
 		TestCObj(TString const &xName) : Name(xName) { _LOG(_T("CObj '%s' Created"), Name.c_str()); }
@@ -1061,7 +1062,7 @@ void TestSyncObj_2(bool Robust) {
 			}
 
 			// Set an alarm go off after 1 sec
-			TAlarmClock FakeAbort(TimeSpan(1000, TimeUnit::MSEC));
+			TWaitableAlarmClock FakeAbort(TimeSpan(1000, TimeUnit::MSEC));
 			{
 				// Try pickup with alarm as abort event
 				_LOG(_T("Picking up with 1 sec alarm abort (expect abort)"));

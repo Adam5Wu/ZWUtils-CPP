@@ -299,124 +299,198 @@ void TConditionVariable::Signal(bool All) {
 
 #endif
 
-// --- TAlarmClock
-
 #include "Threading/WorkerThread.h"
 
-class __ClockRunner : public TRunnable {
+// --- TAlarmClock
+
+class TAlarmClock_Impl : public TAlarmClock {
 private:
-	TimeStamp ExitTS;
-	TEvent &WEvent;
-	TEvent &HEvent;
+	class TClockRunner;
+	typedef ManagedRef<TClockRunner> MRClockRunner;
+	MRClockRunner ClockRunner;
+	TLockableCS CallbackLock;
 
-public:
-	__ClockRunner(TimeStamp const &TS, TEvent &xWEvent, TEvent &xHEvent) :
-		ExitTS(TS), WEvent(xWEvent), HEvent(xHEvent) {
-		WEvent.Reset();
-		HEvent.Reset();
-	}
+	class TClockRunner : public TRunnable, public ManagedObj {
+	private:
+		TimeStamp _ExitTS;
+		TAlarmCallback _Callback;
+		TEvent _AbortEvent;
+		bool _CallAtStop;
 
-	TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) {
-		TInitResource<bool> TermAction(true, [&](bool &) {HEvent.Set(); });
-		TAlarmClock::ClockRet *Ret = static_cast<TAlarmClock::ClockRet*>(&Arg);
+		TAlarmClock_Impl &_Parent;
+	public:
+		TClockRunner(TimeStamp const &ExitTS, TAlarmCallback const &Callback, TAlarmClock_Impl &Parent) :
+			_ExitTS(ExitTS), _Callback(Callback), _AbortEvent(true), _CallAtStop(true), _Parent(Parent) {
+		}
 
-		bool Interrupted = false;
-		Ret->ExitTS = TimeStamp::Now();
-		Ret->Remainder = ExitTS - Ret->ExitTS;
+		virtual TFixedBuffer Run(TWorkerThread &WorkerThread, TFixedBuffer &Arg) override {
+			TimeStamp CurTS = TimeStamp::Now();
+			TimeSpan Remainder = _ExitTS - CurTS;
+			WaitResult WRet = WaitResult::Signaled;
 
-		DEBUGV_DO(
 			{
-			LOG(_T("Alarm clock armed @ %s"), Ret->ExitTS.toString().c_str());
-			LOG(_T("- Scheduled wake up in: %s"), Ret->Remainder.toString(TimeUnit::MSEC).c_str());
-			}
-		);
+				TInitResource<int> StopAction(
+					0,
+					[&](int &) {
+						auto CBLock = _Parent.CallbackLock.Lock();
+						_Parent.ClockRunner.Clear();
+						if (_CallAtStop && _Callback) _Callback(_ExitTS);
+					});
 
-		Ret->Result = WaitResult::Signaled;
-		try {
-			while (Ret->Remainder > TimeSpan::Null && !Interrupted) {
-				// Prevent too large duration value hit INTINIE
-				INT64 Timeout = std::min(Ret->Remainder.GetValue(TimeUnit::MSEC), 0x7FFFFFFFLL);
-				WaitResult WRet = WEvent.WaitFor((DWORD)Timeout);
+				DEBUGV_DO(
+					{
+					LOG(_T("Alarm clock armed @ %s"), CurTS.toString().c_str());
+					LOG(_T("- Scheduled wake up in: %s"), Remainder.toString(TimeUnit::MSEC).c_str());
+					}
+				);
 
-				Ret->ExitTS = TimeStamp::Now();
-				Ret->Remainder = ExitTS - TimeStamp::Now();
-				switch (WRet) {
-					case WaitResult::Signaled:
-						// Abort event signaled
-						Ret->Result = WaitResult::Abandoned;
-						Interrupted = true;
-						break;
-					case WaitResult::TimedOut:
-						// Finished one round of waiting
-						break;
-					default:
-						// Unexpected
-						LOGV(_T("WARNING: Unexpected clock runner wait result (%s)"), WaitResultToString(WRet).c_str());
-						Ret->Result = WaitResult::Error;
-						Interrupted = true;
-						break;
+				try {
+					bool Interrupted = false;
+					while (Remainder > TimeSpan::Null && !Interrupted) {
+						// Prevent too large duration value hit INTINIE
+						INT64 Timeout = std::min(Remainder.GetValue(TimeUnit::MSEC), 0x7FFFFFFFLL);
+						WRet = _AbortEvent.WaitFor((DWORD)Timeout);
+
+						CurTS = TimeStamp::Now();
+						Remainder = _ExitTS - CurTS;
+						switch (WRet) {
+							case WaitResult::Signaled:
+								// Abort event signaled
+								Interrupted = true;
+								break;
+							case WaitResult::TimedOut:
+								// Finished one round of waiting
+								break;
+							default:
+								// Unexpected
+								LOGV(_T("WARNING: Unexpected clock runner wait result (%s)"), WaitResultToString(WRet).c_str());
+								_CallAtStop = false;
+								Interrupted = true;
+								break;
+						}
+					}
+				} catch (_ECR_ e) {
+					e.Show();
+
+					WRet = WaitResult::Error;
+					CurTS = TimeStamp::Now();
+					Remainder = _ExitTS - CurTS;
+					_CallAtStop = false;
 				}
 			}
 
 			DEBUGV_DO(
-				{
-				LOG(_T("Alarm clock triggered [%s] @ %s"), WaitResultToString(Ret->Result).c_str(),
-					Ret->ExitTS.toString().c_str());
-				if (Ret->Remainder) {
-					LOG(_T("- Wake up time compared with deadline: %s"),
-						Ret->Remainder.toString(TimeUnit::MSEC).c_str());
-				}
-				}
+				LOG(_T("Alarm clock unarmed [%s] @ %s (event %s)"), WaitResultToString(WRet).c_str(),
+					CurTS.toString().c_str(), _CallAtStop ? _T("fired") : _T("not-fired"));
+			if (Remainder) {
+				LOG(_T("- Wake up time compared with deadline: %s"),
+					Remainder.toString(TimeUnit::MSEC).c_str());
+			}
 			);
-		} catch (_ECR_ e) {
-			e.Show();
 
-			Ret->Result = WaitResult::Error;
-			Ret->ExitTS = TimeStamp::Now();
-			Ret->Remainder = ExitTS - TimeStamp::Now();
+			return {};
 		}
 
-		return {};
+		virtual void StopNotify(TWorkerThread &WorkerThread) override {
+			SignalStop(false);
+		}
+
+		void SignalStop(bool TriggerCallback) {
+			_CallAtStop = TriggerCallback;
+			_AbortEvent.Set();
+		}
+
+	};
+
+public:
+	TAlarmClock_Impl(void) {}
+
+	virtual ~TAlarmClock_Impl(void) override {
+		Disarm(true);
 	}
 
-	/**
-	* Notify the stop request from worker thread
-	**/
-	virtual void StopNotify(TWorkerThread &WorkerThread) {
-		// Instance to be used by unreferenced self-freeing thread
-		// Function implemented by WEvent notifications
+	virtual void Arm(TimeStamp const &Clock, TAlarmCallback const &Callback) override {
+		if (Armed()) FAIL(_T("Clock already armed!"));
+
+		ClockRunner = { CONSTRUCTION::EMPLACE, Clock, Callback, *this };
+		TWorkerThread::Create(_T("AlarmClock"), MRRunnable{ &ClockRunner }, true)->Start();
+	}
+
+	virtual bool Armed(void) const override {
+		return !ClockRunner.Empty();
+	}
+
+	virtual bool Fire(bool WaitFor) {
+		auto CBLock = CallbackLock.Lock();
+		MRClockRunner RefRunner = ClockRunner;
+		if (!RefRunner.Empty()) {
+			ClockRunner->SignalStop(true);
+			CBLock = CallbackLock.NullLock();
+
+			// Wait for runner to finish
+			while (WaitFor && Armed()) {
+				SwitchToThread();
+			}
+			return true;
+		}
+		return false;
+	}
+
+	virtual bool Disarm(bool WaitFor) {
+		auto CBLock = CallbackLock.Lock();
+		MRClockRunner RefRunner = ClockRunner;
+		if (!RefRunner.Empty()) {
+			ClockRunner->SignalStop(false);
+			CBLock = CallbackLock.NullLock();
+
+			// Wait for runner to finish
+			while (WaitFor && Armed()) {
+				SwitchToThread();
+			}
+			return true;
+		}
+		return false;
 	}
 
 };
 
-void TAlarmClock::Arm(TimeStamp const &Clock) {
-	if (Armed()) FAIL(_T("Clock already armed!"));
-	TWorkerThread::Create(_T("ClockThread"),
-						  { DEFAULT_NEW(__ClockRunner, Clock, _WEvent, _HEvent), CONSTRUCTION::HANDOFF },
-						  true)->Start({ &_ClockRet, sizeof(void*), DummyAllocator() });
+MRAlarmClock TAlarmClock::Create(void) {
+	return { DEFAULT_NEW(TAlarmClock_Impl), CONSTRUCTION::HANDOFF };
 }
 
-bool TAlarmClock::Armed(void) const {
-	if (!_HEvent.Allocated()) return false;
-	WaitResult WRet = _HEvent.WaitFor(0);
-	switch (WRet) {
-		case WaitResult::TimedOut: return true;
-		case WaitResult::Signaled: return false;
-		default: FAIL(_T("Unexpected clock wait event status (%s)"), WaitResultToString(WRet).c_str());
+// --- TWaitableAlarmClock
+
+void TWaitableAlarmClock::Arm(TimeStamp const &Clock) {
+	if (_Alarm->Armed()) FAIL(_T("Clock already armed!"));
+
+	_WaitEvent.Reset();
+	_WaitRet = WaitResult::TimedOut;
+	_Alarm->Arm(
+		Clock,
+		[&](TimeStamp const &DueTS) {
+			_WaitRet = WaitResult::Signaled;
+			_WaitEvent.Set();
+		});
+}
+
+bool TWaitableAlarmClock::Fire(void) {
+	return _Alarm->Fire(true);
+}
+
+bool TWaitableAlarmClock::Disarm(void) {
+	if (_Alarm->Disarm(true)) {
+		_WaitRet = WaitResult::Abandoned;
+		_WaitEvent.Set();
+		return true;
 	}
+	return false;
 }
 
-bool TAlarmClock::Disarm(bool WaitFor) {
-	if (!Armed()) return false;
-	_WEvent.Set();
-	return WaitFor ? _HEvent.WaitFor(), true : true;
-}
-
-WaitResult TAlarmClock::WaitFor(WAITTIME Timeout) const {
-	WaitResult WRet = THandleWaitable::WaitFor(Timeout);
+WaitResult TWaitableAlarmClock::WaitFor(WAITTIME Timeout) const {
+	WaitResult WRet = _WaitEvent.WaitFor(Timeout);
 	switch (WRet) {
 		case WaitResult::Signaled:
-			WRet = _ClockRet.Result;
+			WRet = _WaitRet;
 			break;
 	}
 	return WRet;

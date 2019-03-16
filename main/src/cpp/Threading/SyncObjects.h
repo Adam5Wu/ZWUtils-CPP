@@ -603,7 +603,7 @@ public:
 
 protected:
 	TObject _Instance;
-	MRLockable _Lockable;
+	mutable MRLockable _Lockable;
 
 	void __Unlock(TLockInfo *LockInfo) override {
 		__Cascade_Unlock(&_Lockable, LockInfo);
@@ -715,25 +715,25 @@ public:
 	/**
 	 * Lock and return an accessor of managed T instance
 	 **/
-	Accessor Pickup(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) {
+	Accessor Pickup(WAITTIME Timeout = FOREVER, THandleWaitable *AbortEvent = nullptr) const {
 		// Clone Lock function to avoid virtual function call cost
 		auto iRet = _Lockable->Lock(Timeout, AbortEvent);
-		return { std::move(__Adopt(iRet)) };
+		return { std::move(const_cast<TSyncObj*>(this)->__Adopt(iRet)) };
 	}
 
 	/**
 	 * Try to lock and return an accessor of managed T instance, check validty before access
 	 **/
-	Accessor TryPickup(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) {
+	Accessor TryPickup(__ARC_UINT SpinCount = DEFAULT_CRITICALSECTION_SPIN) const {
 		// Clone TryLock function to avoid virtual function call cost
 		auto iRet = _Lockable->TryLock(SpinCount);
-		return { std::move(__Adopt(iRet)) };
+		return { std::move(const_cast<TSyncObj*>(this)->__Adopt(iRet)) };
 	}
 
 	/**
 	 * Return an invalid accessor
 	 **/
-	Accessor NullAccessor(void) {
+	Accessor NullAccessor(void) const {
 		return { NullLock() };
 	}
 

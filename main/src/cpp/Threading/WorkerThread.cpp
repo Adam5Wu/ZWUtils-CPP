@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WINDOWS
 
-class TThreadRecord {
+class TThreadCreateRecord {
 private:
 	TWorkerThread* const WorkerThread;
 	typedef DWORD(TWorkerThread::*WTThreadMain)(void);
@@ -45,20 +45,44 @@ private:
 	bool const SelfFree;
 
 public:
-	TThreadRecord(TWorkerThread* const &xWorkerThread, WTThreadMain const &xThreadMain, bool const &xSelfFree) :
+	TThreadCreateRecord(TWorkerThread* const &xWorkerThread, WTThreadMain const &xThreadMain, bool const &xSelfFree) :
 		WorkerThread(xWorkerThread), ThreadMain(xThreadMain), SelfFree(xSelfFree) {}
-	~TThreadRecord(void) { if (SelfFree) DEFAULT_DESTROY(TWorkerThread, WorkerThread); }
+	~TThreadCreateRecord(void) { if (SelfFree) DEFAULT_DESTROY(TWorkerThread, WorkerThread); }
 
 	DWORD operator()(void) {
 		return (WorkerThread->*ThreadMain)();
 	}
 };
-typedef ManagedRef<TThreadRecord> MRThreadRecord;
+typedef ManagedRef<TThreadCreateRecord> MRThreadCreateRecord;
 
-static DWORD WINAPI _ThreadProc(LPVOID PThreadRecord) {
+static DWORD WINAPI _ThreadProc(LPVOID Data) {
 	ControlSEHTranslation(true);
-	MRThreadRecord ThreadRecord((TThreadRecord*)PThreadRecord, CONSTRUCTION::HANDOFF);
-	return (*ThreadRecord)();
+	MRThreadCreateRecord ThreadCreateRecord((TThreadCreateRecord*)Data, CONSTRUCTION::HANDOFF);
+	return (*ThreadCreateRecord)();
+}
+
+class TThreadAPCRecord {
+private:
+	TWorkerThread* const WorkerThread;
+	typedef void(TWorkerThread::*WTThreadAPC)(TString const &, TWorkerThread::TAPCFunc const &);
+	WTThreadAPC const ThreadAPC;
+	TString const Name;
+	TWorkerThread::TAPCFunc const APCFunc;
+
+public:
+	TThreadAPCRecord(TWorkerThread* const &xWorkerThread, WTThreadAPC const &xThreadAPC,
+					 TString const &xName, TWorkerThread::TAPCFunc const &xAPCFunc) :
+		WorkerThread(xWorkerThread), ThreadAPC(xThreadAPC), Name(xName), APCFunc(xAPCFunc) {}
+
+	void operator()(void) {
+		return (WorkerThread->*ThreadAPC)(Name, APCFunc);
+	}
+};
+typedef ManagedRef<TThreadAPCRecord> MRThreadAPCRecord;
+
+static VOID NTAPI _ThreadAPC(ULONG_PTR Data) {
+	MRThreadAPCRecord ThreadAPCRecord((TThreadAPCRecord*)Data, CONSTRUCTION::HANDOFF);
+	return (*ThreadAPCRecord)();
 }
 
 // Utility for setting thread name
@@ -190,11 +214,11 @@ PCTCHAR TWorkerThread::STR_State(State const &xState) {
 typedef unsigned(__stdcall *__ThreadProc) (void *);
 
 HANDLE TWorkerThread::__CreateThread(size_t StackSize, bool xSelfFree) {
-	MRThreadRecord Foward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__CallForwarder, xSelfFree);
+	MRThreadCreateRecord Forward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__CallForwarder, xSelfFree);
 	HANDLE rThread = (HANDLE)_beginthreadex(nullptr, (UINT)StackSize, (__ThreadProc)&_ThreadProc,
-											&Foward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
+											&Forward, CREATE_SUSPENDED, (PUINT)&_ThreadID);
 	if (rThread == nullptr) SYSFAIL(_T("Failed to create thread for worker '%s'"), Name.c_str());
-	return Foward.Drop(), rThread;
+	return Forward.Drop(), rThread;
 }
 
 void TWorkerThread::__Pre_Destroy(void) {
@@ -325,6 +349,23 @@ bool TWorkerThread::AbortIO(void) {
 	if (!CancelSynchronousIo(Refer()))
 		return GetLastError() == ERROR_NOT_FOUND;
 	return true;
+}
+
+void TWorkerThread::__APCForwarder(TString const &Name, TAPCFunc const &APCFunc) {
+	WTLOGV(_T("Invoking APC '%s'..."), Name.c_str());
+	try {
+		APCFunc();
+	} catch (_ECR_ e) {
+		LOGEXCEPTIONV(e, _T("Exception during APC exeuction"));
+	}
+}
+
+void TWorkerThread::QueueAPC(TString const &Name, TAPCFunc const &Func) {
+	MRThreadAPCRecord Forward(CONSTRUCTION::EMPLACE, this, &TWorkerThread::__APCForwarder, Name, Func);
+	if (!QueueUserAPC(_ThreadAPC, **this, (ULONG_PTR)&Forward)) {
+		SYSFAIL(_T("Failed to queue APC for worker '%s'"), Name.c_str());
+	}
+	Forward.Drop();
 }
 
 #endif
